@@ -10,10 +10,10 @@ import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { getSupabaseClient } from '@/lib/supabase/client';
-import { formatDate, slugify } from '@joubuild/shared';
+import { formatDate } from '@joubuild/shared';
 import { PROJECT_STATUS_LABELS } from '@joubuild/shared';
 import { toast } from 'sonner';
+import { createOrganizationAndProject } from './actions';
 
 interface Project {
   id: string;
@@ -38,49 +38,19 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
     e.preventDefault();
     setLoading(true);
 
-    const supabase = getSupabaseClient();
+    const result = await createOrganizationAndProject({
+      name,
+      description: description || null,
+      address: address || null,
+    });
 
-    // Get or create organization
-    let orgId: string;
-    const { data: orgs } = await supabase
-      .from('organizations')
-      .select('id')
-      .limit(1);
-
-    if (orgs && orgs.length > 0) {
-      orgId = orgs[0].id;
-    } else {
-      const { data: newOrg, error: orgError } = await supabase
-        .from('organizations')
-        .insert({ name: 'Moje firma', slug: slugify('Moje firma') })
-        .select()
-        .single();
-      if (orgError || !newOrg) {
-        toast.error('Chyba při vytváření organizace: ' + (orgError?.message || 'neznámá chyba'));
-        setLoading(false);
-        return;
-      }
-      orgId = newOrg.id;
-    }
-
-    const { data, error } = await supabase
-      .from('projects')
-      .insert({
-        organization_id: orgId,
-        name,
-        description: description || null,
-        address: address || null,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      toast.error(error.message);
+    if (result.error) {
+      toast.error(result.error);
       setLoading(false);
       return;
     }
 
-    setProjects([data, ...projects]);
+    setProjects([result.data!, ...projects]);
     setShowCreate(false);
     setName('');
     setDescription('');
