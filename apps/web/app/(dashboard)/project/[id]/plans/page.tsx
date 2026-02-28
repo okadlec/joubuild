@@ -11,7 +11,7 @@ export default async function PlansPage({ params }: { params: Promise<{ id: stri
       *,
       sheets(
         *,
-        sheet_versions(*)
+        sheet_versions!sheet_id(*)
       )
     `)
     .eq('project_id', id)
