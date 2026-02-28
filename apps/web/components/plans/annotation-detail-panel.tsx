@@ -11,6 +11,7 @@ import { formatRelativeTime, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '@j
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
+import { compressImage } from '@/lib/compress-image';
 
 type Tab = 'chat' | 'photos' | 'task';
 
@@ -224,8 +225,9 @@ export function AnnotationDetailPanel({
 
     if (error) {
       toast.error(error.message);
+    } else {
+      setBody('');
     }
-    setBody('');
     setSending(false);
   }, [annotationId, body]);
 
@@ -263,10 +265,11 @@ export function AnnotationDetailPanel({
     let successCount = 0;
 
     for (const file of Array.from(files)) {
-      const fileName = `${projectId}/${Date.now()}-${file.name}`;
+      const compressed = await compressImage(file);
+      const fileName = `${projectId}/${Date.now()}-${file.name.replace(/\.[^.]+$/, '.jpg')}`;
       const { error: uploadError } = await supabase.storage
         .from('photos')
-        .upload(fileName, file);
+        .upload(fileName, compressed, { contentType: 'image/jpeg' });
 
       if (uploadError) {
         console.error('Storage upload error:', uploadError);
@@ -498,24 +501,42 @@ export function AnnotationDetailPanel({
         {/* Photos Tab */}
         {activeTab === 'photos' && (
           <div className="p-3">
-            <div className="mb-3">
+            <div className="mb-3 flex gap-2">
               <input
                 type="file"
                 accept="image/*"
                 capture="environment"
                 multiple
                 className="hidden"
-                id="annotation-photo-upload"
-                onChange={(e) => e.target.files && handlePhotoUpload(e.target.files)}
+                id="annotation-photo-camera"
+                onChange={(e) => { if (e.target.files) handlePhotoUpload(e.target.files); e.target.value = ''; }}
+              />
+              <input
+                type="file"
+                accept="image/*"
+                multiple
+                className="hidden"
+                id="annotation-photo-gallery"
+                onChange={(e) => { if (e.target.files) handlePhotoUpload(e.target.files); e.target.value = ''; }}
               />
               <Button
                 size="sm"
-                className="w-full"
-                onClick={() => document.getElementById('annotation-photo-upload')?.click()}
+                className="flex-1"
+                onClick={() => document.getElementById('annotation-photo-camera')?.click()}
                 disabled={uploading}
               >
-                <Upload className="mr-2 h-4 w-4" />
-                {uploading ? 'Nahrávání...' : 'Nahrát fotku'}
+                <Camera className="mr-1 h-4 w-4" />
+                Vyfotit
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="flex-1"
+                onClick={() => document.getElementById('annotation-photo-gallery')?.click()}
+                disabled={uploading}
+              >
+                <Upload className="mr-1 h-4 w-4" />
+                Z galerie
               </Button>
             </div>
 

@@ -1,16 +1,19 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
-import { Upload, Camera, X, Download, Search, Filter, Pencil, Trash2, Check, Plus } from 'lucide-react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { Upload, Camera, X, Download, Search, Filter, Pencil, Trash2, Check, Plus, MapPin, MessageSquare, Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { getSupabaseClient } from '@/lib/supabase/client';
-import { formatDate } from '@joubuild/shared';
+import { formatDate, formatRelativeTime } from '@joubuild/shared';
+import { Avatar } from '@/components/ui/avatar';
+import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Photo360Viewer } from './photo-360-viewer';
+import { compressImage } from '@/lib/compress-image';
 
 interface Photo {
   id: string;
@@ -22,9 +25,14 @@ interface Photo {
   taken_at: string | null;
   created_at: string;
   markup_data: Record<string, unknown> | null;
+  annotation_id?: string | null;
+  sheet_version_id?: string | null;
+  sheet_id?: string | null;
+  sheet_name?: string | null;
 }
 
 export function PhotosView({ projectId, initialPhotos }: { projectId: string; initialPhotos: Photo[] }) {
+  const router = useRouter();
   const [photos, setPhotos] = useState(initialPhotos);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -35,6 +43,120 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
   const [editTags, setEditTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
+
+  // Photo comments state
+  const [photoComments, setPhotoComments] = useState<Array<{
+    id: string; user_id: string | null; body: string; created_at: string;
+    user_name?: string | null; user_email?: string | null;
+  }>>([]);
+  const [commentBody, setCommentBody] = useState('');
+  const [sendingComment, setSendingComment] = useState(false);
+  const [showComments, setShowComments] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const commentBottomRef = useRef<HTMLDivElement>(null);
+
+  // Load comments when a photo is selected
+  useEffect(() => {
+    if (!selectedPhoto) {
+      setPhotoComments([]);
+      setShowComments(false);
+      return;
+    }
+
+    const supabase = getSupabaseClient();
+    let cancelled = false;
+
+    async function loadComments() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) setCurrentUserId(user.id);
+
+      const { data } = await supabase
+        .from('comments')
+        .select('*, profiles:user_id(full_name, email)')
+        .eq('photo_id', selectedPhoto!.id)
+        .order('created_at', { ascending: true });
+
+      if (cancelled) return;
+      if (data) {
+        setPhotoComments(data.map((c: Record<string, unknown>) => {
+          const profile = c.profiles as Record<string, unknown> | null;
+          return {
+            id: c.id as string,
+            user_id: c.user_id as string | null,
+            body: c.body as string,
+            created_at: c.created_at as string,
+            user_name: profile?.full_name as string | null,
+            user_email: profile?.email as string | null,
+          };
+        }));
+      }
+    }
+
+    loadComments();
+
+    // Realtime subscription for new comments
+    const channel = supabase
+      .channel(`photo-comments-${selectedPhoto.id}`)
+      .on(
+        'postgres_changes' as never,
+        { event: 'INSERT', schema: 'public', table: 'comments', filter: `photo_id=eq.${selectedPhoto.id}` },
+        async (payload: { new: { id: string; user_id: string | null; body: string; created_at: string } }) => {
+          let userName: string | null = null;
+          let userEmail: string | null = null;
+          if (payload.new.user_id) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name, email')
+              .eq('id', payload.new.user_id)
+              .maybeSingle();
+            if (profile) {
+              userName = profile.full_name;
+              userEmail = profile.email;
+            }
+          }
+          const enriched = { ...payload.new, user_name: userName, user_email: userEmail };
+          setPhotoComments(prev => {
+            if (prev.some(c => c.id === enriched.id)) return prev;
+            return [...prev, enriched];
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      cancelled = true;
+      supabase.removeChannel(channel);
+    };
+  }, [selectedPhoto?.id]);
+
+  // Scroll to bottom when comments change
+  useEffect(() => {
+    if (showComments) {
+      commentBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [photoComments.length, showComments]);
+
+  const handleSendPhotoComment = useCallback(async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!commentBody.trim() || !selectedPhoto) return;
+
+    setSendingComment(true);
+    const supabase = getSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error } = await supabase.from('comments').insert({
+      photo_id: selectedPhoto.id,
+      user_id: user?.id,
+      body: commentBody.trim(),
+    });
+
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setCommentBody('');
+    }
+    setSendingComment(false);
+  }, [selectedPhoto, commentBody]);
 
   // Filter state
   const [showFilters, setShowFilters] = useState(false);
@@ -77,10 +199,13 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     const { data: { user } } = await supabase.auth.getUser();
 
     for (const file of Array.from(files)) {
-      const fileName = `${projectId}/${Date.now()}-${file.name}`;
+      const isImage = file.type.startsWith('image/');
+      const uploadBlob = isImage ? await compressImage(file) : file;
+      const ext = isImage ? '.jpg' : file.name.match(/\.[^.]+$/)?.[0] || '';
+      const fileName = `${projectId}/${Date.now()}-${file.name.replace(/\.[^.]+$/, ext)}`;
       const { error: uploadError } = await supabase.storage
         .from('photos')
-        .upload(fileName, file);
+        .upload(fileName, uploadBlob, isImage ? { contentType: 'image/jpeg' } : undefined);
 
       if (uploadError) {
         toast.error(`Chyba při nahrávání ${file.name}`);
@@ -218,8 +343,20 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
             multiple
             className="hidden"
             id="photo-upload"
-            onChange={(e) => e.target.files && handleUpload(e.target.files)}
+            onChange={(e) => { if (e.target.files) handleUpload(e.target.files); e.target.value = ''; }}
           />
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            id="photo-camera"
+            onChange={(e) => { if (e.target.files) handleUpload(e.target.files); e.target.value = ''; }}
+          />
+          <Button variant="outline" onClick={() => document.getElementById('photo-camera')?.click()} disabled={uploading}>
+            <Camera className="mr-2 h-4 w-4" />
+            Vyfotit
+          </Button>
           <Button onClick={() => document.getElementById('photo-upload')?.click()} disabled={uploading}>
             <Upload className="mr-2 h-4 w-4" />
             {uploading ? 'Nahrávání...' : 'Nahrát fotky'}
@@ -308,6 +445,12 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                 />
               </div>
               <div className="p-2">
+                {photo.sheet_name && (
+                  <div className="mb-1 flex items-center gap-1">
+                    <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 truncate">{photo.sheet_name}</span>
+                  </div>
+                )}
                 {photo.caption && (
                   <p className="text-xs text-muted-foreground truncate">{photo.caption}</p>
                 )}
@@ -394,25 +537,105 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                   </div>
                 </div>
               ) : (
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <div className="flex items-center gap-2">
-                    <span>{formatDate(selectedPhoto.created_at)}</span>
-                    {selectedPhoto.tags && selectedPhoto.tags.map(t => (
-                      <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    <a href={selectedPhoto.file_url} target="_blank" rel="noopener noreferrer">
-                      <Button variant="outline" size="sm">
-                        <Download className="mr-2 h-4 w-4" />
-                        Stáhnout
+                <div className="space-y-2">
+                  {selectedPhoto.sheet_name && (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-blue-500" />
+                      <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{selectedPhoto.sheet_name}</span>
+                      {selectedPhoto.sheet_id && selectedPhoto.annotation_id && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            router.push(`/project/${projectId}/plans?sheet=${selectedPhoto.sheet_id}&annotation=${selectedPhoto.annotation_id}`);
+                            setSelectedPhoto(null);
+                          }}
+                        >
+                          <MapPin className="mr-1 h-3.5 w-3.5" />
+                          Zobrazit na plánu
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                    <div className="flex items-center gap-2">
+                      <span>{formatDate(selectedPhoto.created_at)}</span>
+                      {selectedPhoto.tags && selectedPhoto.tags.map(t => (
+                        <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-2">
+                      <a href={selectedPhoto.file_url} target="_blank" rel="noopener noreferrer">
+                        <Button variant="outline" size="sm">
+                          <Download className="mr-2 h-4 w-4" />
+                          Stáhnout
+                        </Button>
+                      </a>
+                      <Button variant="destructive" size="sm" onClick={() => handleDelete(selectedPhoto)}>
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Smazat
                       </Button>
-                    </a>
-                    <Button variant="destructive" size="sm" onClick={() => handleDelete(selectedPhoto)}>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Smazat
-                    </Button>
+                    </div>
                   </div>
+                </div>
+              )}
+
+              {/* Comments section */}
+              {!editingPhoto && (
+                <div className="rounded-lg border">
+                  <button
+                    className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium hover:bg-muted/50"
+                    onClick={() => setShowComments(!showComments)}
+                  >
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Komentáře
+                      {photoComments.length > 0 && (
+                        <Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
+                          {photoComments.length}
+                        </Badge>
+                      )}
+                    </div>
+                    {showComments ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </button>
+                  {showComments && (
+                    <div className="border-t">
+                      <div className="max-h-60 space-y-2 overflow-auto p-3">
+                        {photoComments.length === 0 && (
+                          <p className="text-center text-sm text-muted-foreground">Zatím žádné komentáře</p>
+                        )}
+                        {photoComments.map((comment) => {
+                          const displayName = comment.user_name || comment.user_email || comment.user_id?.slice(0, 8) || 'Uživatel';
+                          return (
+                            <div key={comment.id} className="flex gap-2">
+                              <Avatar name={displayName} size="sm" />
+                              <div className="flex-1 rounded-lg bg-muted p-2">
+                                <div className="mb-0.5 flex items-center gap-2">
+                                  <span className="text-xs font-medium">{displayName}</span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {formatRelativeTime(comment.created_at)}
+                                  </span>
+                                </div>
+                                <p className="text-sm">{comment.body}</p>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        <div ref={commentBottomRef} />
+                      </div>
+                      <form onSubmit={handleSendPhotoComment} className="flex gap-2 border-t p-3">
+                        <Input
+                          value={commentBody}
+                          onChange={(e) => setCommentBody(e.target.value)}
+                          placeholder="Napište komentář..."
+                          className="flex-1"
+                        />
+                        <Button type="submit" size="icon" disabled={sendingComment || !commentBody.trim()}>
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </form>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

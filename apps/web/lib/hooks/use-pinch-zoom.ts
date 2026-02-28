@@ -14,7 +14,7 @@ interface UsePinchZoomOptions {
 
 export function usePinchZoom(
   containerRef: React.RefObject<HTMLElement | null>,
-  { enabled, onZoomChange, onZoomPreview, minScale = 0.25, maxScale = 4 }: UsePinchZoomOptions
+  { enabled, onZoomChange, onZoomPreview, minScale = 0.25, maxScale = 3 }: UsePinchZoomOptions
 ) {
   const lastDistRef = useRef<number | null>(null);
   const currentScaleRef = useRef(1);

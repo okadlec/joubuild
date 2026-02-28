@@ -247,11 +247,29 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     }
 
     const viewport = page.getViewport({ scale: s, rotation: r });
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+
+    // Clamp canvas to safe GPU limit to prevent WKWebView WebProcess crashes
+    const MAX_CANVAS = 4096;
+    const vw = viewport.width;
+    const vh = viewport.height;
+    if (vw > MAX_CANVAS || vh > MAX_CANVAS) {
+      const ratio = Math.min(MAX_CANVAS / vw, MAX_CANVAS / vh);
+      canvas.width = Math.floor(vw * ratio);
+      canvas.height = Math.floor(vh * ratio);
+    } else {
+      canvas.width = vw;
+      canvas.height = vh;
+    }
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // If clamped, scale context so PDF renders correctly onto smaller canvas
+    if (canvas.width < vw || canvas.height < vh) {
+      const sx = canvas.width / vw;
+      const sy = canvas.height / vh;
+      ctx.scale(sx, sy);
+    }
 
     const task = page.render({ canvasContext: ctx, viewport });
     renderTaskRef.current = task;
@@ -345,22 +363,32 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     const supabase = getSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    // Delete existing annotations for this sheet version
-    await supabase
+    // Fetch existing annotation IDs for this sheet version
+    const { data: existingRows } = await supabase
       .from('annotations')
-      .delete()
+      .select('id')
       .eq('sheet_version_id', sheetVersionId);
 
-    // Insert all current annotations
+    const existingIds = (existingRows || []).map((r: { id: string }) => r.id);
+    const currentIds = annotations.map(a => a.id);
+
+    // Delete only removed annotations (preserves comments/photos via FK cascade)
+    const removedIds = existingIds.filter(id => !currentIds.includes(id));
+    if (removedIds.length > 0) {
+      await supabase.from('annotations').delete().in('id', removedIds);
+    }
+
+    // Upsert current annotations (insert new, update existing - preserves FKs)
     if (annotations.length > 0) {
-      const { error } = await supabase.from('annotations').insert(
+      const { error } = await supabase.from('annotations').upsert(
         annotations.map((a) => ({
           id: a.id,
           sheet_version_id: sheetVersionId,
           type: a.type,
           data: a.data,
           created_by: user?.id,
-        }))
+        })),
+        { onConflict: 'id' }
       );
 
       if (error) {
@@ -508,7 +536,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
           <ZoomOut className="h-4 w-4" />
         </Button>
         <span className="min-w-[60px] text-center text-sm">{Math.round(scale * 100)}%</span>
-        <Button variant="outline" size="icon" onClick={() => setScale(s => Math.min(4, s + 0.25))}>
+        <Button variant="outline" size="icon" onClick={() => setScale(s => Math.min(3, s + 0.25))}>
           <ZoomIn className="h-4 w-4" />
         </Button>
         <div className="mx-2 h-6 w-px bg-border" />

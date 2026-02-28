@@ -7,9 +7,37 @@ export default async function PhotosPage({ params }: { params: Promise<{ id: str
 
   const { data: photos } = await supabase
     .from('photos')
-    .select('*')
+    .select(`
+      *,
+      annotation:annotations!annotation_id (
+        id,
+        sheet_version:sheet_versions!sheet_version_id (
+          id,
+          sheet:sheets!sheet_id (
+            id,
+            name
+          )
+        )
+      )
+    `)
     .eq('project_id', id)
     .order('created_at', { ascending: false });
 
-  return <PhotosView projectId={id} initialPhotos={photos || []} />;
+  // Flatten nested annotation → sheet data onto each photo
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const enrichedPhotos = (photos || []).map((p: any) => {
+    const annotation = p.annotation as Record<string, unknown> | null;
+    const sheetVersion = annotation?.sheet_version as Record<string, unknown> | null;
+    const sheet = sheetVersion?.sheet as Record<string, unknown> | null;
+    const { annotation: _a, ...rest } = p;
+    return {
+      ...rest,
+      annotation_id: (annotation?.id as string) ?? p.annotation_id ?? null,
+      sheet_version_id: (sheetVersion?.id as string) ?? null,
+      sheet_id: (sheet?.id as string) ?? null,
+      sheet_name: (sheet?.name as string) ?? null,
+    };
+  });
+
+  return <PhotosView projectId={id} initialPhotos={enrichedPhotos} />;
 }
