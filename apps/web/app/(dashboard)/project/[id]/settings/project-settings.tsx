@@ -11,10 +11,12 @@ import { Select } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Avatar } from '@/components/ui/avatar';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { PROJECT_ROLE_LABELS, PROJECT_STATUS_LABELS, PROJECT_STATUSES, type TaskCategory } from '@joubuild/shared';
 import { toast } from 'sonner';
 import { CategoryManager } from '@/components/tasks/category-manager';
+import { inviteMember } from './actions';
 
 interface Project {
   id: string;
@@ -28,6 +30,8 @@ interface Member {
   id: string;
   user_id: string;
   role: string;
+  full_name?: string | null;
+  email?: string | null;
 }
 
 export function ProjectSettings({ project, members, initialCategories = [] }: { project: Project; members: Member[]; initialCategories?: TaskCategory[] }) {
@@ -41,6 +45,7 @@ export function ProjectSettings({ project, members, initialCategories = [] }: { 
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('member');
+  const [inviting, setInviting] = useState(false);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -80,6 +85,27 @@ export function ProjectSettings({ project, members, initialCategories = [] }: { 
 
     toast.success('Projekt smazán');
     router.push('/projects');
+  }
+
+  async function handleInvite() {
+    if (!newMemberEmail.trim()) {
+      toast.error('Zadejte email');
+      return;
+    }
+
+    setInviting(true);
+    const result = await inviteMember(project.id, newMemberEmail.trim(), newMemberRole);
+
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success('Člen byl přidán do projektu');
+      setShowAddMember(false);
+      setNewMemberEmail('');
+      setNewMemberRole('member');
+      router.refresh();
+    }
+    setInviting(false);
   }
 
   return (
@@ -138,8 +164,16 @@ export function ProjectSettings({ project, members, initialCategories = [] }: { 
             <div className="space-y-2">
               {members.map((member) => (
                 <div key={member.id} className="flex items-center justify-between rounded-md border p-3">
-                  <div>
-                    <p className="text-sm font-medium">{member.user_id.slice(0, 8)}...</p>
+                  <div className="flex items-center gap-3">
+                    <Avatar name={member.full_name || member.email || '?'} size="sm" />
+                    <div>
+                      <p className="text-sm font-medium">
+                        {member.full_name || member.email || member.user_id.slice(0, 8)}
+                      </p>
+                      {member.full_name && member.email && (
+                        <p className="text-xs text-muted-foreground">{member.email}</p>
+                      )}
+                    </div>
                   </div>
                   <Badge variant="secondary">
                     {PROJECT_ROLE_LABELS[member.role] || member.role}
@@ -193,8 +227,8 @@ export function ProjectSettings({ project, members, initialCategories = [] }: { 
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowAddMember(false)}>Zrušit</Button>
-            <Button onClick={() => { toast.info('Pozvánka odeslána'); setShowAddMember(false); }}>
-              Pozvat
+            <Button onClick={handleInvite} disabled={inviting}>
+              {inviting ? 'Přidávání...' : 'Pozvat'}
             </Button>
           </div>
         </div>

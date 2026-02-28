@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { LogOut, User, Search } from 'lucide-react';
+import { LogOut, User, Search, Menu } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu';
@@ -15,9 +15,10 @@ interface HeaderProps {
     full_name?: string | null;
     avatar_url?: string | null;
   };
+  onMenuClick?: () => void;
 }
 
-export function Header({ user }: HeaderProps) {
+export function Header({ user, onMenuClick }: HeaderProps) {
   const router = useRouter();
 
   async function handleSignOut() {
@@ -30,11 +31,19 @@ export function Header({ user }: HeaderProps) {
   return (
     <header className="flex h-14 items-center justify-between border-b bg-background px-4">
       <div className="flex items-center gap-2">
+        {onMenuClick && (
+          <button
+            onClick={onMenuClick}
+            className="rounded-md p-2 hover:bg-accent lg:hidden"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Hledat..."
-            className="h-9 w-64 pl-8"
+            className="h-9 w-40 pl-8 sm:w-64"
           />
         </div>
       </div>

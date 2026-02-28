@@ -16,9 +16,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
+import { useIsSuperadmin } from '@/lib/hooks/use-is-superadmin';
 
 interface Organization {
   id: string;
@@ -30,15 +32,18 @@ interface SidebarProps {
   organizations?: Organization[];
   currentOrgId?: string;
   onOrgChange?: (orgId: string) => void;
+  onNavigate?: () => void;
 }
 
-export function Sidebar({ projectId, organizations = [], currentOrgId, onOrgChange }: SidebarProps) {
+export function Sidebar({ projectId, organizations = [], currentOrgId, onOrgChange, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { isSuperadmin } = useIsSuperadmin();
 
   const mainNav = [
     { href: '/projects', label: 'Projekty', icon: FolderOpen },
     { href: '/organization', label: 'Organizace', icon: Building2 },
+    ...(isSuperadmin ? [{ href: '/admin', label: 'Admin', icon: Shield }] : []),
   ];
 
   const projectNav = projectId
@@ -96,6 +101,7 @@ export function Sidebar({ projectId, organizations = [], currentOrgId, onOrgChan
             <Link
               key={item.href}
               href={item.href}
+              onClick={onNavigate}
               className={cn(
                 'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                 isActive
@@ -123,6 +129,7 @@ export function Sidebar({ projectId, organizations = [], currentOrgId, onOrgChan
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={onNavigate}
                   className={cn(
                     'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
                     isActive

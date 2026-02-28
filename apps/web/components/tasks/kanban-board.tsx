@@ -53,7 +53,7 @@ export function KanbanBoard({ tasks, onTaskClick, onTasksReorder, projectId, cat
   }
 
   return (
-    <div className="mt-4 grid grid-cols-4 gap-4">
+    <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {COLUMNS.map((status) => {
         const columnTasks = tasks.filter((t) => t.status === status);
         return (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, ClipboardList, FileCheck, Clock, Send, MessageSquare } from 'lucide-react';
+import { Plus, ClipboardList, FileCheck, Send, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -14,6 +14,8 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { FORM_TYPE_LABELS, formatDate, type Rfi } from '@joubuild/shared';
 import { toast } from 'sonner';
 import { RfiView } from './rfi-view';
+import { FormRenderer } from './form-renderer';
+import { FormBuilder } from './form-builder';
 
 interface FormTemplate {
   id: string;
@@ -61,6 +63,10 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
   const [templateName, setTemplateName] = useState('');
   const [templateType, setTemplateType] = useState('daily_report');
   const [rfis, setRfis] = useState<Rfi[]>(initialRfis);
+
+  // Click-to-open state
+  const [selectedSubmission, setSelectedSubmission] = useState<FormSubmission | null>(null);
+  const [editingTemplate, setEditingTemplate] = useState<FormTemplate | null>(null);
 
   async function handleCreateTemplate(e: React.FormEvent) {
     e.preventDefault();
@@ -123,7 +129,47 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
     }
 
     setSubmissions(prev => [data, ...prev]);
+    setSelectedSubmission(data);
     toast.success('Nový formulář vytvořen');
+  }
+
+  async function handleApproveReject(submissionId: string, newStatus: 'approved' | 'rejected') {
+    const supabase = getSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { error } = await supabase
+      .from('form_submissions')
+      .update({
+        status: newStatus,
+        reviewed_by: user?.id,
+        reviewed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', submissionId);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+
+    setSubmissions(prev =>
+      prev.map(s => s.id === submissionId ? { ...s, status: newStatus } : s)
+    );
+    setSelectedSubmission(null);
+    toast.success(newStatus === 'approved' ? 'Formulář schválen' : 'Formulář zamítnut');
+  }
+
+  type FormFieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox' | 'photo';
+  type ParsedSchema = { fields: Array<{ name: string; type: FormFieldType; label: string; required?: boolean; options?: string[] }> };
+
+  function parseSchema(raw: Record<string, unknown>): ParsedSchema {
+    const s = raw as { fields?: unknown[] };
+    return { fields: (s?.fields || []) as ParsedSchema['fields'] };
+  }
+
+  function getTemplateSchema(submission: FormSubmission): ParsedSchema {
+    const template = templates.find(t => t.id === submission.template_id);
+    return parseSchema(template?.schema || {});
   }
 
   return (
@@ -165,7 +211,11 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
           ) : (
             <div className="mt-4 space-y-3">
               {submissions.map((sub) => (
-                <Card key={sub.id}>
+                <Card
+                  key={sub.id}
+                  className="cursor-pointer transition-shadow hover:shadow-md"
+                  onClick={() => setSelectedSubmission(sub)}
+                >
                   <CardContent className="flex items-center justify-between p-4">
                     <div>
                       <p className="font-medium">
@@ -208,15 +258,23 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
                       {FORM_TYPE_LABELS[tmpl.type] || tmpl.type}
                     </Badge>
                   </CardHeader>
-                  <CardContent className="pt-0">
+                  <CardContent className="flex gap-2 pt-0">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full"
+                      className="flex-1"
+                      onClick={() => setEditingTemplate(tmpl)}
+                    >
+                      Upravit šablonu
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
                       onClick={() => handleCreateSubmission(tmpl.id)}
                     >
                       <Send className="mr-2 h-4 w-4" />
-                      Vyplnit formulář
+                      Vyplnit
                     </Button>
                   </CardContent>
                 </Card>
@@ -231,6 +289,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
         </TabsContent>
       </Tabs>
 
+      {/* Create template dialog */}
       <Dialog open={showCreate} onClose={() => setShowCreate(false)}>
         <DialogHeader>
           <DialogTitle>Nová šablona formuláře</DialogTitle>
@@ -259,6 +318,84 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
             <Button type="submit">Vytvořit</Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* View/edit submission dialog */}
+      <Dialog
+        open={!!selectedSubmission}
+        onClose={() => setSelectedSubmission(null)}
+        className="max-w-2xl"
+      >
+        {selectedSubmission && (
+          <>
+            <DialogHeader>
+              <DialogTitle>
+                {selectedSubmission.form_templates?.name || 'Formulář'}
+              </DialogTitle>
+            </DialogHeader>
+            <FormRenderer
+              submissionId={selectedSubmission.id}
+              schema={getTemplateSchema(selectedSubmission)}
+              initialData={selectedSubmission.data}
+              status={selectedSubmission.status}
+              onSaved={() => {
+                // Refresh submission list
+                setSelectedSubmission(null);
+              }}
+              onSubmitted={() => {
+                setSubmissions(prev =>
+                  prev.map(s => s.id === selectedSubmission.id ? { ...s, status: 'submitted' } : s)
+                );
+                setSelectedSubmission(null);
+              }}
+            />
+            {selectedSubmission.status === 'submitted' && (
+              <div className="mt-4 flex gap-2 border-t pt-4">
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleApproveReject(selectedSubmission.id, 'approved')}
+                >
+                  <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                  Schválit
+                </Button>
+                <Button
+                  variant="outline"
+                  className="flex-1"
+                  onClick={() => handleApproveReject(selectedSubmission.id, 'rejected')}
+                >
+                  <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                  Zamítnout
+                </Button>
+              </div>
+            )}
+          </>
+        )}
+      </Dialog>
+
+      {/* Edit template dialog */}
+      <Dialog
+        open={!!editingTemplate}
+        onClose={() => setEditingTemplate(null)}
+        className="max-w-2xl"
+      >
+        {editingTemplate && (
+          <>
+            <DialogHeader>
+              <DialogTitle>Upravit: {editingTemplate.name}</DialogTitle>
+            </DialogHeader>
+            <FormBuilder
+              templateId={editingTemplate.id}
+              initialSchema={parseSchema(editingTemplate.schema)}
+              onSave={(newSchema) => {
+                setTemplates(prev =>
+                  prev.map(t => t.id === editingTemplate.id ? { ...t, schema: newSchema as unknown as Record<string, unknown> } : t)
+                );
+                setEditingTemplate(null);
+              }}
+            />
+          </>
+        )}
       </Dialog>
     </div>
   );

@@ -37,11 +37,11 @@ export function TaskList({ tasks, onTaskClick, categories = [], members = [] }: 
           <tr className="border-b text-left text-sm text-muted-foreground">
             <th className="pb-2 font-medium">Úkol</th>
             <th className="pb-2 font-medium">Status</th>
-            <th className="pb-2 font-medium">Priorita</th>
-            <th className="pb-2 font-medium">Kategorie</th>
-            <th className="pb-2 font-medium">Přiřazeno</th>
-            <th className="pb-2 font-medium">Termín</th>
-            <th className="pb-2 font-medium">Výkres</th>
+            <th className="hidden pb-2 font-medium sm:table-cell">Priorita</th>
+            <th className="hidden pb-2 font-medium md:table-cell">Kategorie</th>
+            <th className="hidden pb-2 font-medium md:table-cell">Přiřazeno</th>
+            <th className="hidden pb-2 font-medium sm:table-cell">Termín</th>
+            <th className="hidden pb-2 font-medium md:table-cell">Výkres</th>
           </tr>
         </thead>
         <tbody>
@@ -64,12 +64,12 @@ export function TaskList({ tasks, onTaskClick, categories = [], members = [] }: 
                   {TASK_STATUS_LABELS[task.status]}
                 </Badge>
               </td>
-              <td className="py-3">
+              <td className="hidden py-3 sm:table-cell">
                 <Badge variant="outline" style={{ borderColor: TASK_PRIORITY_COLORS[task.priority] }}>
                   {TASK_PRIORITY_LABELS[task.priority]}
                 </Badge>
               </td>
-              <td className="py-3 text-sm">
+              <td className="hidden py-3 text-sm md:table-cell">
                 {task.category_id ? (() => {
                   const cat = categories.find(c => c.id === task.category_id);
                   return cat ? (
@@ -79,7 +79,7 @@ export function TaskList({ tasks, onTaskClick, categories = [], members = [] }: 
                   ) : '—';
                 })() : '—'}
               </td>
-              <td className="py-3">
+              <td className="hidden py-3 md:table-cell">
                 {task.assignee_id ? (() => {
                   const member = members.find(m => m.user_id === task.assignee_id);
                   return (
@@ -90,7 +90,7 @@ export function TaskList({ tasks, onTaskClick, categories = [], members = [] }: 
                   );
                 })() : <span className="text-muted-foreground">—</span>}
               </td>
-              <td className="py-3 text-sm text-muted-foreground">
+              <td className="hidden py-3 text-sm text-muted-foreground sm:table-cell">
                 {task.due_date ? (
                   <span className="flex items-center gap-1">
                     <Calendar className="h-3 w-3" />
@@ -100,7 +100,7 @@ export function TaskList({ tasks, onTaskClick, categories = [], members = [] }: 
                   '—'
                 )}
               </td>
-              <td className="py-3 text-sm text-muted-foreground">
+              <td className="hidden py-3 text-sm text-muted-foreground md:table-cell">
                 {task.pin_x != null ? (
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3 w-3" />
