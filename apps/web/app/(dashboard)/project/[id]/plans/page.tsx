@@ -5,7 +5,10 @@ export default async function PlansPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const supabase = await createClient();
 
-  const { data: planSets } = await supabase
+  const { data: { user } } = await supabase.auth.getUser();
+  console.log('[PlansPage] user:', user?.id, user?.email);
+
+  const { data: planSets, error } = await supabase
     .from('plan_sets')
     .select(`
       *,
@@ -16,6 +19,8 @@ export default async function PlansPage({ params }: { params: Promise<{ id: stri
     `)
     .eq('project_id', id)
     .order('sort_order');
+
+  console.log('[PlansPage] planSets:', planSets?.length, 'error:', error?.message);
 
   return <PlansView projectId={id} initialPlanSets={planSets || []} />;
 }
