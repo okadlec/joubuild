@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "JouBuild",
+    "slug": "joubuild",
+    "version": "0.0.1",
+    "orientation": "portrait",
+    "scheme": "joubuild",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.joubuild.app"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#2563eb"
+      },
+      "package": "com.joubuild.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-camera",
+      "expo-image-picker",
+      "expo-sqlite"
+    ]
+  }
+}

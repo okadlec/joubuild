@@ -1,0 +1,22 @@
+{
+  "name": "joubuild",
+  "private": true,
+  "scripts": {
+    "dev": "turbo dev",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "typecheck": "turbo typecheck",
+    "clean": "turbo clean",
+    "dev:web": "turbo dev --filter=@joubuild/web",
+    "dev:mobile": "turbo dev --filter=@joubuild/mobile",
+    "build:web": "turbo build --filter=@joubuild/web"
+  },
+  "devDependencies": {
+    "turbo": "^2.4.0",
+    "typescript": "^5.7.0"
+  },
+  "packageManager": "pnpm@10.29.3",
+  "engines": {
+    "node": ">=20"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "name": "JouBuild - Správa staveb",
+  "short_name": "JouBuild",
+  "description": "Platforma pro správu výkresů, úkolů a komunikace na stavbách",
+  "start_url": "/projects",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#171717",
+  "orientation": "any",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
