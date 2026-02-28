@@ -66,8 +66,12 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   const [zoomPreview, setZoomPreview] = useState(1);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
-  // Render dedup ref
-  const renderPendingRef = useRef(false);
+  // Render task tracking refs
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const renderTaskRef = useRef<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const queuedRenderRef = useRef<{ page: any; s: number; r: number } | null>(null);
+  const renderingRef = useRef(false);
 
   // Calibration state
   const [showCalibration, setShowCalibration] = useState(false);
@@ -228,29 +232,82 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   }, [scale, rotation]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async function doRender(page: any, s: number, r: number) {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Cancel any in-progress render
+    if (renderTaskRef.current) {
+      try {
+        renderTaskRef.current.cancel();
+      } catch {
+        // already cancelled or finished
+      }
+      renderTaskRef.current = null;
+    }
+
+    const viewport = page.getViewport({ scale: s, rotation: r });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const task = page.render({ canvasContext: ctx, viewport });
+    renderTaskRef.current = task;
+
+    try {
+      await task.promise;
+    } catch (err: unknown) {
+      // RenderingCancelledException is expected when we cancel — ignore it
+      if (err && typeof err === 'object' && 'name' in err && (err as { name: string }).name === 'RenderingCancelledException') {
+        return;
+      }
+      console.warn('PDF render error:', err);
+      return;
+    } finally {
+      renderTaskRef.current = null;
+    }
+
+    // Update page size for annotation overlay
+    const baseViewport = page.getViewport({ scale: 1, rotation: r });
+    setPageSize({ width: baseViewport.width, height: baseViewport.height });
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function renderPage(page: any, s: number, r: number) {
-    if (renderPendingRef.current) return; // skip if already pending
-    renderPendingRef.current = true;
+    if (renderingRef.current) {
+      // Queue the latest render request instead of dropping it
+      queuedRenderRef.current = { page, s, r };
+      return;
+    }
 
+    renderingRef.current = true;
     requestAnimationFrame(() => {
-      renderPendingRef.current = false;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-
-      const viewport = page.getViewport({ scale: s, rotation: r });
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      page.render({ canvasContext: ctx, viewport });
-
-      // Update page size for annotation overlay
-      const baseViewport = page.getViewport({ scale: 1, rotation: r });
-      setPageSize({ width: baseViewport.width, height: baseViewport.height });
+      doRender(page, s, r).finally(() => {
+        renderingRef.current = false;
+        // Process queued render if any
+        const queued = queuedRenderRef.current;
+        if (queued) {
+          queuedRenderRef.current = null;
+          renderPage(queued.page, queued.s, queued.r);
+        }
+      });
     });
   }
+
+  // Cleanup render task on unmount
+  useEffect(() => {
+    return () => {
+      if (renderTaskRef.current) {
+        try {
+          renderTaskRef.current.cancel();
+        } catch {
+          // ignore
+        }
+      }
+    };
+  }, []);
 
   // Annotation handlers
   const handleAnnotationsChange = useCallback((newAnnotations: AnnotationData[]) => {
@@ -298,6 +355,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     if (annotations.length > 0) {
       const { error } = await supabase.from('annotations').insert(
         annotations.map((a) => ({
+          id: a.id,
           sheet_version_id: sheetVersionId,
           type: a.type,
           data: a.data,
@@ -310,6 +368,23 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         setSaving(false);
         return;
       }
+    }
+
+    // Reload annotations from DB to ensure client-server sync
+    const { data: reloaded } = await supabase
+      .from('annotations')
+      .select('*')
+      .eq('sheet_version_id', sheetVersionId)
+      .order('created_at');
+
+    if (reloaded) {
+      setAnnotations(
+        reloaded.map((a: { id: string; type: string; data: AnnotationData['data'] }) => ({
+          id: a.id,
+          type: a.type as AnnotationTool,
+          data: a.data,
+        }))
+      );
     }
 
     toast.success('Anotace uloženy');

@@ -71,16 +71,42 @@ export function AnnotationDetailPanel({
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const isMobile = useIsMobile();
 
-  // Track visual viewport to adjust panel when keyboard opens
+  // Track keyboard height to adjust panel position
   useEffect(() => {
     if (!isMobile || typeof window === 'undefined') return;
+
+    // On native Capacitor: use @capacitor/keyboard plugin for reliable events
+    if (window.Capacitor?.isNativePlatform()) {
+      let cleanup: (() => void) | undefined;
+
+      import('@capacitor/keyboard').then(({ Keyboard }) => {
+        const showListener = Keyboard.addListener('keyboardWillShow', (info) => {
+          setKeyboardHeight(info.keyboardHeight);
+        });
+        const hideListener = Keyboard.addListener('keyboardWillHide', () => {
+          setKeyboardHeight(0);
+        });
+
+        cleanup = () => {
+          showListener.then(h => h.remove());
+          hideListener.then(h => h.remove());
+        };
+      }).catch(() => {
+        // Keyboard plugin not available, ignore
+      });
+
+      return () => {
+        cleanup?.();
+      };
+    }
+
+    // Fallback for browser: use visualViewport
     const vv = window.visualViewport;
     if (!vv) return;
 
     function handleResize() {
       const vv = window.visualViewport;
       if (!vv) return;
-      // Keyboard height = window height - visual viewport height
       const kbHeight = window.innerHeight - vv.height;
       setKeyboardHeight(kbHeight > 50 ? kbHeight : 0);
     }
@@ -88,6 +114,13 @@ export function AnnotationDetailPanel({
     vv.addEventListener('resize', handleResize);
     return () => vv.removeEventListener('resize', handleResize);
   }, [isMobile]);
+
+  // Scroll input into view when keyboard appears
+  useEffect(() => {
+    if (keyboardHeight > 0 && inputRef.current) {
+      setTimeout(() => inputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 100);
+    }
+  }, [keyboardHeight]);
 
   // Load data
   useEffect(() => {

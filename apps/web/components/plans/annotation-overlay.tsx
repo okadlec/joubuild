@@ -41,7 +41,7 @@ interface AnnotationOverlayProps {
 }
 
 function generateId() {
-  return `ann_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  return crypto.randomUUID();
 }
 
 export function AnnotationOverlay({

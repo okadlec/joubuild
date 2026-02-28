@@ -25,8 +25,12 @@ export function CapacitorInit() {
           import('@capacitor/browser'),
         ]);
 
-      await StatusBar.setOverlaysWebView({ overlay: true });
-      await StatusBar.setStyle({ style: Style.Light });
+      try {
+        await StatusBar.setOverlaysWebView({ overlay: true });
+        await StatusBar.setStyle({ style: Style.Light });
+      } catch {
+        // StatusBar methods may not be implemented on all platforms
+      }
 
       // Best-effort: hide splash if it hasn't auto-hidden yet
       SplashScreen.hide({ fadeOutDuration: 300 }).catch(() => {});
