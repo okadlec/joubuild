@@ -78,21 +78,12 @@ CREATE POLICY "Admins can update organizations" ON organizations
     )
   );
 
--- Organization members: visible to org members
+-- Organization members (non-recursive: user can see own membership rows)
 CREATE POLICY "Org members can view members" ON organization_members
-  FOR SELECT USING (
-    organization_id IN (
-      SELECT organization_id FROM organization_members WHERE user_id = auth.uid()
-    )
-  );
+  FOR SELECT USING (user_id = auth.uid());
 
 CREATE POLICY "Admins can manage org members" ON organization_members
-  FOR ALL USING (
-    organization_id IN (
-      SELECT organization_id FROM organization_members
-      WHERE user_id = auth.uid() AND role IN ('owner', 'admin')
-    )
-  );
+  FOR ALL USING (user_id = auth.uid() AND role IN ('owner', 'admin'));
 
 -- Projects: visible to project members or org members
 CREATE POLICY "Users can view projects" ON projects
@@ -1161,7 +1152,16 @@ UPDATE profiles SET is_superadmin = true WHERE email = 'ondra.kadlec@email.cz';
 -- Fix: make plans bucket public so getPublicUrl() works (URLs contain UUIDs for security)
 UPDATE storage.buckets SET public = true WHERE id = 'plans';
 
--- Fix: recursive RLS on project_members caused all plan/sheet queries to return empty
+-- Fix: recursive RLS on project_members and organization_members
+-- caused all data queries to return empty (infinite recursion in policy subqueries)
 DROP POLICY IF EXISTS "Users can view project members" ON project_members;
 CREATE POLICY "Users can view project members" ON project_members
   FOR SELECT USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Org members can view members" ON organization_members;
+CREATE POLICY "Org members can view members" ON organization_members
+  FOR SELECT USING (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins can manage org members" ON organization_members;
+CREATE POLICY "Admins can manage org members" ON organization_members
+  FOR ALL USING (user_id = auth.uid() AND role IN ('owner', 'admin'));
