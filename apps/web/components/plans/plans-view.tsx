@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Plus, Upload, FileText, ChevronRight, GitCompare, History } from 'lucide-react';
+import { Plus, Upload, FileText, ChevronRight, GitCompare, History, Trash2, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -75,6 +75,35 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
     setNewSetName('');
     toast.success('Sada výkresů vytvořena');
   };
+
+  const handleDeleteSet = useCallback(async (planSetId: string) => {
+    if (!confirm('Smazat celou sadu včetně všech výkresů?')) return;
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.from('plan_sets').delete().eq('id', planSetId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setPlanSets(prev => prev.filter(ps => ps.id !== planSetId));
+    toast.success('Sada smazána');
+  }, []);
+
+  const handleDeleteSheet = useCallback(async (sheetId: string, planSetId: string) => {
+    if (!confirm('Smazat tento výkres?')) return;
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.from('sheets').delete().eq('id', sheetId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setPlanSets(prev => prev.map(ps => {
+      if (ps.id === planSetId) {
+        return { ...ps, sheets: ps.sheets.filter(s => s.id !== sheetId) };
+      }
+      return ps;
+    }));
+    toast.success('Výkres smazán');
+  }, []);
 
   const handleUploadPdf = useCallback(async (file: File, planSetId: string) => {
     setUploading(true);
@@ -390,7 +419,17 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
         <div className="space-y-6">
           {planSets.map((planSet) => (
             <div key={planSet.id}>
-              <h3 className="mb-3 text-lg font-semibold">{planSet.name}</h3>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-lg font-semibold">{planSet.name}</h3>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-muted-foreground hover:text-destructive"
+                  onClick={() => handleDeleteSet(planSet.id)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
               {planSet.sheets.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Žádné listy v této sadě</p>
               ) : (
@@ -400,9 +439,18 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                     return (
                       <Card
                         key={sheet.id}
-                        className="cursor-pointer transition-shadow hover:shadow-md"
+                        className="group relative cursor-pointer transition-shadow hover:shadow-md"
                         onClick={() => setSelectedSheet(sheet)}
                       >
+                        <button
+                          className="absolute right-1 top-1 z-10 rounded p-1 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSheet(sheet.id, planSet.id);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
                         <div className="flex h-28 items-center justify-center rounded-t-lg bg-muted">
                           <FileText className="h-10 w-10 text-muted-foreground" />
                         </div>

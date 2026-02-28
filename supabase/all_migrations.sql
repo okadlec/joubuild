@@ -210,7 +210,7 @@ CREATE TABLE sheet_versions (
 );
 
 ALTER TABLE sheets ADD CONSTRAINT fk_current_version
-  FOREIGN KEY (current_version_id) REFERENCES sheet_versions(id);
+  FOREIGN KEY (current_version_id) REFERENCES sheet_versions(id) ON DELETE SET NULL;
 
 -- Kalibrace meritka
 CREATE TABLE calibrations (
@@ -1165,3 +1165,8 @@ CREATE POLICY "Org members can view members" ON organization_members
 DROP POLICY IF EXISTS "Admins can manage org members" ON organization_members;
 CREATE POLICY "Admins can manage org members" ON organization_members
   FOR ALL USING (user_id = auth.uid() AND role IN ('owner', 'admin'));
+
+-- Fix: allow deleting sheets by making current_version_id ON DELETE SET NULL
+ALTER TABLE sheets DROP CONSTRAINT IF EXISTS fk_current_version;
+ALTER TABLE sheets ADD CONSTRAINT fk_current_version
+  FOREIGN KEY (current_version_id) REFERENCES sheet_versions(id) ON DELETE SET NULL;
