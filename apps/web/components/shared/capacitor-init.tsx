@@ -25,15 +25,25 @@ export function CapacitorInit() {
           import('@capacitor/browser'),
         ]);
 
+      const platform = window.Capacitor?.getPlatform();
+
       try {
-        await StatusBar.setOverlaysWebView({ overlay: true });
+        // setOverlaysWebView is Android-only; calling it on iOS triggers
+        // a native "not implemented" log before JS can catch the error.
+        if (platform === 'android') {
+          await StatusBar.setOverlaysWebView({ overlay: true });
+        }
         await StatusBar.setStyle({ style: Style.Light });
       } catch {
-        // StatusBar methods may not be implemented on all platforms
+        // StatusBar methods may not be available on all platforms
       }
 
       // Best-effort: hide splash if it hasn't auto-hidden yet
-      SplashScreen.hide({ fadeOutDuration: 300 }).catch(() => {});
+      try {
+        await SplashScreen.hide({ fadeOutDuration: 300 });
+      } catch {
+        // SplashScreen.hide may not be implemented
+      }
 
       // Intercept external links → open in system browser
       document.addEventListener('click', (e) => {

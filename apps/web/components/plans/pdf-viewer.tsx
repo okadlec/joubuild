@@ -452,6 +452,34 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     toast.success('Měřítko kalibrováno');
   }, [calibrationPoints, sheetVersionId]);
 
+  // Auto-save a single annotation to DB before opening its detail panel.
+  // This ensures the annotation row exists so comments/photos don't fail on FK/RLS.
+  const handleAnnotationClick = useCallback(async (id: string) => {
+    const annotation = annotations.find(a => a.id === id);
+    if (annotation) {
+      const supabase = getSupabaseClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      // Use upsert with ON CONFLICT DO NOTHING so we don't overwrite
+      // an already-saved annotation, and don't fail if it already exists.
+      const { error } = await supabase.from('annotations').upsert(
+        {
+          id: annotation.id,
+          sheet_version_id: sheetVersionId,
+          type: annotation.type,
+          data: annotation.data,
+          created_by: user?.id,
+        },
+        { onConflict: 'id', ignoreDuplicates: true }
+      );
+
+      if (error) {
+        console.warn('Auto-save annotation failed:', error.message);
+      }
+    }
+    setDetailAnnotationId(id);
+  }, [annotations, sheetVersionId]);
+
   // Close fullscreen on Escape
   useEffect(() => {
     if (!isFullscreen) return;
@@ -604,7 +632,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
               onAnnotationsChange={handleAnnotationsChange}
               selectedId={selectedId}
               onSelectId={setSelectedId}
-              onAnnotationClick={(id) => setDetailAnnotationId(id)}
+              onAnnotationClick={handleAnnotationClick}
               pixelsPerMeter={pixelsPerMeter}
             />
           )}
