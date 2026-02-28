@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import {
   MousePointer2,
   Minus,
@@ -17,9 +18,13 @@ import {
   Undo2,
   Redo2,
   Save,
+  MoreHorizontal,
+  X,
+  Palette,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 
 export type AnnotationTool =
   | 'select'
@@ -70,6 +75,9 @@ const tools: { tool: AnnotationTool; icon: typeof MousePointer2; label: string }
   { tool: 'hyperlink', icon: Link2, label: 'Hyperlink' },
 ];
 
+// Primary tools for mobile quick access
+const PRIMARY_MOBILE_TOOLS: AnnotationTool[] = ['select', 'freehand', 'rectangle', 'arrow', 'text', 'highlighter'];
+
 export function AnnotationToolbar({
   activeTool,
   onToolChange,
@@ -86,6 +94,140 @@ export function AnnotationToolbar({
   hasSelection,
   saving,
 }: AnnotationToolbarProps) {
+  const isMobile = useIsMobile();
+  const [showAllTools, setShowAllTools] = useState(false);
+  const [showStyleOptions, setShowStyleOptions] = useState(false);
+
+  if (isMobile) {
+    return (
+      <>
+        {/* Floating action buttons (top) */}
+        <div className="flex items-center justify-between gap-1 px-1">
+          <div className="flex gap-1">
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onUndo} disabled={!canUndo}>
+              <Undo2 className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onRedo} disabled={!canRedo}>
+              <Redo2 className="h-4 w-4" />
+            </Button>
+            {hasSelection && (
+              <Button variant="ghost" size="icon" className="h-9 w-9" onClick={onDeleteSelected}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          <Button size="sm" onClick={onSave} disabled={saving} className="h-9">
+            <Save className="mr-1 h-3.5 w-3.5" />
+            {saving ? '...' : 'Uložit'}
+          </Button>
+        </div>
+
+        {/* Style options row (expandable) */}
+        {showStyleOptions && (
+          <div className="flex items-center gap-2 rounded-lg border bg-background p-2">
+            <div className="flex gap-1">
+              {COLORS.map((color) => (
+                <button
+                  key={color}
+                  className={cn(
+                    'h-7 w-7 rounded-full border-2 touch-target flex items-center justify-center',
+                    activeColor === color ? 'border-foreground scale-110' : 'border-transparent'
+                  )}
+                  style={{ backgroundColor: color }}
+                  onClick={() => onColorChange(color)}
+                />
+              ))}
+            </div>
+            <div className="mx-1 h-6 w-px bg-border" />
+            <div className="flex gap-1">
+              {STROKE_WIDTHS.map((w) => (
+                <button
+                  key={w}
+                  className={cn(
+                    'flex h-9 w-9 items-center justify-center rounded touch-target',
+                    strokeWidth === w ? 'bg-accent' : 'hover:bg-accent/50'
+                  )}
+                  onClick={() => onStrokeWidthChange(w)}
+                >
+                  <div
+                    className="rounded-full bg-foreground"
+                    style={{ width: Math.max(w * 2, 4), height: Math.max(w * 2, 4) }}
+                  />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mobile bottom tool bar */}
+        <div className="flex items-center gap-1 rounded-lg border bg-background p-1.5 shadow-sm">
+          {tools
+            .filter((t) => PRIMARY_MOBILE_TOOLS.includes(t.tool))
+            .map(({ tool, icon: Icon }) => (
+              <Button
+                key={tool}
+                variant={activeTool === tool ? 'default' : 'ghost'}
+                size="icon"
+                className="h-10 w-10 touch-target"
+                onClick={() => onToolChange(tool)}
+              >
+                <Icon className="h-5 w-5" />
+              </Button>
+            ))}
+
+          <Button
+            variant={showAllTools ? 'default' : 'ghost'}
+            size="icon"
+            className="h-10 w-10 touch-target"
+            onClick={() => setShowAllTools(!showAllTools)}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+          </Button>
+
+          <Button
+            variant={showStyleOptions ? 'default' : 'ghost'}
+            size="icon"
+            className="h-10 w-10 touch-target"
+            onClick={() => setShowStyleOptions(!showStyleOptions)}
+          >
+            <Palette className="h-5 w-5" />
+          </Button>
+        </div>
+
+        {/* All tools grid overlay */}
+        {showAllTools && (
+          <div className="rounded-lg border bg-background p-3 shadow-lg">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="text-xs font-semibold">Všechny nástroje</span>
+              <button onClick={() => setShowAllTools(false)} className="rounded p-1 hover:bg-accent">
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid grid-cols-6 gap-2">
+              {tools.map(({ tool, icon: Icon, label }) => (
+                <button
+                  key={tool}
+                  className={cn(
+                    'flex flex-col items-center gap-1 rounded-lg p-2 touch-target',
+                    activeTool === tool ? 'bg-primary text-primary-foreground' : 'hover:bg-accent'
+                  )}
+                  onClick={() => {
+                    onToolChange(tool);
+                    setShowAllTools(false);
+                  }}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span className="text-[9px] font-medium leading-tight">{label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    );
+  }
+
+  // Desktop layout (unchanged)
   return (
     <div className="flex items-center gap-1 rounded-lg border bg-background p-1.5 shadow-sm">
       {/* Tools */}

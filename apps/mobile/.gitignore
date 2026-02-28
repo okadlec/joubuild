@@ -1,0 +1,16 @@
+node_modules/
+
+# iOS
+ios/App/Pods/
+ios/App/Podfile.lock
+ios/App/output/
+
+# Android
+android/.gradle/
+android/app/build/
+android/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/
+
+# Generated assets
+.build/

@@ -8,8 +8,10 @@
     "typecheck": "turbo typecheck",
     "clean": "turbo clean",
     "dev:web": "turbo dev --filter=@joubuild/web",
-    "dev:mobile": "turbo dev --filter=@joubuild/mobile",
-    "build:web": "turbo build --filter=@joubuild/web"
+    "build:web": "turbo build --filter=@joubuild/web",
+    "mobile:ios": "cd apps/mobile && npx cap open ios",
+    "mobile:android": "cd apps/mobile && npx cap open android",
+    "mobile:sync": "cd apps/mobile && npx cap sync"
   },
   "devDependencies": {
     "turbo": "^2.4.0",
@@ -23,6 +25,9 @@
     "overrides": {
       "@types/react": "^19.0.0",
       "@types/react-dom": "^19.0.0"
-    }
+    },
+    "onlyBuiltDependencies": [
+      "sharp"
+    ]
   }
 }

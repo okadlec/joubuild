@@ -72,8 +72,13 @@ export function AnnotationOverlay({
     return { x: pos.x / scale, y: pos.y / scale };
   }, [scale]);
 
-  const handleMouseDown = useCallback(() => {
+  const handleMouseDown = useCallback((e?: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (activeTool === 'select') return;
+
+    // Prevent scrolling while drawing on touch devices
+    if (e?.evt) {
+      e.evt.preventDefault();
+    }
 
     const pos = getRelativePointerPosition();
     if (!pos) return;
@@ -264,7 +269,7 @@ export function AnnotationOverlay({
     setCurrentPoints([]);
   }, [isDrawing, drawStart, activeTool, activeColor, lineWidth, currentPoints, annotations, onAnnotationsChange, getRelativePointerPosition, pixelsPerMeter]);
 
-  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent>) => {
+  const handleStageClick = useCallback((e: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (activeTool !== 'select') return;
     const clickedOnEmpty = e.target === e.target.getStage();
     if (clickedOnEmpty) {
@@ -339,14 +344,16 @@ export function AnnotationOverlay({
 
   const renderAnnotation = (ann: AnnotationData) => {
     const isSelected = selectedId === ann.id;
+    const handleSelect = () => {
+      if (activeTool === 'select') {
+        onSelectId(ann.id);
+        onAnnotationClick?.(ann.id);
+      }
+    };
     const commonProps = {
       key: ann.id,
-      onClick: () => {
-        if (activeTool === 'select') {
-          onSelectId(ann.id);
-          onAnnotationClick?.(ann.id);
-        }
-      },
+      onClick: handleSelect,
+      onTap: handleSelect,
       stroke: isSelected ? '#0EA5E9' : ann.data.color,
       strokeWidth: ann.data.strokeWidth,
     };
@@ -383,7 +390,8 @@ export function AnnotationOverlay({
             text={ann.data.text}
             fontSize={16}
             fill={ann.data.color}
-            onClick={() => activeTool === 'select' && onSelectId(ann.id)}
+            onClick={handleSelect}
+            onTap={handleSelect}
           />
         );
 
@@ -443,7 +451,8 @@ export function AnnotationOverlay({
               strokeWidth={2}
               fill="rgba(59,130,246,0.1)"
               dash={[6, 3]}
-              onClick={() => activeTool === 'select' && onSelectId(ann.id)}
+              onClick={handleSelect}
+              onTap={handleSelect}
             />
             <Text
               x={ann.data.x! + 4}
@@ -479,7 +488,11 @@ export function AnnotationOverlay({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onTouchStart={handleMouseDown}
+      onTouchMove={handleMouseMove}
+      onTouchEnd={handleMouseUp}
       onClick={handleStageClick}
+      onTap={handleStageClick}
     >
       <Layer>
         {annotations.map(renderAnnotation)}

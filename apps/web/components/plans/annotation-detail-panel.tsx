@@ -10,6 +10,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { formatRelativeTime, TASK_STATUS_LABELS, TASK_PRIORITY_LABELS } from '@joubuild/shared';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 
 type Tab = 'chat' | 'photos' | 'task';
 
@@ -62,7 +63,31 @@ export function AnnotationDetailPanel({
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState('');
+  const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
+  const [editPhotoCaption, setEditPhotoCaption] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const isMobile = useIsMobile();
+
+  // Track visual viewport to adjust panel when keyboard opens
+  useEffect(() => {
+    if (!isMobile || typeof window === 'undefined') return;
+    const vv = window.visualViewport;
+    if (!vv) return;
+
+    function handleResize() {
+      const vv = window.visualViewport;
+      if (!vv) return;
+      // Keyboard height = window height - visual viewport height
+      const kbHeight = window.innerHeight - vv.height;
+      setKeyboardHeight(kbHeight > 50 ? kbHeight : 0);
+    }
+
+    vv.addEventListener('resize', handleResize);
+    return () => vv.removeEventListener('resize', handleResize);
+  }, [isMobile]);
 
   // Load data
   useEffect(() => {
@@ -202,6 +227,7 @@ export function AnnotationDetailPanel({
     setUploading(true);
     const supabase = getSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
+    let successCount = 0;
 
     for (const file of Array.from(files)) {
       const fileName = `${projectId}/${Date.now()}-${file.name}`;
@@ -210,7 +236,8 @@ export function AnnotationDetailPanel({
         .upload(fileName, file);
 
       if (uploadError) {
-        toast.error(`Chyba při nahrávání ${file.name}`);
+        console.error('Storage upload error:', uploadError);
+        toast.error(`Chyba při nahrávání ${file.name}: ${uploadError.message}`);
         continue;
       }
 
@@ -228,14 +255,36 @@ export function AnnotationDetailPanel({
         .select('id, file_url, thumbnail_url, caption, created_at')
         .single();
 
-      if (!error && data) {
+      if (error) {
+        console.error('Photo insert error:', error);
+        toast.error(`Chyba při ukládání ${file.name}: ${error.message}`);
+      } else if (data) {
         setPhotos(prev => [data, ...prev]);
+        successCount++;
       }
     }
 
     setUploading(false);
-    toast.success('Fotky nahrány');
+    if (successCount > 0) {
+      toast.success(`${successCount} ${successCount === 1 ? 'fotka nahrána' : 'fotek nahráno'}`);
+    }
   }, [projectId, annotationId]);
+
+  const handleSavePhotoCaption = useCallback(async (photoId: string) => {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase
+      .from('photos')
+      .update({ caption: editPhotoCaption.trim() || null })
+      .eq('id', photoId);
+
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, caption: editPhotoCaption.trim() || null } : p));
+    setEditingPhotoId(null);
+    setEditPhotoCaption('');
+  }, [editPhotoCaption]);
 
   const handleCreateTask = useCallback(async () => {
     const title = prompt('Název úkolu:');
@@ -270,7 +319,25 @@ export function AnnotationDetailPanel({
   ];
 
   return (
-    <div className="flex h-full w-80 flex-col border-l bg-background">
+    <div
+      ref={panelRef}
+      className={cn(
+        'flex flex-col bg-background',
+        isMobile
+          ? 'fixed inset-x-0 z-50 rounded-t-xl border-t shadow-lg'
+          : 'h-full w-80 border-l'
+      )}
+      style={isMobile ? {
+        bottom: keyboardHeight > 0 ? `${keyboardHeight}px` : '0px',
+        maxHeight: keyboardHeight > 0 ? `calc(70vh - ${keyboardHeight}px)` : '70vh',
+      } : undefined}
+    >
+      {/* Drag handle for mobile */}
+      {isMobile && (
+        <div className="flex justify-center py-2">
+          <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between border-b px-3 py-2">
         <h3 className="text-sm font-semibold">Detail anotace</h3>
@@ -377,10 +444,16 @@ export function AnnotationDetailPanel({
 
             <form onSubmit={handleSendComment} className="flex gap-2 border-t p-3">
               <Input
+                ref={inputRef}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
                 placeholder="Napište komentář..."
                 className="flex-1"
+                onFocus={() => {
+                  if (isMobile) {
+                    setTimeout(() => inputRef.current?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 300);
+                  }
+                }}
               />
               <Button type="submit" size="icon" disabled={sending || !body.trim()}>
                 <Send className="h-4 w-4" />
@@ -396,6 +469,7 @@ export function AnnotationDetailPanel({
               <input
                 type="file"
                 accept="image/*"
+                capture="environment"
                 multiple
                 className="hidden"
                 id="annotation-photo-upload"
@@ -423,6 +497,33 @@ export function AnnotationDetailPanel({
                       alt={photo.caption || 'Fotka'}
                       className="aspect-square w-full object-cover"
                     />
+                    <div className="p-1">
+                      {editingPhotoId === photo.id ? (
+                        <div className="flex gap-1">
+                          <Input
+                            value={editPhotoCaption}
+                            onChange={(e) => setEditPhotoCaption(e.target.value)}
+                            className="h-6 flex-1 text-xs"
+                            placeholder="Popis..."
+                            autoFocus
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleSavePhotoCaption(photo.id);
+                              if (e.key === 'Escape') setEditingPhotoId(null);
+                            }}
+                          />
+                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleSavePhotoCaption(photo.id)}>
+                            <Check className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          className="w-full truncate text-left text-xs text-muted-foreground hover:text-foreground"
+                          onClick={() => { setEditingPhotoId(photo.id); setEditPhotoCaption(photo.caption || ''); }}
+                        >
+                          {photo.caption || 'Přidat popis...'}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

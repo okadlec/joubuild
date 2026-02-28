@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { Upload, Camera, X, Download, Search, Filter, Pencil, Trash2 } from 'lucide-react';
+import { Upload, Camera, X, Download, Search, Filter, Pencil, Trash2, Check, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -28,6 +28,13 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
   const [photos, setPhotos] = useState(initialPhotos);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Edit state
+  const [editingPhoto, setEditingPhoto] = useState(false);
+  const [editCaption, setEditCaption] = useState('');
+  const [editTags, setEditTags] = useState<string[]>([]);
+  const [newTag, setNewTag] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
 
   // Filter state
   const [showFilters, setShowFilters] = useState(false);
@@ -134,6 +141,52 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     setPhotos(prev => prev.filter(p => p.id !== photo.id));
     setSelectedPhoto(null);
     toast.success('Fotka smazána');
+  }, []);
+
+  const handleStartEdit = useCallback(() => {
+    if (!selectedPhoto) return;
+    setEditCaption(selectedPhoto.caption || '');
+    setEditTags(selectedPhoto.tags || []);
+    setNewTag('');
+    setEditingPhoto(true);
+  }, [selectedPhoto]);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (!selectedPhoto) return;
+    setSavingEdit(true);
+    const supabase = getSupabaseClient();
+    const { error } = await supabase
+      .from('photos')
+      .update({
+        caption: editCaption.trim() || null,
+        tags: editTags.length > 0 ? editTags : null,
+      })
+      .eq('id', selectedPhoto.id);
+
+    if (error) {
+      toast.error(error.message);
+      setSavingEdit(false);
+      return;
+    }
+
+    const updated = { ...selectedPhoto, caption: editCaption.trim() || null, tags: editTags.length > 0 ? editTags : null };
+    setPhotos(prev => prev.map(p => p.id === selectedPhoto.id ? updated : p));
+    setSelectedPhoto(updated);
+    setEditingPhoto(false);
+    setSavingEdit(false);
+    toast.success('Fotka aktualizována');
+  }, [selectedPhoto, editCaption, editTags]);
+
+  const handleAddTag = useCallback(() => {
+    const tag = newTag.trim();
+    if (tag && !editTags.includes(tag)) {
+      setEditTags(prev => [...prev, tag]);
+    }
+    setNewTag('');
+  }, [newTag, editTags]);
+
+  const handleRemoveTag = useCallback((tag: string) => {
+    setEditTags(prev => prev.filter(t => t !== tag));
   }, []);
 
   const activeFilterCount = [searchQuery, dateFrom, dateTo, tagFilter].filter(Boolean).length;
@@ -272,11 +325,19 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
       )}
 
       {/* Photo detail dialog */}
-      <Dialog open={!!selectedPhoto} onClose={() => setSelectedPhoto(null)} className="max-w-4xl">
+      <Dialog open={!!selectedPhoto} onClose={() => { setSelectedPhoto(null); setEditingPhoto(false); }} className="max-w-4xl">
         {selectedPhoto && (
           <>
             <DialogHeader>
-              <DialogTitle>{selectedPhoto.caption || 'Fotka'}</DialogTitle>
+              <div className="flex items-center gap-2">
+                <DialogTitle className="flex-1">{selectedPhoto.caption || 'Fotka'}</DialogTitle>
+                {!editingPhoto && (
+                  <Button variant="ghost" size="sm" onClick={handleStartEdit}>
+                    <Pencil className="mr-1 h-3.5 w-3.5" />
+                    Upravit
+                  </Button>
+                )}
+              </div>
             </DialogHeader>
             <div className="space-y-4">
               {selectedPhoto.type === 'photo_360' ? (
@@ -288,32 +349,72 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                   className="max-h-[60vh] w-full rounded object-contain"
                 />
               )}
-              <div className="flex justify-between text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <span>{formatDate(selectedPhoto.created_at)}</span>
-                  {selectedPhoto.tags && selectedPhoto.tags.map(t => (
-                    <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
-                  ))}
-                </div>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => {
-                    toast.info('Markup editor - otevírá se v nové verzi');
-                  }}>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Markup
-                  </Button>
-                  <a href={selectedPhoto.file_url} target="_blank" rel="noopener noreferrer">
-                    <Button variant="outline" size="sm">
-                      <Download className="mr-2 h-4 w-4" />
-                      Stáhnout
+
+              {editingPhoto ? (
+                <div className="space-y-3 rounded-lg border bg-muted/50 p-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Název / Popis</label>
+                    <Input
+                      value={editCaption}
+                      onChange={(e) => setEditCaption(e.target.value)}
+                      placeholder="Popis fotky..."
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1 block text-xs font-medium">Tagy</label>
+                    <div className="mb-2 flex flex-wrap gap-1">
+                      {editTags.map(tag => (
+                        <Badge key={tag} variant="secondary" className="gap-1">
+                          {tag}
+                          <button onClick={() => handleRemoveTag(tag)} className="ml-0.5 hover:text-destructive">
+                            <X className="h-3 w-3" />
+                          </button>
+                        </Badge>
+                      ))}
+                    </div>
+                    <div className="flex gap-1">
+                      <Input
+                        value={newTag}
+                        onChange={(e) => setNewTag(e.target.value)}
+                        placeholder="Nový tag..."
+                        className="h-8 flex-1"
+                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
+                      />
+                      <Button variant="outline" size="sm" className="h-8" onClick={handleAddTag} disabled={!newTag.trim()}>
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => setEditingPhoto(false)}>Zrušit</Button>
+                    <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
+                      <Check className="mr-1 h-3.5 w-3.5" />
+                      {savingEdit ? 'Ukládání...' : 'Uložit'}
                     </Button>
-                  </a>
-                  <Button variant="destructive" size="sm" onClick={() => handleDelete(selectedPhoto)}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Smazat
-                  </Button>
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <div className="flex items-center gap-2">
+                    <span>{formatDate(selectedPhoto.created_at)}</span>
+                    {selectedPhoto.tags && selectedPhoto.tags.map(t => (
+                      <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    <a href={selectedPhoto.file_url} target="_blank" rel="noopener noreferrer">
+                      <Button variant="outline" size="sm">
+                        <Download className="mr-2 h-4 w-4" />
+                        Stáhnout
+                      </Button>
+                    </a>
+                    <Button variant="destructive" size="sm" onClick={() => handleDelete(selectedPhoto)}>
+                      <Trash2 className="mr-2 h-4 w-4" />
+                      Smazat
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}

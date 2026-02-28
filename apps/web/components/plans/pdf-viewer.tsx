@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ZoomIn, ZoomOut, RotateCw, Maximize2, Ruler, Layers, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCw, Maximize2, Minimize2, Ruler, Layers, ChevronLeft, ChevronRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
@@ -11,6 +11,8 @@ import { AnnotationOverlay, type AnnotationData } from './annotation-overlay';
 import { CalibrationDialog } from './calibration-dialog';
 import { TaskPinOverlay } from './task-pin-overlay';
 import { AnnotationDetailPanel } from './annotation-detail-panel';
+import { usePinchZoom } from '@/lib/hooks/use-pinch-zoom';
+import { getOfflinePdfData } from '@/lib/offline/pdf-offline';
 import type { Task } from '@joubuild/shared';
 
 interface PdfViewerProps {
@@ -57,6 +59,16 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   // Annotation detail panel state
   const [detailAnnotationId, setDetailAnnotationId] = useState<string | null>(null);
 
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // CSS transform preview for pinch-zoom (no re-render during gesture)
+  const [zoomPreview, setZoomPreview] = useState(1);
+  const canvasWrapperRef = useRef<HTMLDivElement>(null);
+
+  // Render dedup ref
+  const renderPendingRef = useRef(false);
+
   // Calibration state
   const [showCalibration, setShowCalibration] = useState(false);
   const [isCalibrating, setIsCalibrating] = useState(false);
@@ -65,6 +77,30 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   } | null>(null);
   const [calibrationStep, setCalibrationStep] = useState(0);
   const [pixelsPerMeter, setPixelsPerMeter] = useState<number | null>(null);
+
+  // Pinch-to-zoom with CSS transform preview (no re-render during gesture)
+  const handlePinchZoom = useCallback((newScale: number) => {
+    setZoomPreview(1); // reset CSS preview
+    setScale(newScale);
+  }, []);
+
+  const { setCurrentScale } = usePinchZoom(containerRef, {
+    enabled: activeTool === 'select',
+    onZoomChange: handlePinchZoom,
+    onZoomPreview: (ps) => {
+      // During gesture: apply CSS transform ratio relative to current rendered scale
+      if (ps === 1) {
+        setZoomPreview(1);
+      } else {
+        setZoomPreview(ps / scale);
+      }
+    },
+  });
+
+  // Keep pinch-zoom in sync with button-driven scale changes
+  useEffect(() => {
+    setCurrentScale(scale);
+  }, [scale, setCurrentScale]);
 
   // Load PDF
   useEffect(() => {
@@ -75,7 +111,18 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         const pdfjsLib = await import('pdfjs-dist');
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
-        const loadingTask = pdfjsLib.getDocument(fileUrl);
+        // Check IndexedDB offline cache first
+        let pdfSource: string | ArrayBuffer = fileUrl;
+        try {
+          const offlineData = await getOfflinePdfData(fileUrl);
+          if (offlineData) {
+            pdfSource = offlineData;
+          }
+        } catch {
+          // Offline cache not available, use network
+        }
+
+        const loadingTask = pdfjsLib.getDocument(pdfSource instanceof ArrayBuffer ? { data: pdfSource } : pdfSource);
         loadingTask.onProgress = ({ loaded, total }: { loaded: number; total: number }) => {
           if (total > 0) {
             setLoadProgress(Math.round((loaded / total) * 100));
@@ -182,21 +229,27 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function renderPage(page: any, s: number, r: number) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (renderPendingRef.current) return; // skip if already pending
+    renderPendingRef.current = true;
 
-    const viewport = page.getViewport({ scale: s, rotation: r });
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
+    requestAnimationFrame(() => {
+      renderPendingRef.current = false;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
 
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+      const viewport = page.getViewport({ scale: s, rotation: r });
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
 
-    page.render({ canvasContext: ctx, viewport });
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    // Update page size for annotation overlay
-    const baseViewport = page.getViewport({ scale: 1, rotation: r });
-    setPageSize({ width: baseViewport.width, height: baseViewport.height });
+      page.render({ canvasContext: ctx, viewport });
+
+      // Update page size for annotation overlay
+      const baseViewport = page.getViewport({ scale: 1, rotation: r });
+      setPageSize({ width: baseViewport.width, height: baseViewport.height });
+    });
   }
 
   // Annotation handlers
@@ -271,12 +324,21 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     setShowCalibration(false);
   }, []);
 
-  const handleCalibrationClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+  const handleCalibrationClick = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     if (!isCalibrating) return;
 
     const rect = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / scale;
-    const y = (e.clientY - rect.top) / scale;
+    let clientX: number, clientY: number;
+    if ('touches' in e) {
+      const touch = e.changedTouches[0];
+      clientX = touch.clientX;
+      clientY = touch.clientY;
+    } else {
+      clientX = e.clientX;
+      clientY = e.clientY;
+    }
+    const x = (clientX - rect.left) / scale;
+    const y = (clientY - rect.top) / scale;
 
     if (calibrationStep === 1) {
       setCalibrationPoints({ x1: x, y1: y, x2: 0, y2: 0 });
@@ -315,11 +377,30 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     toast.success('Měřítko kalibrováno');
   }, [calibrationPoints, sheetVersionId]);
 
+  // Close fullscreen on Escape
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsFullscreen(false);
+    };
+    window.addEventListener('keydown', handleKey);
+    return () => window.removeEventListener('keydown', handleKey);
+  }, [isFullscreen]);
+
   return (
-    <div className="flex h-[calc(100vh-200px)] gap-0">
+    <div className={
+      isFullscreen
+        ? 'fixed inset-0 z-[60] flex gap-0 bg-background'
+        : 'flex h-[calc(100dvh-180px)] lg:h-[calc(100vh-200px)] gap-0'
+    }>
     <div className="flex flex-1 flex-col gap-2 overflow-hidden">
       {/* Top toolbar - zoom, rotate, calibration */}
-      <div className="flex items-center gap-2 rounded-lg border bg-background p-2">
+      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-background p-2">
+        {isFullscreen && (
+          <Button variant="outline" size="icon" onClick={() => setIsFullscreen(false)}>
+            <X className="h-4 w-4" />
+          </Button>
+        )}
         <Button variant="outline" size="icon" onClick={() => setScale(s => Math.max(0.25, s - 0.25))}>
           <ZoomOut className="h-4 w-4" />
         </Button>
@@ -331,8 +412,13 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         <Button variant="outline" size="icon" onClick={() => setRotation(r => (r + 90) % 360)}>
           <RotateCw className="h-4 w-4" />
         </Button>
-        <Button variant="outline" size="icon" onClick={() => setScale(1)}>
-          <Maximize2 className="h-4 w-4" />
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => setIsFullscreen(f => !f)}
+          title={isFullscreen ? 'Ukončit celou obrazovku' : 'Celá obrazovka'}
+        >
+          {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </Button>
         <div className="mx-2 h-6 w-px bg-border" />
         <Button
@@ -341,13 +427,15 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
           onClick={() => setShowAnnotations(!showAnnotations)}
         >
           <Layers className="mr-1 h-3.5 w-3.5" />
-          Anotace
+          <span className="hidden lg:inline">Anotace</span>
         </Button>
-        <Button variant="outline" size="sm" onClick={() => setShowCalibration(true)}>
-          <Ruler className="mr-1 h-3.5 w-3.5" />
-          Kalibrace
-          {pixelsPerMeter && <span className="ml-1 text-xs text-green-500">&#10003;</span>}
-        </Button>
+        {!isFullscreen && (
+          <Button variant="outline" size="sm" onClick={() => setShowCalibration(true)}>
+            <Ruler className="mr-1 h-3.5 w-3.5" />
+            <span className="hidden lg:inline">Kalibrace</span>
+            {pixelsPerMeter && <span className="ml-1 text-xs text-green-500">&#10003;</span>}
+          </Button>
+        )}
         {totalPages > 1 && (
           <>
             <div className="mx-2 h-6 w-px bg-border" />
@@ -361,7 +449,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
           </>
         )}
         <div className="flex-1" />
-        <span className="text-xs text-muted-foreground">ID: {sheetVersionId.slice(0, 8)}</span>
+        {!isFullscreen && <span className="text-xs text-muted-foreground">ID: {sheetVersionId.slice(0, 8)}</span>}
       </div>
 
       {/* Annotation toolbar */}
@@ -389,6 +477,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         ref={containerRef}
         className="flex-1 overflow-auto rounded-lg border bg-muted/50"
         onClick={isCalibrating ? handleCalibrationClick : undefined}
+        onTouchEnd={isCalibrating ? handleCalibrationClick : undefined}
         style={{ cursor: isCalibrating ? 'crosshair' : undefined }}
       >
         {loading && (
@@ -413,7 +502,11 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
             </p>
           </div>
         )}
-        <div className="relative mx-auto inline-block">
+        <div
+          ref={canvasWrapperRef}
+          className="relative mx-auto inline-block origin-center"
+          style={zoomPreview !== 1 ? { transform: `scale(${zoomPreview})`, willChange: 'transform' } : undefined}
+        >
           <canvas ref={canvasRef} className="block" />
           {showPins && pageSize.width > 0 && sheetId && (
             <TaskPinOverlay

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Plus, Upload, FileText, ChevronRight, GitCompare, History, Trash2, MoreVertical } from 'lucide-react';
+import { Plus, Upload, FileText, ChevronRight, GitCompare, History, Trash2, MoreVertical, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -12,6 +12,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { PdfViewer } from './pdf-viewer';
 import { VersionCompare } from './version-compare';
+import { useOfflinePdf } from '@/lib/hooks/use-offline-pdf';
 
 interface SheetVersion {
   id: string;
@@ -33,6 +34,39 @@ interface PlanSet {
   id: string;
   name: string;
   sheets: Sheet[];
+}
+
+function OfflineDownloadButton({ sheetId, name, fileUrl }: { sheetId: string; name: string; fileUrl: string }) {
+  const { isOffline, downloading, download, remove } = useOfflinePdf(sheetId, name, fileUrl);
+
+  return (
+    <button
+      className="rounded p-1 transition-opacity hover:bg-accent"
+      onClick={async (e) => {
+        e.stopPropagation();
+        if (isOffline) {
+          await remove();
+          toast.success('Offline kopie odstraněna');
+        } else {
+          try {
+            await download();
+            toast.success('Staženo pro offline');
+          } catch {
+            toast.error('Chyba při stahování');
+          }
+        }
+      }}
+      title={isOffline ? 'Dostupné offline' : 'Stáhnout pro offline'}
+    >
+      {downloading ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : isOffline ? (
+        <CheckCircle2 className="h-3.5 w-3.5 text-green-500" />
+      ) : (
+        <Download className="h-3.5 w-3.5 text-muted-foreground" />
+      )}
+    </button>
+  );
 }
 
 interface PlansViewProps {
@@ -290,6 +324,13 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
             <Upload className="mr-1 h-3.5 w-3.5" />
             Nová revize
           </Button>
+          {currentVersion && (
+            <OfflineDownloadButton
+              sheetId={selectedSheet.id}
+              name={selectedSheet.name}
+              fileUrl={currentVersion.file_url}
+            />
+          )}
         </div>
 
         {/* Versions panel */}
@@ -457,7 +498,16 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                         <CardContent className="p-3">
                           <div className="flex items-center justify-between">
                             <p className="text-sm font-medium truncate">{sheet.name}</p>
-                            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            <div className="flex items-center gap-1">
+                              {currentVersion && (
+                                <OfflineDownloadButton
+                                  sheetId={sheet.id}
+                                  name={sheet.name}
+                                  fileUrl={currentVersion.file_url}
+                                />
+                              )}
+                              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                            </div>
                           </div>
                           <div className="mt-1 flex items-center gap-2">
                             {sheet.sheet_number && (

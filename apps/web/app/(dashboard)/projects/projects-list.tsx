@@ -86,7 +86,7 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {projects.map((project) => (
-            <Link key={project.id} href={`/project/${project.id}/tasks`}>
+            <Link key={project.id} href={`/project/${project.id}/plans`}>
               <Card className="cursor-pointer transition-shadow hover:shadow-md">
                 <div className="h-32 rounded-t-lg bg-gradient-to-br from-primary/20 to-primary/5">
                   {project.cover_image_url && (

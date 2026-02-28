@@ -23,10 +23,10 @@ export default async function ProjectLayout({
 
   return (
     <div>
-      <div className="border-b bg-background px-4 py-3 sm:px-6">
-        <h2 className="text-lg font-semibold">{project.name}</h2>
+      <div className="border-b bg-background px-3 py-2 sm:px-6 sm:py-3">
+        <h2 className="text-base font-semibold sm:text-lg">{project.name}</h2>
         {project.address && (
-          <p className="text-sm text-muted-foreground">{project.address}</p>
+          <p className="hidden text-sm text-muted-foreground sm:block">{project.address}</p>
         )}
       </div>
       {children}

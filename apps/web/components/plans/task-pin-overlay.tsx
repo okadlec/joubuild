@@ -43,6 +43,14 @@ export function TaskPinOverlay({
         if (!pos) return;
         onPinDrop(pos.x / scale, pos.y / scale);
       }}
+      onTap={(e) => {
+        if (!pinMode || !onPinDrop) return;
+        const stage = e.target.getStage();
+        if (!stage) return;
+        const pos = stage.getPointerPosition();
+        if (!pos) return;
+        onPinDrop(pos.x / scale, pos.y / scale);
+      }}
     >
       <Layer>
         {pinnedTasks.map((task) => {
@@ -57,6 +65,10 @@ export function TaskPinOverlay({
               x={x}
               y={y}
               onClick={(e) => {
+                e.cancelBubble = true;
+                onTaskClick(task);
+              }}
+              onTap={(e) => {
                 e.cancelBubble = true;
                 onTaskClick(task);
               }}

@@ -22,7 +22,9 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
-        keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key))
+        keys
+          .filter((key) => key !== CACHE_NAME && key !== 'joubuild-pdfs-offline')
+          .map((key) => caches.delete(key))
       );
     })
   );
@@ -75,17 +77,31 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For PDF files from storage - cache with network update
+  // For PDF files from storage - check offline cache first, then general cache
   if (url.pathname.includes('/storage/') && url.pathname.endsWith('.pdf')) {
     event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request).then((response) => {
+      (async () => {
+        // Try offline PDF cache (may not be available in WKWebView)
+        try {
+          const offlineCache = await caches.open('joubuild-pdfs-offline');
+          const offlineCached = await offlineCache.match(request);
+          if (offlineCached) return offlineCached;
+        } catch {
+          // Cache API not available (iOS WKWebView) — skip, IndexedDB fallback handled in app code
+        }
+
+        // Try general cache
+        const cached = await caches.match(request);
+        try {
+          const response = await fetch(request);
           const clone = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone)).catch(() => {});
           return response;
-        });
-        return cached || fetchPromise;
-      })
+        } catch {
+          if (cached) return cached;
+          return new Response('PDF not available offline', { status: 503 });
+        }
+      })()
     );
     return;
   }

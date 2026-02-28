@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './sidebar';
 import { Header } from './header';
+import { BottomNav } from './bottom-nav';
 
 interface DashboardShellProps {
   children: React.ReactNode;
@@ -15,6 +17,8 @@ interface DashboardShellProps {
 
 export function DashboardShell({ children, user }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const pathname = usePathname();
+  const isInProject = /\/project\/[^/]+/.test(pathname);
 
   const handleMenuClick = useCallback(() => {
     setSidebarOpen(true);
@@ -25,8 +29,8 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
   }, []);
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Mobile overlay */}
+    <div className="flex h-dvh overflow-hidden">
+      {/* Mobile overlay — only when sidebar is open and NOT in project context (bottom nav replaces it) */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-40 bg-black/50 lg:hidden"
@@ -47,11 +51,15 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
-        <Header user={user} onMenuClick={handleMenuClick} />
-        <main className="flex-1 overflow-auto p-4 sm:p-6">
+        <Header user={user} onMenuClick={handleMenuClick} hideHamburgerInProject={isInProject} />
+        {/* pb accounts for bottom nav: h-14 (3.5rem) + safe-area-inset-bottom */}
+        <main className={`flex-1 overflow-auto p-2 sm:p-4 lg:p-6 ${isInProject ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-6' : ''}`}>
           {children}
         </main>
       </div>
+
+      {/* Bottom nav — only on mobile, only in project context */}
+      <BottomNav />
     </div>
   );
 }

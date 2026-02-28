@@ -16,9 +16,10 @@ interface HeaderProps {
     avatar_url?: string | null;
   };
   onMenuClick?: () => void;
+  hideHamburgerInProject?: boolean;
 }
 
-export function Header({ user, onMenuClick }: HeaderProps) {
+export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProps) {
   const router = useRouter();
 
   async function handleSignOut() {
@@ -31,7 +32,7 @@ export function Header({ user, onMenuClick }: HeaderProps) {
   return (
     <header className="flex h-14 items-center justify-between border-b bg-background px-4">
       <div className="flex items-center gap-2">
-        {onMenuClick && (
+        {onMenuClick && !hideHamburgerInProject && (
           <button
             onClick={onMenuClick}
             className="rounded-md p-2 hover:bg-accent lg:hidden"

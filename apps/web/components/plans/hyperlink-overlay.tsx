@@ -45,6 +45,7 @@ export function HyperlinkOverlay({
               x={x}
               y={y}
               onClick={() => onHyperlinkClick(link)}
+              onTap={() => onHyperlinkClick(link)}
               listening={true}
             >
               <Rect
