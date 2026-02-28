@@ -134,17 +134,15 @@ CREATE POLICY "Project admins can delete projects" ON projects
     )
   );
 
--- Project members
+-- Project members (non-recursive: user can see own membership rows directly)
 CREATE POLICY "Users can view project members" ON project_members
-  FOR SELECT USING (
-    project_id IN (SELECT project_id FROM project_members WHERE user_id = auth.uid())
-  );
+  FOR SELECT USING (user_id = auth.uid());
 
 CREATE POLICY "Admins can manage project members" ON project_members
   FOR ALL USING (
     project_id IN (
-      SELECT project_id FROM project_members
-      WHERE user_id = auth.uid() AND role = 'admin'
+      SELECT pm.project_id FROM project_members pm
+      WHERE pm.user_id = auth.uid() AND pm.role = 'admin'
     )
   );
 
@@ -1119,6 +1117,10 @@ CREATE POLICY "Users can update own profile" ON profiles
 CREATE POLICY "Service role can insert profiles" ON profiles
   FOR INSERT WITH CHECK (true);
 
+-- Allow service role / trigger to update any profile (for handle_new_user trigger)
+CREATE POLICY "Service role can update profiles" ON profiles
+  FOR UPDATE USING (true) WITH CHECK (true);
+
 -- Trigger to sync auth.users -> profiles
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS TRIGGER AS $$
@@ -1158,3 +1160,8 @@ UPDATE profiles SET is_superadmin = true WHERE email = 'ondra.kadlec@email.cz';
 
 -- Fix: make plans bucket public so getPublicUrl() works (URLs contain UUIDs for security)
 UPDATE storage.buckets SET public = true WHERE id = 'plans';
+
+-- Fix: recursive RLS on project_members caused all plan/sheet queries to return empty
+DROP POLICY IF EXISTS "Users can view project members" ON project_members;
+CREATE POLICY "Users can view project members" ON project_members
+  FOR SELECT USING (user_id = auth.uid());
