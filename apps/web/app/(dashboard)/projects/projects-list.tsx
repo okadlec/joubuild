@@ -42,14 +42,13 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
 
     // Get or create organization
     let orgId: string;
-    const { data: existingOrg } = await supabase
+    const { data: orgs } = await supabase
       .from('organizations')
       .select('id')
-      .limit(1)
-      .single();
+      .limit(1);
 
-    if (existingOrg) {
-      orgId = existingOrg.id;
+    if (orgs && orgs.length > 0) {
+      orgId = orgs[0].id;
     } else {
       const { data: newOrg, error: orgError } = await supabase
         .from('organizations')
@@ -57,7 +56,7 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
         .select()
         .single();
       if (orgError || !newOrg) {
-        toast.error('Chyba při vytváření organizace');
+        toast.error('Chyba při vytváření organizace: ' + (orgError?.message || 'neznámá chyba'));
         setLoading(false);
         return;
       }
