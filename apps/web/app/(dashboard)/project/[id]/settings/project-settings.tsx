@@ -16,6 +16,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { PROJECT_ROLE_LABELS, PROJECT_STATUS_LABELS, PROJECT_STATUSES, type TaskCategory } from '@joubuild/shared';
 import { toast } from 'sonner';
 import { CategoryManager } from '@/components/tasks/category-manager';
+import { ProjectRolePermissionsInfo } from '@/components/shared/role-permissions-info';
 import { inviteMember } from './actions';
 
 interface Project {
@@ -175,9 +176,12 @@ export function ProjectSettings({ project, members, initialCategories = [] }: { 
                       )}
                     </div>
                   </div>
-                  <Badge variant="secondary">
-                    {PROJECT_ROLE_LABELS[member.role] || member.role}
-                  </Badge>
+                  <div className="flex items-center gap-1">
+                    <Badge variant="secondary">
+                      {PROJECT_ROLE_LABELS[member.role] || member.role}
+                    </Badge>
+                    <ProjectRolePermissionsInfo />
+                  </div>
                 </div>
               ))}
             </div>

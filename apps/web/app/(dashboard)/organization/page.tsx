@@ -1,51 +1,68 @@
 import { createClient } from '@/lib/supabase/server';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-
-interface Org {
-  id: string;
-  name: string;
-  slug: string;
-  plan: string;
-}
+import { OrgSettings } from './org-settings';
 
 export default async function OrganizationPage() {
   const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-  const { data: orgs } = await supabase
+  // Get user's organization
+  const { data: membership } = await supabase
+    .from('organization_members')
+    .select('organization_id, role')
+    .eq('user_id', user?.id ?? '')
+    .limit(1)
+    .maybeSingle();
+
+  if (!membership) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
+        <p className="mb-2 text-lg font-medium">Žádná organizace</p>
+        <p className="text-sm text-muted-foreground">
+          Nejste členem žádné organizace
+        </p>
+      </div>
+    );
+  }
+
+  const { data: org } = await supabase
     .from('organizations')
     .select('*')
-    .order('created_at') as { data: Org[] | null };
+    .eq('id', membership.organization_id)
+    .single();
+
+  if (!org) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
+        <p className="mb-2 text-lg font-medium">Organizace nenalezena</p>
+      </div>
+    );
+  }
+
+  // Load members with profiles
+  const { data: members } = await supabase
+    .from('organization_members')
+    .select('id, user_id, role, profiles:user_id(email, full_name)')
+    .eq('organization_id', org.id)
+    .order('created_at');
+
+  const formattedMembers = (members || []).map((m: Record<string, unknown>) => {
+    const profile = m.profiles as Record<string, unknown> | null;
+    return {
+      id: m.id as string,
+      user_id: m.user_id as string,
+      role: m.role as string,
+      full_name: profile?.full_name as string | null,
+      email: profile?.email as string | null,
+    };
+  });
+
+  const isAdmin = membership.role === 'owner' || membership.role === 'admin';
 
   return (
-    <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Organizace</h1>
-        <p className="text-sm text-muted-foreground">Správa firem a členů</p>
-      </div>
-
-      {(!orgs || orgs.length === 0) ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <p className="mb-2 text-lg font-medium">Žádná organizace</p>
-          <p className="text-sm text-muted-foreground">Organizace bude vytvořena automaticky při vytvoření prvního projektu</p>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {orgs.map((org) => (
-            <Card key={org.id}>
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <CardTitle>{org.name}</CardTitle>
-                  <Badge variant="secondary">{org.plan}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">Slug: {org.slug}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
+    <OrgSettings
+      org={org}
+      members={formattedMembers}
+      isAdmin={isAdmin}
+    />
   );
 }

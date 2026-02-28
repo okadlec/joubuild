@@ -36,6 +36,7 @@ interface AnnotationOverlayProps {
   onAnnotationsChange: (annotations: AnnotationData[]) => void;
   selectedId: string | null;
   onSelectId: (id: string | null) => void;
+  onAnnotationClick?: (id: string) => void;
   pixelsPerMeter: number | null; // calibration ratio
 }
 
@@ -54,6 +55,7 @@ export function AnnotationOverlay({
   onAnnotationsChange,
   selectedId,
   onSelectId,
+  onAnnotationClick,
   pixelsPerMeter,
 }: AnnotationOverlayProps) {
   const stageRef = useRef<Konva.Stage>(null);
@@ -339,7 +341,12 @@ export function AnnotationOverlay({
     const isSelected = selectedId === ann.id;
     const commonProps = {
       key: ann.id,
-      onClick: () => activeTool === 'select' && onSelectId(ann.id),
+      onClick: () => {
+        if (activeTool === 'select') {
+          onSelectId(ann.id);
+          onAnnotationClick?.(ann.id);
+        }
+      },
       stroke: isSelected ? '#0EA5E9' : ann.data.color,
       strokeWidth: ann.data.strokeWidth,
     };

@@ -28,15 +28,16 @@ interface Organization {
 }
 
 interface SidebarProps {
-  projectId?: string;
   organizations?: Organization[];
   currentOrgId?: string;
   onOrgChange?: (orgId: string) => void;
   onNavigate?: () => void;
 }
 
-export function Sidebar({ projectId, organizations = [], currentOrgId, onOrgChange, onNavigate }: SidebarProps) {
+export function Sidebar({ organizations = [], currentOrgId, onOrgChange, onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const projectMatch = pathname.match(/\/project\/([^/]+)/);
+  const projectId = projectMatch ? projectMatch[1] : undefined;
   const [collapsed, setCollapsed] = useState(false);
   const { hasAccess: isAdmin } = useAdminAccess();
 

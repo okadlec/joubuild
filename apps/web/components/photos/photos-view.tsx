@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
-import { Upload, Camera, X, Download, Search, Filter, Pencil } from 'lucide-react';
+import { Upload, Camera, X, Download, Search, Filter, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -108,6 +108,33 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     setDateTo('');
     setTagFilter('');
   };
+
+  const handleDelete = useCallback(async (photo: Photo) => {
+    if (!confirm('Opravdu chcete smazat tuto fotku?')) return;
+
+    const supabase = getSupabaseClient();
+
+    // Extract storage path from URL: {projectId}/{timestamp}-{filename}
+    const url = new URL(photo.file_url);
+    const pathParts = url.pathname.split('/photos/');
+    const storagePath = pathParts.length > 1 ? decodeURIComponent(pathParts[1]) : null;
+
+    // Delete from database
+    const { error } = await supabase.from('photos').delete().eq('id', photo.id);
+    if (error) {
+      toast.error('Chyba při mazání fotky');
+      return;
+    }
+
+    // Delete from storage
+    if (storagePath) {
+      await supabase.storage.from('photos').remove([storagePath]);
+    }
+
+    setPhotos(prev => prev.filter(p => p.id !== photo.id));
+    setSelectedPhoto(null);
+    toast.success('Fotka smazána');
+  }, []);
 
   const activeFilterCount = [searchQuery, dateFrom, dateTo, tagFilter].filter(Boolean).length;
 
@@ -281,6 +308,10 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                       Stáhnout
                     </Button>
                   </a>
+                  <Button variant="destructive" size="sm" onClick={() => handleDelete(selectedPhoto)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Smazat
+                  </Button>
                 </div>
               </div>
             </div>

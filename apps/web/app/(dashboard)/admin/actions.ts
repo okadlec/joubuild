@@ -15,7 +15,7 @@ export async function createUser(data: {
   email: string;
   password: string;
   fullName: string;
-  orgRole: 'owner' | 'admin' | 'member';
+  orgRole: 'owner' | 'admin' | 'member' | 'viewer';
 }) {
   const hasAccess = await checkAdminAccess();
   if (!hasAccess) return { error: 'Nemáte oprávnění' };
@@ -57,7 +57,7 @@ export async function createUser(data: {
   return { data: { id: userId, email: data.email, fullName: data.fullName } };
 }
 
-export async function updateUserRole(userId: string, orgRole: 'owner' | 'admin' | 'member') {
+export async function updateUserRole(userId: string, orgRole: 'owner' | 'admin' | 'member' | 'viewer') {
   const hasAccess = await checkAdminAccess();
   if (!hasAccess) return { error: 'Nemáte oprávnění' };
 

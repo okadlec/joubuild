@@ -13,11 +13,13 @@ export interface Organization {
   created_at: string;
 }
 
+export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
+
 export interface OrganizationMember {
   id: string;
   organization_id: string;
   user_id: string;
-  role: 'owner' | 'admin' | 'member';
+  role: OrgRole;
   created_at: string;
 }
 

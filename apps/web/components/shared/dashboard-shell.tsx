@@ -11,11 +11,9 @@ interface DashboardShellProps {
     full_name?: string | null;
     avatar_url?: string | null;
   };
-  projectId?: string;
-  projectBar?: React.ReactNode;
 }
 
-export function DashboardShell({ children, user, projectId, projectBar }: DashboardShellProps) {
+export function DashboardShell({ children, user }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   const handleMenuClick = useCallback(() => {
@@ -45,12 +43,11 @@ export function DashboardShell({ children, user, projectId, projectBar }: Dashbo
           lg:translate-x-0
         `}
       >
-        <Sidebar projectId={projectId} onNavigate={handleClose} />
+        <Sidebar onNavigate={handleClose} />
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header user={user} onMenuClick={handleMenuClick} />
-        {projectBar}
         <main className="flex-1 overflow-auto p-4 sm:p-6">
           {children}
         </main>

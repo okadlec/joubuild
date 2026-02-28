@@ -13,20 +13,23 @@ import { Select } from '@/components/ui/select';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { createUser, updateUserRole, deleteUser } from './actions';
+import { OrgRolePermissionsInfo } from '@/components/shared/role-permissions-info';
 import { toast } from 'sonner';
 
-type OrgRole = 'owner' | 'admin' | 'member';
+type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
 
 const ORG_ROLE_LABELS: Record<OrgRole, string> = {
   owner: 'Vlastnik',
   admin: 'Admin',
   member: 'Clen',
+  viewer: 'Prohlizejici',
 };
 
 const ORG_ROLE_VARIANTS: Record<OrgRole, 'default' | 'secondary' | 'outline'> = {
   owner: 'default',
   admin: 'secondary',
   member: 'outline',
+  viewer: 'outline',
 };
 
 interface Profile {
@@ -180,9 +183,12 @@ export function AdminDashboard({ stats, users: initialUsers, orgRoleMap: initial
                   </div>
                   <div className="flex items-center gap-2">
                     {orgRole && (
-                      <Badge variant={ORG_ROLE_VARIANTS[orgRole] || 'outline'}>
-                        {ORG_ROLE_LABELS[orgRole] || orgRole}
-                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <Badge variant={ORG_ROLE_VARIANTS[orgRole] || 'outline'}>
+                          {ORG_ROLE_LABELS[orgRole] || orgRole}
+                        </Badge>
+                        <OrgRolePermissionsInfo />
+                      </div>
                     )}
                     {user.is_superadmin && (
                       <Badge variant="default">Superadmin</Badge>
@@ -209,7 +215,7 @@ export function AdminDashboard({ stats, users: initialUsers, orgRoleMap: initial
                           </button>
                           <div className="my-1 border-t" />
                           <p className="px-2 py-1 text-xs text-muted-foreground">Org role</p>
-                          {(['owner', 'admin', 'member'] as OrgRole[]).map((role) => (
+                          {(['owner', 'admin', 'member', 'viewer'] as OrgRole[]).map((role) => (
                             <button
                               key={role}
                               className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent ${orgRole === role ? 'font-semibold text-primary' : ''}`}
@@ -261,6 +267,7 @@ export function AdminDashboard({ stats, users: initialUsers, orgRoleMap: initial
               <option value="owner">Vlastnik (reditel)</option>
               <option value="admin">Admin (spravce)</option>
               <option value="member">Clen</option>
+              <option value="viewer">Prohlizejici (read-only)</option>
             </Select>
           </div>
           <div className="flex justify-end gap-2 pt-2">

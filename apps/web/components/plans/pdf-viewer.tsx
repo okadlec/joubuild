@@ -5,10 +5,12 @@ import { ZoomIn, ZoomOut, RotateCw, Maximize2, Ruler, Layers, ChevronLeft, Chevr
 import { Button } from '@/components/ui/button';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { Progress } from '@/components/ui/progress';
 import { AnnotationToolbar, type AnnotationTool } from './annotation-toolbar';
 import { AnnotationOverlay, type AnnotationData } from './annotation-overlay';
 import { CalibrationDialog } from './calibration-dialog';
 import { TaskPinOverlay } from './task-pin-overlay';
+import { AnnotationDetailPanel } from './annotation-detail-panel';
 import type { Task } from '@joubuild/shared';
 
 interface PdfViewerProps {
@@ -25,6 +27,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const pdfDocRef = useRef<any>(null);
@@ -51,6 +54,9 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showPins, setShowPins] = useState(true);
 
+  // Annotation detail panel state
+  const [detailAnnotationId, setDetailAnnotationId] = useState<string | null>(null);
+
   // Calibration state
   const [showCalibration, setShowCalibration] = useState(false);
   const [isCalibrating, setIsCalibrating] = useState(false);
@@ -70,6 +76,11 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
         const loadingTask = pdfjsLib.getDocument(fileUrl);
+        loadingTask.onProgress = ({ loaded, total }: { loaded: number; total: number }) => {
+          if (total > 0) {
+            setLoadProgress(Math.round((loaded / total) * 100));
+          }
+        };
         const pdf = await loadingTask.promise;
         if (cancelled) return;
 
@@ -305,7 +316,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   }, [calibrationPoints, sheetVersionId]);
 
   return (
-    <div className="flex h-[calc(100vh-200px)] flex-col gap-2">
+    <div className="flex h-[calc(100vh-200px)] gap-0">
+    <div className="flex flex-1 flex-col gap-2 overflow-hidden">
       {/* Top toolbar - zoom, rotate, calibration */}
       <div className="flex items-center gap-2 rounded-lg border bg-background p-2">
         <Button variant="outline" size="icon" onClick={() => setScale(s => Math.max(0.25, s - 0.25))}>
@@ -380,8 +392,11 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         style={{ cursor: isCalibrating ? 'crosshair' : undefined }}
       >
         {loading && (
-          <div className="flex h-full items-center justify-center">
-            <p className="text-muted-foreground">Načítání PDF...</p>
+          <div className="flex h-full flex-col items-center justify-center gap-3">
+            <p className="text-muted-foreground">Načítání PDF... {loadProgress > 0 ? `${loadProgress}%` : ''}</p>
+            {loadProgress > 0 && (
+              <Progress value={loadProgress} className="w-48" />
+            )}
           </div>
         )}
         {error && (
@@ -421,6 +436,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
               onAnnotationsChange={handleAnnotationsChange}
               selectedId={selectedId}
               onSelectId={setSelectedId}
+              onAnnotationClick={(id) => setDetailAnnotationId(id)}
               pixelsPerMeter={pixelsPerMeter}
             />
           )}
@@ -436,6 +452,17 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         isSettingPoints={isCalibrating}
         onStartCalibration={handleStartCalibration}
       />
+    </div>
+
+    {/* Annotation detail panel */}
+    {detailAnnotationId && projectId && (
+      <AnnotationDetailPanel
+        annotationId={detailAnnotationId}
+        projectId={projectId}
+        sheetVersionId={sheetVersionId}
+        onClose={() => setDetailAnnotationId(null)}
+      />
+    )}
     </div>
   );
 }

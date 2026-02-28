@@ -42,8 +42,15 @@ export const PROJECT_STATUS_LABELS: Record<string, string> = {
 };
 
 // Roles
-export const ORG_ROLES = ['owner', 'admin', 'member'] as const;
+export const ORG_ROLES = ['owner', 'admin', 'member', 'viewer'] as const;
 export const PROJECT_ROLES = ['admin', 'member', 'follower'] as const;
+
+export const ORG_ROLE_LABELS: Record<string, string> = {
+  owner: 'Vlastník',
+  admin: 'Admin',
+  member: 'Člen',
+  viewer: 'Prohlížející',
+};
 
 export const PROJECT_ROLE_LABELS: Record<string, string> = {
   admin: 'Administrátor',
