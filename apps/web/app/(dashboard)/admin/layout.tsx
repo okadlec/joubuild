@@ -1,12 +1,12 @@
 import { redirect } from 'next/navigation';
-import { checkSuperadmin } from '@/lib/supabase/admin';
+import { checkAdminAccess } from '@/lib/supabase/admin';
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const isAdmin = await checkSuperadmin();
+  const isAdmin = await checkAdminAccess();
 
   if (!isAdmin) {
     redirect('/projects');

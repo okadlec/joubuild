@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useState } from 'react';
-import { useIsSuperadmin } from '@/lib/hooks/use-is-superadmin';
+import { useAdminAccess } from '@/lib/hooks/use-admin-access';
 
 interface Organization {
   id: string;
@@ -38,12 +38,12 @@ interface SidebarProps {
 export function Sidebar({ projectId, organizations = [], currentOrgId, onOrgChange, onNavigate }: SidebarProps) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
-  const { isSuperadmin } = useIsSuperadmin();
+  const { hasAccess: isAdmin } = useAdminAccess();
 
   const mainNav = [
     { href: '/projects', label: 'Projekty', icon: FolderOpen },
     { href: '/organization', label: 'Organizace', icon: Building2 },
-    ...(isSuperadmin ? [{ href: '/admin', label: 'Admin', icon: Shield }] : []),
+    ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: Shield }] : []),
   ];
 
   const projectNav = projectId

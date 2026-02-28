@@ -29,7 +29,7 @@ export function useProjectRole(projectId: string): UseProjectRoleResult {
         .select('role')
         .eq('project_id', projectId)
         .eq('user_id', user.id)
-        .single();
+        .maybeSingle();
 
       if (data) setRole(data.role as ProjectRole);
       setLoading(false);

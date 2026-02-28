@@ -35,7 +35,7 @@ export function VersionCompare({ oldFileUrl, newFileUrl, oldLabel, newLabel }: V
     async function loadBoth() {
       try {
         const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
         const [oldPdf, newPdf] = await Promise.all([
           pdfjsLib.getDocument(oldFileUrl).promise,

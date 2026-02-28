@@ -67,7 +67,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     async function loadPdf() {
       try {
         const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
         const loadingTask = pdfjsLib.getDocument(fileUrl);
         const pdf = await loadingTask.promise;
@@ -124,7 +124,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         .eq('sheet_version_id', sheetVersionId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       if (cal) {
         const dx = cal.point2_x - cal.point1_x;

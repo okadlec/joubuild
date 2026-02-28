@@ -1,6 +1,3 @@
-[project]
-id = "joubuild"
-
 [api]
 enabled = true
 port = 54321

@@ -1006,7 +1006,7 @@ CREATE POLICY "Can update own exports" ON exports
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit)
 VALUES
-  ('plans', 'plans', false, 104857600),           -- 100MB
+  ('plans', 'plans', true, 104857600),            -- 100MB, public (URLs contain UUIDs)
   ('thumbnails', 'thumbnails', false, 10485760),   -- 10MB
   ('photos', 'photos', false, 52428800),           -- 50MB
   ('documents', 'documents', false, 104857600),    -- 100MB
@@ -1155,3 +1155,6 @@ ON CONFLICT (id) DO NOTHING;
 
 -- Set superadmin
 UPDATE profiles SET is_superadmin = true WHERE email = 'ondra.kadlec@email.cz';
+
+-- Fix: make plans bucket public so getPublicUrl() works (URLs contain UUIDs for security)
+UPDATE storage.buckets SET public = true WHERE id = 'plans';
