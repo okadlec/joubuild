@@ -72,13 +72,22 @@ export function AnnotationDetailPanel({
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setCurrentUserId(user.id);
 
-      // Load comments for this annotation
+      // Load comments for this annotation with user profiles
       const { data: commentsData } = await supabase
         .from('comments')
-        .select('*')
+        .select('*, profiles:user_id(full_name, email)')
         .eq('annotation_id', annotationId)
         .order('created_at', { ascending: true });
-      if (commentsData) setComments(commentsData);
+      if (commentsData) {
+        setComments(commentsData.map((c: Record<string, unknown>) => {
+          const profile = c.profiles as Record<string, unknown> | null;
+          return {
+            ...c,
+            user_name: profile?.full_name as string | null,
+            user_email: profile?.email as string | null,
+          } as Comment;
+        }));
+      }
 
       // Load photos for this annotation
       const { data: photosData } = await supabase
@@ -100,16 +109,31 @@ export function AnnotationDetailPanel({
 
     load();
 
-    // Realtime for comments
+    // Realtime for comments — fetch profile for new comments
     const channel = supabase
       .channel(`ann-comments-${annotationId}`)
       .on(
         'postgres_changes' as never,
         { event: 'INSERT', schema: 'public', table: 'comments', filter: `annotation_id=eq.${annotationId}` },
-        (payload: { new: Comment }) => {
+        async (payload: { new: Comment }) => {
+          // Fetch profile for the new comment
+          let userName: string | null = null;
+          let userEmail: string | null = null;
+          if (payload.new.user_id) {
+            const { data: profile } = await supabase
+              .from('profiles')
+              .select('full_name, email')
+              .eq('id', payload.new.user_id)
+              .maybeSingle();
+            if (profile) {
+              userName = profile.full_name;
+              userEmail = profile.email;
+            }
+          }
+          const enriched = { ...payload.new, user_name: userName, user_email: userEmail };
           setComments(prev => {
-            if (prev.some(c => c.id === payload.new.id)) return prev;
-            return [...prev, payload.new];
+            if (prev.some(c => c.id === enriched.id)) return prev;
+            return [...prev, enriched];
           });
         }
       )
