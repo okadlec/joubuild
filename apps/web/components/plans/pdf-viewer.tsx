@@ -330,34 +330,32 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     }
 
     const dpr = window.devicePixelRatio || 1;
-    const viewport = page.getViewport({ scale: s, rotation: r });
-    const vw = viewport.width;
-    const vh = viewport.height;
 
-    // Pixel buffer = viewport * DPR, clamped to GPU limit
-    let bufferW = Math.floor(vw * dpr);
-    let bufferH = Math.floor(vh * dpr);
-    const MAX_CANVAS = MAX_BUFFER;
-    if (bufferW > MAX_CANVAS || bufferH > MAX_CANVAS) {
-      const ratio = Math.min(MAX_CANVAS / bufferW, MAX_CANVAS / bufferH);
-      bufferW = Math.floor(bufferW * ratio);
-      bufferH = Math.floor(bufferH * ratio);
+    // CSS viewport (for layout sizing)
+    const cssViewport = page.getViewport({ scale: s, rotation: r });
+    const cssW = Math.floor(cssViewport.width);
+    const cssH = Math.floor(cssViewport.height);
+
+    // Render viewport — bake DPR into scale so pdf.js renders at full device resolution.
+    // This avoids relying on ctx.scale() which pdf.js may override via setTransform().
+    let renderScale = s * dpr;
+    const testW = Math.floor(cssViewport.width * dpr);
+    const testH = Math.floor(cssViewport.height * dpr);
+    if (testW > MAX_BUFFER || testH > MAX_BUFFER) {
+      const ratio = Math.min(MAX_BUFFER / testW, MAX_BUFFER / testH);
+      renderScale = s * dpr * ratio;
     }
-    canvas.width = bufferW;
-    canvas.height = bufferH;
-    canvas.style.width = `${Math.floor(vw)}px`;
-    canvas.style.height = `${Math.floor(vh)}px`;
-    canvas.style.imageRendering = 'auto';
+    const renderViewport = page.getViewport({ scale: renderScale, rotation: r });
+
+    canvas.width = Math.floor(renderViewport.width);
+    canvas.height = Math.floor(renderViewport.height);
+    canvas.style.width = `${cssW}px`;
+    canvas.style.height = `${cssH}px`;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Unified context scale (DPR + any clamping)
-    const sx = bufferW / vw;
-    const sy = bufferH / vh;
-    ctx.scale(sx, sy);
-
-    const task = page.render({ canvasContext: ctx, viewport });
+    const task = page.render({ canvasContext: ctx, viewport: renderViewport });
     renderTaskRef.current = task;
 
     try {
