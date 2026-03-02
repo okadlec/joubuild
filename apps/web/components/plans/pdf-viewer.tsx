@@ -81,10 +81,11 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   const [zoomOrigin, setZoomOrigin] = useState<{ x: number; y: number } | null>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
-  // Max canvas buffer size — mobile devices have lower GPU limits
+  // Max canvas dimension & area — mobile devices have lower GPU limits
   const isMobileDevice = typeof navigator !== 'undefined'
     && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-  const MAX_BUFFER = isMobileDevice ? 4096 : 8192;
+  const MAX_DIM = isMobileDevice ? 4096 : 16384;
+  const MAX_AREA = isMobileDevice ? 16_777_216 : 200_000_000; // 4096² / ~200M
 
   // Render task tracking refs
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -115,6 +116,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       setZoomPreview(previewRatio);
       setZoomOrigin({ x: originX, y: originY });
     },
+    maxScale: isMobileDevice ? 2 : 3,
   });
 
   // Keep pinch-zoom in sync with button-driven scale changes
@@ -132,8 +134,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       canvasWrapperRef.current.style.transformOrigin = '';
       canvasWrapperRef.current.style.willChange = '';
     }
-    setScale(s => Math.min(3, s + 0.25));
-  }, [resetPreview]);
+    setScale(s => Math.min(isMobileDevice ? 2 : 3, s + 0.25));
+  }, [resetPreview, isMobileDevice]);
 
   const handleZoomOut = useCallback(() => {
     resetPreview();
@@ -145,7 +147,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       canvasWrapperRef.current.style.willChange = '';
     }
     setScale(s => Math.max(0.25, s - 0.25));
-  }, [resetPreview]);
+  }, [resetPreview, isMobileDevice]);
 
   // Load PDF
   useEffect(() => {
@@ -197,7 +199,15 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     }
 
     loadPdf();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+      // Destroy previous PDF document to release parsed data (fonts, images, internal canvases)
+      if (pdfDocRef.current) {
+        pdfDocRef.current.destroy();
+        pdfDocRef.current = null;
+      }
+      pageRef.current = null;
+    };
   }, [fileUrl]);
 
   // Load existing annotations
@@ -301,6 +311,12 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   // Navigate to a specific page
   const goToPage = useCallback(async (pageNum: number) => {
     if (!pdfDocRef.current || pageNum < 1 || pageNum > totalPages) return;
+    // Zero canvas dimensions to release old bitmap GPU memory before loading new page
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.width = 0;
+      canvas.height = 0;
+    }
     const page = await pdfDocRef.current.getPage(pageNum);
     pageRef.current = page;
     setCurrentPage(pageNum);
@@ -329,7 +345,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       renderTaskRef.current = null;
     }
 
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = isMobileDevice ? Math.min(window.devicePixelRatio || 1, 2) : (window.devicePixelRatio || 1);
 
     // CSS viewport (for layout sizing)
     const cssViewport = page.getViewport({ scale: s, rotation: r });
@@ -339,16 +355,34 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     // Render viewport — bake DPR into scale so pdf.js renders at full device resolution.
     // This avoids relying on ctx.scale() which pdf.js may override via setTransform().
     let renderScale = s * dpr;
-    const testW = Math.floor(cssViewport.width * dpr);
-    const testH = Math.floor(cssViewport.height * dpr);
-    if (testW > MAX_BUFFER || testH > MAX_BUFFER) {
-      const ratio = Math.min(MAX_BUFFER / testW, MAX_BUFFER / testH);
-      renderScale = s * dpr * ratio;
+    let testW = Math.floor(cssViewport.width * dpr);
+    let testH = Math.floor(cssViewport.height * dpr);
+
+    // Pass 1: clamp per-dimension
+    if (testW > MAX_DIM || testH > MAX_DIM) {
+      const ratio = Math.min(MAX_DIM / testW, MAX_DIM / testH);
+      renderScale *= ratio;
+      testW = Math.floor(testW * ratio);
+      testH = Math.floor(testH * ratio);
     }
-    const renderViewport = page.getViewport({ scale: renderScale, rotation: r });
+    // Pass 2: clamp total pixel area
+    if (testW * testH > MAX_AREA) {
+      renderScale *= Math.sqrt(MAX_AREA / (testW * testH));
+    }
+
+    let renderViewport = page.getViewport({ scale: renderScale, rotation: r });
 
     canvas.width = Math.floor(renderViewport.width);
     canvas.height = Math.floor(renderViewport.height);
+
+    // If browser silently clamped the canvas, fall back to reduced scale
+    if (canvas.width < Math.floor(renderViewport.width) - 1 ||
+        canvas.height < Math.floor(renderViewport.height) - 1) {
+      renderScale *= Math.min(canvas.width / renderViewport.width, canvas.height / renderViewport.height);
+      renderViewport = page.getViewport({ scale: renderScale, rotation: r });
+      canvas.width = Math.floor(renderViewport.width);
+      canvas.height = Math.floor(renderViewport.height);
+    }
     canvas.style.width = `${cssW}px`;
     canvas.style.height = `${cssH}px`;
 
@@ -407,15 +441,29 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     });
   }
 
-  // Cleanup render task on unmount
+  // Comprehensive cleanup on unmount — release GPU memory and parsed PDF data
   useEffect(() => {
     return () => {
+      // Cancel any in-progress render task
       if (renderTaskRef.current) {
         try {
           renderTaskRef.current.cancel();
         } catch {
           // ignore
         }
+        renderTaskRef.current = null;
+      }
+      // Destroy PDF document to release parsed data (fonts, images, internal canvases)
+      if (pdfDocRef.current) {
+        pdfDocRef.current.destroy();
+        pdfDocRef.current = null;
+      }
+      pageRef.current = null;
+      // Zero canvas dimensions to release GPU bitmap memory
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.width = 0;
+        canvas.height = 0;
       }
     };
   }, []);
@@ -802,7 +850,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         >
           <canvas ref={canvasRef} className="block" />
           {showPins && pageSize.width > 0 && sheetId && (() => {
-            const MAX_KONVA = MAX_BUFFER;
+            const MAX_KONVA = MAX_DIM;
             const effectiveScale = Math.min(scale, MAX_KONVA / Math.max(pageSize.width, pageSize.height));
             const ds = scale / effectiveScale;
             return (
@@ -817,7 +865,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
             );
           })()}
           {showAnnotations && pageSize.width > 0 && (() => {
-            const MAX_KONVA = MAX_BUFFER;
+            const MAX_KONVA = MAX_DIM;
             const effectiveScale = Math.min(scale, MAX_KONVA / Math.max(pageSize.width, pageSize.height));
             const ds = scale / effectiveScale;
             return (
