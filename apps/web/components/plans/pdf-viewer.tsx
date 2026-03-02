@@ -345,7 +345,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       renderTaskRef.current = null;
     }
 
-    const dpr = isMobileDevice ? Math.min(window.devicePixelRatio || 1, 2) : (window.devicePixelRatio || 1);
+    const dpr = window.devicePixelRatio || 1;
 
     // CSS viewport (for layout sizing)
     const cssViewport = page.getViewport({ scale: s, rotation: r });
