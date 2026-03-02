@@ -18,6 +18,8 @@ import {
   Undo2,
   Redo2,
   Save,
+  Check,
+  Loader2,
   MoreHorizontal,
   X,
   Palette,
@@ -55,6 +57,7 @@ interface AnnotationToolbarProps {
   canRedo: boolean;
   hasSelection: boolean;
   saving: boolean;
+  autoSaveStatus?: 'idle' | 'saving' | 'saved';
 }
 
 const COLORS = ['#EF4444', '#3B82F6', '#22C55E', '#F59E0B', '#8B5CF6', '#000000', '#FFFFFF'];
@@ -93,6 +96,7 @@ export function AnnotationToolbar({
   canRedo,
   hasSelection,
   saving,
+  autoSaveStatus = 'idle',
 }: AnnotationToolbarProps) {
   const isMobile = useIsMobile();
   const [showAllTools, setShowAllTools] = useState(false);
@@ -117,8 +121,13 @@ export function AnnotationToolbar({
             )}
           </div>
           <Button size="sm" onClick={onSave} disabled={saving} className="h-9">
-            <Save className="mr-1 h-3.5 w-3.5" />
-            {saving ? '...' : 'Uložit'}
+            {autoSaveStatus === 'saving' ? (
+              <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />...</>
+            ) : autoSaveStatus === 'saved' ? (
+              <><Check className="mr-1 h-3.5 w-3.5 text-green-500" />Uloženo</>
+            ) : (
+              <><Save className="mr-1 h-3.5 w-3.5" />{saving ? '...' : 'Uložit'}</>
+            )}
           </Button>
         </div>
 
@@ -299,8 +308,13 @@ export function AnnotationToolbar({
       <div className="flex-1" />
 
       <Button size="sm" onClick={onSave} disabled={saving}>
-        <Save className="mr-1 h-3.5 w-3.5" />
-        {saving ? 'Ukládání...' : 'Uložit'}
+        {autoSaveStatus === 'saving' ? (
+          <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Ukládání...</>
+        ) : autoSaveStatus === 'saved' ? (
+          <><Check className="mr-1 h-3.5 w-3.5 text-green-500" />Uloženo</>
+        ) : (
+          <><Save className="mr-1 h-3.5 w-3.5" />{saving ? 'Ukládání...' : 'Uložit'}</>
+        )}
       </Button>
     </div>
   );

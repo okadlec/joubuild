@@ -11,6 +11,7 @@ interface TaskPinOverlayProps {
   onTaskClick: (task: Task) => void;
   onPinDrop?: (x: number, y: number) => void;
   pinMode?: boolean;
+  displayScale?: number; // CSS scale compensation when effectiveScale < zoom scale
 }
 
 export function TaskPinOverlay({
@@ -21,6 +22,7 @@ export function TaskPinOverlay({
   onTaskClick,
   onPinDrop,
   pinMode = false,
+  displayScale = 1,
 }: TaskPinOverlayProps) {
   const pinnedTasks = tasks.filter(t => t.pin_x != null && t.pin_y != null);
 
@@ -28,12 +30,17 @@ export function TaskPinOverlay({
     <Stage
       width={width * scale}
       height={height * scale}
+      pixelRatio={1}
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
         pointerEvents: pinMode ? 'auto' : 'none',
         cursor: pinMode ? 'crosshair' : 'default',
+        ...(displayScale !== 1 ? {
+          transform: `scale(${displayScale})`,
+          transformOrigin: '0 0',
+        } : {}),
       }}
       onClick={(e) => {
         if (!pinMode || !onPinDrop) return;

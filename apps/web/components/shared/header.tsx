@@ -1,11 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { LogOut, User, Search, Menu } from 'lucide-react';
+import { LogOut, User, Menu } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu';
-import { Input } from '@/components/ui/input';
 import { OfflineIndicator } from './offline-indicator';
 import { NotificationsPanel } from './notifications-panel';
 
@@ -30,7 +29,7 @@ export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProp
   }
 
   return (
-    <header className="flex h-14 items-center justify-between border-b bg-background px-4">
+    <header className="flex h-14 items-center justify-between border-b bg-background px-4 pt-[env(safe-area-inset-top)]">
       <div className="flex items-center gap-2">
         {onMenuClick && !hideHamburgerInProject && (
           <button
@@ -40,13 +39,6 @@ export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProp
             <Menu className="h-5 w-5" />
           </button>
         )}
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Hledat..."
-            className="h-9 w-40 pl-8 sm:w-64"
-          />
-        </div>
       </div>
 
       <div className="flex items-center gap-3">

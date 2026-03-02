@@ -38,6 +38,7 @@ interface AnnotationOverlayProps {
   onSelectId: (id: string | null) => void;
   onAnnotationClick?: (id: string) => void;
   pixelsPerMeter: number | null; // calibration ratio
+  displayScale?: number; // CSS scale compensation when effectiveScale < zoom scale
 }
 
 function generateId() {
@@ -57,6 +58,7 @@ export function AnnotationOverlay({
   onSelectId,
   onAnnotationClick,
   pixelsPerMeter,
+  displayScale = 1,
 }: AnnotationOverlayProps) {
   const stageRef = useRef<Konva.Stage>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -98,8 +100,13 @@ export function AnnotationOverlay({
     }
   }, [activeTool, getRelativePointerPosition]);
 
-  const handleMouseMove = useCallback(() => {
+  const handleMouseMove = useCallback((e?: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (!isDrawing) return;
+
+    // Prevent touch event from bubbling to container (avoids scrolling while drawing)
+    if (e?.evt) {
+      e.evt.preventDefault();
+    }
 
     const pos = getRelativePointerPosition();
     if (!pos) return;
@@ -109,7 +116,12 @@ export function AnnotationOverlay({
     }
   }, [isDrawing, activeTool, getRelativePointerPosition]);
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e?: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    // Prevent touch event from bubbling to container
+    if (e?.evt) {
+      e.evt.preventDefault();
+    }
+
     if (!isDrawing || !drawStart) {
       setIsDrawing(false);
       return;
@@ -422,10 +434,10 @@ export function AnnotationOverlay({
         const midX = (pts[0] + pts[2]) / 2;
         const midY = (pts[1] + pts[3]) / 2;
         return (
-          <Group key={ann.id}>
+          <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}>
             <Line {...commonProps} points={pts} dash={[8, 4]} />
-            <Circle x={pts[0]} y={pts[1]} radius={4} fill="#EF4444" />
-            <Circle x={pts[2]} y={pts[3]} radius={4} fill="#EF4444" />
+            <Circle x={pts[0]} y={pts[1]} radius={4} fill="#EF4444" onClick={handleSelect} onTap={handleSelect} />
+            <Circle x={pts[2]} y={pts[3]} radius={4} fill="#EF4444" onClick={handleSelect} onTap={handleSelect} />
             <Text
               x={midX - 30}
               y={midY - 20}
@@ -434,6 +446,8 @@ export function AnnotationOverlay({
               fontStyle="bold"
               fill="#EF4444"
               padding={4}
+              onClick={handleSelect}
+              onTap={handleSelect}
             />
           </Group>
         );
@@ -441,7 +455,7 @@ export function AnnotationOverlay({
 
       case 'area': {
         return (
-          <Group key={ann.id}>
+          <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}>
             <Rect
               x={ann.data.x}
               y={ann.data.y}
@@ -462,6 +476,8 @@ export function AnnotationOverlay({
               fontStyle="bold"
               fill="#3B82F6"
               padding={4}
+              onClick={handleSelect}
+              onTap={handleSelect}
             />
           </Group>
         );
@@ -479,11 +495,16 @@ export function AnnotationOverlay({
       height={height * scale}
       scaleX={scale}
       scaleY={scale}
+      pixelRatio={1}
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
         cursor: activeTool === 'select' ? 'default' : 'crosshair',
+        ...(displayScale !== 1 ? {
+          transform: `scale(${displayScale})`,
+          transformOrigin: '0 0',
+        } : {}),
       }}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}

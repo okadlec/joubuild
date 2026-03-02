@@ -18,6 +18,74 @@ import { useProjectRole } from '@/lib/hooks/use-project-role';
 import { AnnotationListPanel } from './annotation-list-panel';
 import type { Task } from '@joubuild/shared';
 
+// --- Tile-based rendering types and helpers ---
+
+interface TileRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** Compute visible tile rect (CSS px, page-relative) from scroll position + overscan */
+function computeTileRect(
+  container: HTMLElement,
+  spacer: HTMLElement,
+  cssPageW: number,
+  cssPageH: number,
+  overscan: number
+): TileRect {
+  const { scrollLeft, scrollTop, clientWidth, clientHeight } = container;
+
+  // spacer.offsetLeft is relative to container (container has position:relative)
+  const visLeft = scrollLeft - spacer.offsetLeft;
+  const visTop = scrollTop - spacer.offsetTop;
+  const visRight = visLeft + clientWidth;
+  const visBottom = visTop + clientHeight;
+
+  const padX = clientWidth * overscan;
+  const padY = clientHeight * overscan;
+
+  const x = Math.max(0, Math.floor(visLeft - padX));
+  const y = Math.max(0, Math.floor(visTop - padY));
+  const right = Math.min(cssPageW, Math.ceil(visRight + padX));
+  const bottom = Math.min(cssPageH, Math.ceil(visBottom + padY));
+
+  return {
+    x,
+    y,
+    width: Math.max(1, right - x),
+    height: Math.max(1, bottom - y),
+  };
+}
+
+/** Check if scroll has consumed >50% of overscan buffer on any edge */
+function shouldRetrigger(
+  container: HTMLElement,
+  spacer: HTMLElement,
+  tile: TileRect | null,
+  cssPageW: number,
+  cssPageH: number
+): boolean {
+  if (!tile) return true;
+
+  const { scrollLeft, scrollTop, clientWidth, clientHeight } = container;
+  const visLeft = scrollLeft - spacer.offsetLeft;
+  const visTop = scrollTop - spacer.offsetTop;
+  const visRight = visLeft + clientWidth;
+  const visBottom = visTop + clientHeight;
+
+  const bufLeft = Math.max(0, visLeft) - tile.x;
+  const bufTop = Math.max(0, visTop) - tile.y;
+  const bufRight = (tile.x + tile.width) - Math.min(cssPageW, visRight);
+  const bufBottom = (tile.y + tile.height) - Math.min(cssPageH, visBottom);
+
+  const minBufX = clientWidth * 0.25;
+  const minBufY = clientHeight * 0.25;
+
+  return bufLeft < minBufX || bufTop < minBufY || bufRight < minBufX || bufBottom < minBufY;
+}
+
 interface PdfViewerProps {
   fileUrl: string;
   sheetVersionId: string;
@@ -80,12 +148,18 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   const [zoomPreview, setZoomPreview] = useState(1);
   const [zoomOrigin, setZoomOrigin] = useState<{ x: number; y: number } | null>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
+  const spacerRef = useRef<HTMLDivElement>(null);
+  const [cssPageSize, setCssPageSize] = useState({ width: 0, height: 0 });
+  const cssPageSizeRef = useRef({ width: 0, height: 0 });
+  const renderedTileRef = useRef<TileRect | null>(null);
+  const scrollRenderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Max canvas dimension & area — mobile devices have lower GPU limits
+  // Device detection and canvas limits
   const isMobileDevice = typeof navigator !== 'undefined'
     && /Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);
-  const MAX_DIM = isMobileDevice ? 4096 : 16384;
-  const MAX_AREA = isMobileDevice ? 16_777_216 : 200_000_000; // 4096² / ~200M
+  const MAX_KONVA_DIM = isMobileDevice ? 4096 : 16384;
+  const OVERSCAN = isMobileDevice ? 0.5 : 1.0;
+  const MAX_ZOOM = 5;
 
   // Render task tracking refs
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -116,7 +190,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       setZoomPreview(previewRatio);
       setZoomOrigin({ x: originX, y: originY });
     },
-    maxScale: isMobileDevice ? 2 : 3,
+    maxScale: MAX_ZOOM,
   });
 
   // Keep pinch-zoom in sync with button-driven scale changes
@@ -134,8 +208,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       canvasWrapperRef.current.style.transformOrigin = '';
       canvasWrapperRef.current.style.willChange = '';
     }
-    setScale(s => Math.min(isMobileDevice ? 2 : 3, s + 0.25));
-  }, [resetPreview, isMobileDevice]);
+    setScale(s => Math.min(MAX_ZOOM, s + 0.25));
+  }, [resetPreview]);
 
   const handleZoomOut = useCallback(() => {
     resetPreview();
@@ -147,7 +221,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       canvasWrapperRef.current.style.willChange = '';
     }
     setScale(s => Math.max(0.25, s - 0.25));
-  }, [resetPreview, isMobileDevice]);
+  }, [resetPreview]);
 
   // Load PDF
   useEffect(() => {
@@ -187,7 +261,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         setCurrentPage(1);
         const viewport = page.getViewport({ scale: 1, rotation: 0 });
         setPageSize({ width: viewport.width, height: viewport.height });
-        renderPage(page, scale, rotation);
+        renderVisibleTile(page, scale, rotation);
         setLoading(false);
       } catch (err) {
         if (!cancelled) {
@@ -320,18 +394,24 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     const page = await pdfDocRef.current.getPage(pageNum);
     pageRef.current = page;
     setCurrentPage(pageNum);
-    renderPage(page, scale, rotation);
+    renderedTileRef.current = null;
+    if (containerRef.current) {
+      containerRef.current.scrollLeft = 0;
+      containerRef.current.scrollTop = 0;
+    }
+    renderVisibleTile(page, scale, rotation);
   }, [totalPages, scale, rotation]);
 
   // Re-render PDF on scale/rotation change
   useEffect(() => {
     if (pageRef.current) {
-      renderPage(pageRef.current, scale, rotation);
+      renderedTileRef.current = null;
+      renderVisibleTile();
     }
   }, [scale, rotation]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  async function doRender(page: any, s: number, r: number) {
+  async function doRender(page: any, s: number, r: number, tile: TileRect) {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -347,47 +427,29 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
 
     const dpr = window.devicePixelRatio || 1;
 
-    // CSS viewport (for layout sizing)
-    const cssViewport = page.getViewport({ scale: s, rotation: r });
-    const cssW = Math.floor(cssViewport.width);
-    const cssH = Math.floor(cssViewport.height);
+    // Canvas covers only the tile area at native DPR — always safe on mobile
+    const canvasW = Math.ceil(tile.width * dpr);
+    const canvasH = Math.ceil(tile.height * dpr);
 
-    // Render viewport — bake DPR into scale so pdf.js renders at full device resolution.
-    // This avoids relying on ctx.scale() which pdf.js may override via setTransform().
-    let renderScale = s * dpr;
-    let testW = Math.floor(cssViewport.width * dpr);
-    let testH = Math.floor(cssViewport.height * dpr);
-
-    // Pass 1: clamp per-dimension
-    if (testW > MAX_DIM || testH > MAX_DIM) {
-      const ratio = Math.min(MAX_DIM / testW, MAX_DIM / testH);
-      renderScale *= ratio;
-      testW = Math.floor(testW * ratio);
-      testH = Math.floor(testH * ratio);
-    }
-    // Pass 2: clamp total pixel area
-    if (testW * testH > MAX_AREA) {
-      renderScale *= Math.sqrt(MAX_AREA / (testW * testH));
-    }
-
-    let renderViewport = page.getViewport({ scale: renderScale, rotation: r });
-
-    canvas.width = Math.floor(renderViewport.width);
-    canvas.height = Math.floor(renderViewport.height);
-
-    // If browser silently clamped the canvas, fall back to reduced scale
-    if (canvas.width < Math.floor(renderViewport.width) - 1 ||
-        canvas.height < Math.floor(renderViewport.height) - 1) {
-      renderScale *= Math.min(canvas.width / renderViewport.width, canvas.height / renderViewport.height);
-      renderViewport = page.getViewport({ scale: renderScale, rotation: r });
-      canvas.width = Math.floor(renderViewport.width);
-      canvas.height = Math.floor(renderViewport.height);
-    }
-    canvas.style.width = `${cssW}px`;
-    canvas.style.height = `${cssH}px`;
+    canvas.width = canvasW;
+    canvas.height = canvasH;
+    canvas.style.width = `${tile.width}px`;
+    canvas.style.height = `${tile.height}px`;
+    canvas.style.position = 'absolute';
+    canvas.style.left = `${tile.x}px`;
+    canvas.style.top = `${tile.y}px`;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    // Viewport at full scale×DPR with offset so tile origin maps to canvas (0,0).
+    // Content outside canvas bounds is clipped automatically by the browser.
+    const renderViewport = page.getViewport({
+      scale: s * dpr,
+      rotation: r,
+      offsetX: -tile.x * dpr,
+      offsetY: -tile.y * dpr,
+    });
 
     const task = page.render({ canvasContext: ctx, viewport: renderViewport });
     renderTaskRef.current = task;
@@ -395,7 +457,6 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     try {
       await task.promise;
     } catch (err: unknown) {
-      // RenderingCancelledException is expected when we cancel — ignore it
       if (err && typeof err === 'object' && 'name' in err && (err as { name: string }).name === 'RenderingCancelledException') {
         return;
       }
@@ -404,6 +465,9 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     } finally {
       renderTaskRef.current = null;
     }
+
+    // Store rendered tile for scroll hysteresis
+    renderedTileRef.current = tile;
 
     // Clear CSS transform preview directly on DOM (zero-frame-gap), then sync React state
     if (canvasWrapperRef.current) {
@@ -420,22 +484,68 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  function renderPage(page: any, s: number, r: number) {
+  function renderVisibleTile(page?: any, s?: number, r?: number) {
+    const p = page || pageRef.current;
+    const sc = s ?? scale;
+    const rot = r ?? rotation;
+    if (!p) return;
+
+    const container = containerRef.current;
+    const spacer = spacerRef.current;
+
+    // Compute CSS page dimensions
+    const cssViewport = p.getViewport({ scale: sc, rotation: rot });
+    const cssW = Math.floor(cssViewport.width);
+    const cssH = Math.floor(cssViewport.height);
+
+    // Save scroll center fraction (page-relative) before resizing
+    let centerFracX = 0.5, centerFracY = 0.5;
+    if (container && spacer && spacer.clientWidth > 0 && spacer.clientHeight > 0) {
+      const cx = container.scrollLeft + container.clientWidth / 2 - spacer.offsetLeft;
+      const cy = container.scrollTop + container.clientHeight / 2 - spacer.offsetTop;
+      centerFracX = Math.max(0, Math.min(1, cx / spacer.clientWidth));
+      centerFracY = Math.max(0, Math.min(1, cy / spacer.clientHeight));
+    }
+
+    // Update spacer size (sets scrollable area)
+    if (spacer) {
+      spacer.style.width = `${cssW}px`;
+      spacer.style.height = `${cssH}px`;
+    }
+    setCssPageSize({ width: cssW, height: cssH });
+    cssPageSizeRef.current = { width: cssW, height: cssH };
+
+    // Restore scroll center after resize (reading offsetLeft forces reflow with new size)
+    if (container && spacer && renderedTileRef.current) {
+      const newCx = centerFracX * cssW + spacer.offsetLeft;
+      const newCy = centerFracY * cssH + spacer.offsetTop;
+      container.scrollLeft = newCx - container.clientWidth / 2;
+      container.scrollTop = newCy - container.clientHeight / 2;
+    }
+
+    // Compute tile from current scroll position
+    let tile: TileRect;
+    if (container && spacer) {
+      tile = computeTileRect(container, spacer, cssW, cssH, OVERSCAN);
+    } else {
+      // Fallback: render full page (during initial mount before refs attach)
+      tile = { x: 0, y: 0, width: cssW, height: cssH };
+    }
+
+    // Delegate to render queue
     if (renderingRef.current) {
-      // Queue the latest render request instead of dropping it
-      queuedRenderRef.current = { page, s, r };
+      queuedRenderRef.current = { page: p, s: sc, r: rot };
       return;
     }
 
     renderingRef.current = true;
     requestAnimationFrame(() => {
-      doRender(page, s, r).finally(() => {
+      doRender(p, sc, rot, tile).finally(() => {
         renderingRef.current = false;
-        // Process queued render if any
         const queued = queuedRenderRef.current;
         if (queued) {
           queuedRenderRef.current = null;
-          renderPage(queued.page, queued.s, queued.r);
+          renderVisibleTile(queued.page, queued.s, queued.r);
         }
       });
     });
@@ -465,8 +575,61 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         canvas.width = 0;
         canvas.height = 0;
       }
+      // Clear scroll render timer
+      if (scrollRenderTimerRef.current) clearTimeout(scrollRenderTimerRef.current);
     };
   }, []);
+
+  // Scroll-driven tile re-rendering
+  useEffect(() => {
+    const container = containerRef.current;
+    const spacer = spacerRef.current;
+    if (!container || !spacer) return;
+
+    function handleScroll() {
+      if (scrollRenderTimerRef.current) clearTimeout(scrollRenderTimerRef.current);
+      scrollRenderTimerRef.current = setTimeout(() => {
+        const c = containerRef.current;
+        const sp = spacerRef.current;
+        if (!c || !sp) return;
+        const { width: cssW, height: cssH } = cssPageSizeRef.current;
+        if (cssW === 0 || cssH === 0) return;
+        if (shouldRetrigger(c, sp, renderedTileRef.current, cssW, cssH)) {
+          renderVisibleTile();
+        }
+      }, 50);
+    }
+
+    container.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      container.removeEventListener('scroll', handleScroll);
+      if (scrollRenderTimerRef.current) {
+        clearTimeout(scrollRenderTimerRef.current);
+        scrollRenderTimerRef.current = null;
+      }
+    };
+  }, [scale, rotation]);
+
+  // ResizeObserver for fullscreen toggle and orientation changes
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    let resizeTimer: ReturnType<typeof setTimeout> | null = null;
+    const observer = new ResizeObserver(() => {
+      if (resizeTimer) clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        renderedTileRef.current = null;
+        renderVisibleTile();
+      }, 100);
+    });
+
+    observer.observe(container);
+    return () => {
+      observer.disconnect();
+      if (resizeTimer) clearTimeout(resizeTimer);
+    };
+  }, [scale, rotation]);
 
   // Annotation handlers
   const handleAnnotationsChange = useCallback((newAnnotations: AnnotationData[]) => {
@@ -599,7 +762,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   const handleCalibrationClick = useCallback((e: React.MouseEvent<HTMLDivElement> | React.TouchEvent<HTMLDivElement>) => {
     if (!isCalibrating) return;
 
-    const rect = e.currentTarget.getBoundingClientRect();
+    const rect = spacerRef.current?.getBoundingClientRect();
+    if (!rect) return;
     let clientX: number, clientY: number;
     if ('touches' in e) {
       const touch = e.changedTouches[0];
@@ -809,7 +973,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       {/* Canvas + Annotation overlay */}
       <div
         ref={containerRef}
-        className={cn('flex-1 overflow-auto rounded-lg border bg-muted/50', showListView && showAnnotations && 'hidden')}
+        className={cn('relative flex-1 overflow-auto rounded-lg border bg-muted/50', showListView && showAnnotations && 'hidden')}
         onClick={isCalibrating ? handleCalibrationClick : undefined}
         onTouchEnd={isCalibrating ? handleCalibrationClick : undefined}
         style={{
@@ -839,19 +1003,22 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
             </p>
           </div>
         )}
-        <div
-          ref={canvasWrapperRef}
-          className="relative mx-auto inline-block"
-          style={zoomPreview !== 1 ? {
-            transform: `scale(${zoomPreview})`,
-            transformOrigin: zoomOrigin ? `${zoomOrigin.x}px ${zoomOrigin.y}px` : 'center',
-            willChange: 'transform',
-          } : undefined}
-        >
-          <canvas ref={canvasRef} className="block" />
+        {/* Spacer: sized to full CSS page, provides scrollable area */}
+        <div ref={spacerRef} className="relative mx-auto">
+          {/* Canvas wrapper: handles CSS zoom preview during pinch gesture */}
+          <div
+            ref={canvasWrapperRef}
+            className="absolute inset-0 overflow-hidden"
+            style={zoomPreview !== 1 ? {
+              transform: `scale(${zoomPreview})`,
+              transformOrigin: zoomOrigin ? `${zoomOrigin.x}px ${zoomOrigin.y}px` : 'center',
+              willChange: 'transform',
+            } : undefined}
+          >
+            <canvas ref={canvasRef} className="block" />
+          </div>
           {showPins && pageSize.width > 0 && sheetId && (() => {
-            const MAX_KONVA = MAX_DIM;
-            const effectiveScale = Math.min(scale, MAX_KONVA / Math.max(pageSize.width, pageSize.height));
+            const effectiveScale = Math.min(scale, MAX_KONVA_DIM / Math.max(pageSize.width, pageSize.height));
             const ds = scale / effectiveScale;
             return (
               <TaskPinOverlay
@@ -865,8 +1032,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
             );
           })()}
           {showAnnotations && pageSize.width > 0 && (() => {
-            const MAX_KONVA = MAX_DIM;
-            const effectiveScale = Math.min(scale, MAX_KONVA / Math.max(pageSize.width, pageSize.height));
+            const effectiveScale = Math.min(scale, MAX_KONVA_DIM / Math.max(pageSize.width, pageSize.height));
             const ds = scale / effectiveScale;
             return (
             <AnnotationOverlay

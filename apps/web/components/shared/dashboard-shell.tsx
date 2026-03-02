@@ -29,7 +29,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
   }, []);
 
   return (
-    <div className="flex h-dvh overflow-hidden">
+    <div className="flex h-dvh overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       {/* Mobile overlay — only when sidebar is open and NOT in project context (bottom nav replaces it) */}
       {sidebarOpen && (
         <div
@@ -52,8 +52,8 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
 
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header user={user} onMenuClick={handleMenuClick} hideHamburgerInProject={isInProject} />
-        {/* pb accounts for bottom nav: h-14 (3.5rem) + safe-area-inset-bottom */}
-        <main className={`flex-1 overflow-auto p-2 sm:p-4 lg:p-6 ${isInProject ? 'pb-[calc(3.5rem+env(safe-area-inset-bottom))] lg:pb-6' : ''}`}>
+        {/* pb accounts for bottom nav: 60px + safe-area-inset-bottom */}
+        <main className={`flex-1 overflow-auto p-2 sm:p-4 lg:p-6 ${isInProject ? 'pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-6' : ''}`}>
           {children}
         </main>
       </div>

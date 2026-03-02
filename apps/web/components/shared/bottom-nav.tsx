@@ -51,7 +51,8 @@ export function BottomNav({ hidden }: BottomNavProps) {
         <div className="fixed inset-0 z-40 lg:hidden" onClick={() => setShowMore(false)}>
           <div className="absolute inset-0 bg-black/30" />
           <div
-            className="absolute bottom-14 left-0 right-0 rounded-t-xl border-t bg-background p-4 pb-[env(safe-area-inset-bottom)]"
+            className="absolute left-0 right-0 rounded-t-xl border-t bg-background p-4"
+            style={{ bottom: 'calc(60px + env(safe-area-inset-bottom))' }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
@@ -69,7 +70,7 @@ export function BottomNav({ hidden }: BottomNavProps) {
                     href={item.href}
                     onClick={() => setShowMore(false)}
                     className={cn(
-                      'flex flex-col items-center gap-1 rounded-lg p-3',
+                      'flex flex-col items-center gap-1 rounded-lg p-3 transition-all active:scale-95 active:bg-accent',
                       isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-accent'
                     )}
                   >
@@ -84,7 +85,7 @@ export function BottomNav({ hidden }: BottomNavProps) {
       )}
 
       {/* Bottom navigation bar — total height: h-14 (3.5rem) + env(safe-area-inset-bottom) */}
-      <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-14 items-center justify-around border-t bg-background pb-[env(safe-area-inset-bottom)] lg:hidden">
+      <nav className="fixed bottom-0 left-0 right-0 z-30 flex h-[60px] items-center justify-around border-t bg-background pt-1 pb-[env(safe-area-inset-bottom)] lg:hidden">
         {items.map((item) => {
           const isActive = pathname.startsWith(item.href);
           return (
@@ -92,7 +93,7 @@ export function BottomNav({ hidden }: BottomNavProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                'flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-2',
+                'flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 transition-all active:scale-95 active:bg-accent',
                 isActive ? 'text-primary' : 'text-muted-foreground'
               )}
             >
@@ -104,7 +105,7 @@ export function BottomNav({ hidden }: BottomNavProps) {
         <button
           onClick={() => setShowMore(!showMore)}
           className={cn(
-            'flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-2',
+            'flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 rounded-lg px-2 transition-all active:scale-95 active:bg-accent',
             showMore ? 'text-primary' : 'text-muted-foreground'
           )}
         >

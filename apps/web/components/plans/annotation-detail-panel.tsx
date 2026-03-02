@@ -131,21 +131,42 @@ export function AnnotationDetailPanel({
       const { data: { user } } = await supabase.auth.getUser();
       if (user) setCurrentUserId(user.id);
 
-      // Load comments for this annotation with user profiles
-      const { data: commentsData } = await supabase
+      // Load comments for this annotation, then fetch profiles separately
+      // (embedded join profiles:user_id fails when FK resolves through auth.users)
+      const { data: commentsData, error: commentsError } = await supabase
         .from('comments')
-        .select('*, profiles:user_id(full_name, email)')
+        .select('*')
         .eq('annotation_id', annotationId)
         .order('created_at', { ascending: true });
-      if (commentsData) {
+      if (commentsError) {
+        console.error('Failed to load comments:', commentsError);
+      }
+      if (commentsData && commentsData.length > 0) {
+        // Fetch profiles for unique user_ids
+        const userIds = [...new Set(commentsData.map((c: { user_id: string | null }) => c.user_id).filter(Boolean))] as string[];
+        let profileMap: Record<string, { full_name: string | null; email: string | null }> = {};
+        if (userIds.length > 0) {
+          const { data: profiles, error: profilesError } = await supabase
+            .from('profiles')
+            .select('id, full_name, email')
+            .in('id', userIds);
+          if (profilesError) {
+            console.error('Failed to load profiles:', profilesError);
+          }
+          if (profiles) {
+            profileMap = Object.fromEntries(profiles.map((p: { id: string; full_name: string | null; email: string | null }) => [p.id, p]));
+          }
+        }
         setComments(commentsData.map((c: Record<string, unknown>) => {
-          const profile = c.profiles as Record<string, unknown> | null;
+          const profile = c.user_id ? profileMap[c.user_id as string] : null;
           return {
             ...c,
-            user_name: profile?.full_name as string | null,
-            user_email: profile?.email as string | null,
+            user_name: profile?.full_name ?? null,
+            user_email: profile?.email ?? null,
           } as Comment;
         }));
+      } else if (commentsData) {
+        setComments([]);
       }
 
       // Load photos for this annotation
@@ -453,7 +474,7 @@ export function AnnotationDetailPanel({
                       )}
                     </div>
                     {isOwn && editingId !== comment.id && (
-                      <div className="flex flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      <div className="flex flex-col gap-0.5 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
                         <Button
                           size="icon"
                           variant="ghost"
