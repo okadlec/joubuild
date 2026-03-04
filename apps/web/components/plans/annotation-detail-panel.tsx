@@ -280,12 +280,18 @@ export function AnnotationDetailPanel({
   }, []);
 
   const handlePhotoUpload = useCallback(async (files: FileList) => {
+    // Snapshot FileList into a plain array immediately — the caller resets
+    // input.value = '' right after this call, which invalidates the live FileList
+    // before the first await below would let us iterate it.
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
+
     setUploading(true);
     const supabase = getSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
     let successCount = 0;
 
-    for (const file of Array.from(files)) {
+    for (const file of fileArray) {
       const compressed = await compressImage(file);
       const fileName = `${projectId}/${Date.now()}-${file.name.replace(/\.[^.]+$/, '.jpg')}`;
       const { error: uploadError } = await supabase.storage
