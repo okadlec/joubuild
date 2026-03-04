@@ -418,16 +418,16 @@ function AlignStep({
         const vpB = pageB.getViewport({ scale });
 
         if (canvasARef.current) {
-          canvasARef.current.width = vpA.width;
-          canvasARef.current.height = vpA.height;
+          canvasARef.current.width = Math.round(vpA.width);
+          canvasARef.current.height = Math.round(vpA.height);
           const ctx = canvasARef.current.getContext('2d');
           if (ctx) await pageA.render({ canvasContext: ctx, viewport: vpA }).promise;
-          setCanvasSizeA({ w: vpA.width, h: vpA.height });
+          setCanvasSizeA({ w: Math.round(vpA.width), h: Math.round(vpA.height) });
         }
 
         if (canvasBRef.current) {
-          canvasBRef.current.width = vpB.width;
-          canvasBRef.current.height = vpB.height;
+          canvasBRef.current.width = Math.round(vpB.width);
+          canvasBRef.current.height = Math.round(vpB.height);
           const ctx = canvasBRef.current.getContext('2d');
           if (ctx) await pageB.render({ canvasContext: ctx, viewport: vpB }).promise;
         }
@@ -699,23 +699,23 @@ function ResultStep({
 
         // Render A to offscreen canvas
         const canvasA = document.createElement('canvas');
-        canvasA.width = vpA.width;
-        canvasA.height = vpA.height;
+        canvasA.width = Math.round(vpA.width);
+        canvasA.height = Math.round(vpA.height);
         const ctxA = canvasA.getContext('2d')!;
         await pageA.render({ canvasContext: ctxA, viewport: vpA }).promise;
 
         // Render B to offscreen canvas
         const canvasB = document.createElement('canvas');
-        canvasB.width = vpB.width;
-        canvasB.height = vpB.height;
+        canvasB.width = Math.round(vpB.width);
+        canvasB.height = Math.round(vpB.height);
         const ctxB = canvasB.getContext('2d')!;
         await pageB.render({ canvasContext: ctxB, viewport: vpB }).promise;
 
         if (cancelled) return;
 
         // Compute diff with alignment
-        const w = vpA.width;
-        const h = vpA.height;
+        const w = Math.round(vpA.width);
+        const h = Math.round(vpA.height);
         const diffCanvas = document.createElement('canvas');
         diffCanvas.width = w;
         diffCanvas.height = h;

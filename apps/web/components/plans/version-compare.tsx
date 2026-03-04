@@ -61,24 +61,24 @@ export function VersionCompare({ oldFileUrl, newFileUrl, oldLabel, newLabel }: V
 
         // Render old
         if (oldCanvasRef.current) {
-          oldCanvasRef.current.width = oldViewport.width;
-          oldCanvasRef.current.height = oldViewport.height;
+          oldCanvasRef.current.width = Math.round(oldViewport.width);
+          oldCanvasRef.current.height = Math.round(oldViewport.height);
           const ctx = oldCanvasRef.current.getContext('2d');
           if (ctx) await oldPage.render({ canvasContext: ctx, viewport: oldViewport }).promise;
         }
 
         // Render new
         if (newCanvasRef.current) {
-          newCanvasRef.current.width = newViewport.width;
-          newCanvasRef.current.height = newViewport.height;
+          newCanvasRef.current.width = Math.round(newViewport.width);
+          newCanvasRef.current.height = Math.round(newViewport.height);
           const ctx = newCanvasRef.current.getContext('2d');
           if (ctx) await newPage.render({ canvasContext: ctx, viewport: newViewport }).promise;
         }
 
         // Create diff overlay
         if (overlayCanvasRef.current && oldCanvasRef.current && newCanvasRef.current) {
-          const w = Math.max(oldViewport.width, newViewport.width);
-          const h = Math.max(oldViewport.height, newViewport.height);
+          const w = Math.round(Math.max(oldViewport.width, newViewport.width));
+          const h = Math.round(Math.max(oldViewport.height, newViewport.height));
           overlayCanvasRef.current.width = w;
           overlayCanvasRef.current.height = h;
 
@@ -163,16 +163,16 @@ export function VersionCompare({ oldFileUrl, newFileUrl, oldLabel, newLabel }: V
     if (oldPdfRef.current && pageNum <= totalPagesOld && oldCanvasRef.current) {
       const page = await oldPdfRef.current.getPage(pageNum);
       const vp = page.getViewport({ scale });
-      oldCanvasRef.current.width = vp.width;
-      oldCanvasRef.current.height = vp.height;
+      oldCanvasRef.current.width = Math.round(vp.width);
+      oldCanvasRef.current.height = Math.round(vp.height);
       const ctx = oldCanvasRef.current.getContext('2d');
       if (ctx) await page.render({ canvasContext: ctx, viewport: vp }).promise;
     }
     if (newPdfRef.current && pageNum <= totalPagesNew && newCanvasRef.current) {
       const page = await newPdfRef.current.getPage(pageNum);
       const vp = page.getViewport({ scale });
-      newCanvasRef.current.width = vp.width;
-      newCanvasRef.current.height = vp.height;
+      newCanvasRef.current.width = Math.round(vp.width);
+      newCanvasRef.current.height = Math.round(vp.height);
       const ctx = newCanvasRef.current.getContext('2d');
       if (ctx) await page.render({ canvasContext: ctx, viewport: vp }).promise;
     }
