@@ -179,6 +179,7 @@ export interface Task {
   actual_hours: number;
   estimated_cost: number | null;
   actual_cost: number;
+  annotation_id: string | null;
   sort_order: number;
   created_at: string;
   updated_at: string;

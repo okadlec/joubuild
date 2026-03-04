@@ -13,6 +13,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { PdfViewer } from './pdf-viewer';
 import { VersionCompare } from './version-compare';
+import { CrossCompareDialog } from './cross-compare-dialog';
 import { useOfflinePdf } from '@/lib/hooks/use-offline-pdf';
 
 interface SheetVersion {
@@ -91,6 +92,14 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
   const [compareVersions, setCompareVersions] = useState<{
     old: SheetVersion;
     new: SheetVersion;
+  } | null>(null);
+
+  // Cross-compare
+  const [showCrossCompare, setShowCrossCompare] = useState(false);
+  const [crossCompareInitial, setCrossCompareInitial] = useState<{
+    planSetId: string;
+    sheetId: string;
+    versionId: string;
   } | null>(null);
 
   // Deep-link: auto-select sheet from URL search params (?sheet=...&annotation=...)
@@ -346,6 +355,24 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
             Nová revize
           </Button>
           {currentVersion && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const planSet = planSets.find(ps => ps.sheets.some(s => s.id === selectedSheet.id));
+                setCrossCompareInitial({
+                  planSetId: planSet?.id ?? '',
+                  sheetId: selectedSheet.id,
+                  versionId: currentVersion.id,
+                });
+                setShowCrossCompare(true);
+              }}
+            >
+              <GitCompare className="mr-1 h-3.5 w-3.5" />
+              Porovnat
+            </Button>
+          )}
+          {currentVersion && (
             <OfflineDownloadButton
               sheetId={selectedSheet.id}
               name={selectedSheet.name}
@@ -413,6 +440,16 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
             />
           </div>
         )}
+
+        {/* Cross Compare Dialog */}
+        <CrossCompareDialog
+          open={showCrossCompare}
+          onClose={() => setShowCrossCompare(false)}
+          planSets={planSets}
+          initialPlanSetId={crossCompareInitial?.planSetId}
+          initialSheetId={crossCompareInitial?.sheetId}
+          initialVersionId={crossCompareInitial?.versionId}
+        />
 
         {/* New Version Upload Dialog */}
         <Dialog open={showNewVersion} onClose={() => setShowNewVersion(false)}>

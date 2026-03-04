@@ -11,7 +11,7 @@ import { AnnotationToolbar, type AnnotationTool } from './annotation-toolbar';
 import { AnnotationOverlay, type AnnotationData } from './annotation-overlay';
 import { CalibrationDialog } from './calibration-dialog';
 import { TaskPinOverlay } from './task-pin-overlay';
-import { AnnotationDetailPanel } from './annotation-detail-panel';
+import { AnnotationDetailDialog } from './annotation-detail-dialog';
 import { usePinchZoom } from '@/lib/hooks/use-pinch-zoom';
 import { getOfflinePdfData } from '@/lib/offline/pdf-offline';
 import { useProjectRole } from '@/lib/hooks/use-project-role';
@@ -1028,6 +1028,26 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     setDetailAnnotationId(id);
   }, [annotations, sheetVersionId]);
 
+  // Handle task pin click — open the annotation dialog for the task's linked annotation
+  const handleTaskPinClick = useCallback((task: Task) => {
+    if (task.annotation_id) {
+      setDetailAnnotationId(task.annotation_id);
+    }
+  }, []);
+
+  // Task CRUD callbacks to keep local tasks state in sync with dialog changes
+  const handleDialogTaskCreated = useCallback((task: Task) => {
+    setTasks(prev => [...prev, task]);
+  }, []);
+
+  const handleDialogTaskUpdated = useCallback((task: Task) => {
+    setTasks(prev => prev.map(t => t.id === task.id ? task : t));
+  }, []);
+
+  const handleDialogTaskDeleted = useCallback((id: string) => {
+    setTasks(prev => prev.filter(t => t.id !== id));
+  }, []);
+
   // Close fullscreen on Escape
   useEffect(() => {
     if (!isFullscreen) return;
@@ -1039,6 +1059,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   }, [isFullscreen]);
 
   return (
+    <>
     <div className={
       isFullscreen
         ? 'fixed inset-0 z-[60] flex gap-0 bg-background'
@@ -1218,7 +1239,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
                 height={pageSize.height}
                 scale={effectiveScale}
                 tasks={tasks}
-                onTaskClick={() => {}}
+                onTaskClick={handleTaskPinClick}
                 displayScale={ds}
               />
               </div>
@@ -1261,15 +1282,20 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       />
     </div>
 
-    {/* Annotation detail panel */}
+    </div>
+
+    {/* Annotation detail dialog (rendered as overlay, not flex sibling) */}
     {detailAnnotationId && projectId && (
-      <AnnotationDetailPanel
+      <AnnotationDetailDialog
         annotationId={detailAnnotationId}
         projectId={projectId}
         sheetVersionId={sheetVersionId}
         onClose={() => setDetailAnnotationId(null)}
+        onTaskCreated={handleDialogTaskCreated}
+        onTaskUpdated={handleDialogTaskUpdated}
+        onTaskDeleted={handleDialogTaskDeleted}
       />
     )}
-    </div>
+    </>
   );
 }

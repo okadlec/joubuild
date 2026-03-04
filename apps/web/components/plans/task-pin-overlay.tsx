@@ -35,7 +35,7 @@ export function TaskPinOverlay({
         position: 'absolute',
         top: 0,
         left: 0,
-        pointerEvents: pinMode ? 'auto' : 'none',
+        pointerEvents: (pinnedTasks.length > 0 || pinMode) ? 'auto' : 'none',
         cursor: pinMode ? 'crosshair' : 'default',
         ...(displayScale !== 1 ? {
           transform: `scale(${displayScale})`,
