@@ -275,6 +275,7 @@
     "taskDeleted": "Úkol smazán",
     "deleteTask": "Smazat úkol",
     "deleteTaskConfirm": "Opravdu chcete smazat tento úkol?",
+    "showInPlan": "Zobrazit v plánu",
     "taskName": "Název úkolu",
     "taskNamePlaceholder": "Zadejte název úkolu",
     "taskDescription": "Popis",

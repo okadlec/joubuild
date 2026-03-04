@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { X, MessageSquare, Camera, CheckSquare, Settings2 } from 'lucide-react';
+import { X, MessageSquare, Camera, CheckSquare, Settings2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { TASK_STATUS_COLORS } from '@joubuild/shared';
 import type { Task } from '@joubuild/shared';
+import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { AnnotationChatPanel } from './annotation-chat-panel';
@@ -27,6 +28,7 @@ interface AnnotationDetailDialogProps {
   onTaskCreated?: (task: Task) => void;
   onTaskUpdated?: (task: Task) => void;
   onTaskDeleted?: (id: string) => void;
+  onAnnotationDeleted?: (id: string) => void;
 }
 
 export function AnnotationDetailDialog({
@@ -38,6 +40,7 @@ export function AnnotationDetailDialog({
   onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
+  onAnnotationDeleted,
 }: AnnotationDetailDialogProps) {
   const t = useTranslations('plans.annotationDetail');
   const [linkedTasks, setLinkedTasks] = useState<Task[]>([]);
@@ -148,6 +151,19 @@ export function AnnotationDetailDialog({
     setEditingTitle(false);
   }, []);
 
+  const handleDeleteAnnotation = useCallback(async () => {
+    if (!confirm(t('deleteConfirm'))) return;
+    const supabase = getSupabaseClient();
+    const { error } = await supabase.from('annotations').delete().eq('id', annotationId);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
+    toast.success(t('annotationDeleted'));
+    onAnnotationDeleted?.(annotationId);
+    onClose();
+  }, [annotationId, t, onAnnotationDeleted, onClose]);
+
   const tabs = [
     { id: 'chat' as Tab, label: t('chat'), icon: MessageSquare, count: commentCount },
     { id: 'photos' as Tab, label: t('photos'), icon: Camera, count: photoCount },
@@ -220,6 +236,9 @@ export function AnnotationDetailDialog({
                 )}
               </div>
 
+              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:text-destructive" onClick={handleDeleteAnnotation} title={t('deleteAnnotation')}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
               <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
                 <X className="h-4 w-4" />
               </Button>

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Trash2 } from 'lucide-react';
+import { Trash2, MapPin } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -62,6 +63,8 @@ export function TaskDialog({
   const [assigneeId, setAssigneeId] = useState('');
   const [taskTags, setTaskTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const [linkedSheetId, setLinkedSheetId] = useState<string | null>(null);
+  const router = useRouter();
   const t = useTranslations('tasks');
   const tCommon = useTranslations('common');
 
@@ -108,6 +111,26 @@ export function TaskDialog({
       setTaskTags([]);
     }
   }, [task]);
+
+  useEffect(() => {
+    if (!task?.annotation_id) { setLinkedSheetId(null); return; }
+    const supabase = getSupabaseClient();
+    supabase
+      .from('annotations')
+      .select('sheet_versions!inner ( sheets!inner ( id ) )')
+      .eq('id', task.annotation_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        const sv = data?.sheet_versions as unknown as { sheets: { id: string } } | undefined;
+        setLinkedSheetId(sv?.sheets.id ?? null);
+      });
+  }, [task?.annotation_id]);
+
+  function handleShowInPlan() {
+    if (!task?.annotation_id || !linkedSheetId) return;
+    router.push(`/project/${projectId}/plans?sheet=${linkedSheetId}&annotation=${task.annotation_id}`);
+    onClose();
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -375,11 +398,17 @@ export function TaskDialog({
         )}
 
         <div className="flex justify-between border-t pt-4">
-          <div>
+          <div className="flex gap-2">
             {task && (
               <Button type="button" variant="destructive" size="sm" onClick={handleDelete}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 Smazat
+              </Button>
+            )}
+            {task?.annotation_id && linkedSheetId && (
+              <Button type="button" variant="outline" size="sm" onClick={handleShowInPlan}>
+                <MapPin className="mr-2 h-4 w-4" />
+                {t('showInPlan')}
               </Button>
             )}
           </div>

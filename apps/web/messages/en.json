@@ -275,6 +275,7 @@
     "taskDeleted": "Task deleted",
     "deleteTask": "Delete Task",
     "deleteTaskConfirm": "Are you sure you want to delete this task?",
+    "showInPlan": "Show in plan",
     "taskName": "Task Name",
     "taskNamePlaceholder": "Enter task name",
     "taskDescription": "Description",

@@ -1319,6 +1319,11 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         onTaskCreated={handleDialogTaskCreated}
         onTaskUpdated={handleDialogTaskUpdated}
         onTaskDeleted={handleDialogTaskDeleted}
+        onAnnotationDeleted={(id) => {
+          setAnnotations(prev => prev.filter(a => a.id !== id));
+          setSelectedId(null);
+          setDetailAnnotationId(null);
+        }}
       />
     )}
     </>
