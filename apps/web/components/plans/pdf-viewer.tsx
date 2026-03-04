@@ -1025,11 +1025,14 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
           <div
             ref={canvasWrapperRef}
             className="absolute inset-0 overflow-hidden"
-            style={zoomPreview !== 1 ? {
-              transform: `scale(${zoomPreview})`,
-              transformOrigin: zoomOrigin ? `${zoomOrigin.x}px ${zoomOrigin.y}px` : 'center',
-              willChange: 'transform',
-            } : undefined}
+            style={{
+              zIndex: 0,
+              ...(zoomPreview !== 1 ? {
+                transform: `scale(${zoomPreview})`,
+                transformOrigin: zoomOrigin ? `${zoomOrigin.x}px ${zoomOrigin.y}px` : 'center',
+                willChange: 'transform',
+              } : undefined),
+            }}
           >
             <canvas ref={canvasARef} className="block" style={{ position: 'absolute', zIndex: 1 }} />
             <canvas ref={canvasBRef} className="block" style={{ position: 'absolute', zIndex: 0 }} />
