@@ -56,3 +56,45 @@ export async function addMemberToOrg(userId: string, orgId: string, role: OrgRol
   if (error) return { error: error.message };
   return { success: true };
 }
+
+export async function addMemberByEmail(orgId: string, email: string, role: OrgRole) {
+  const ctx = await getCurrentAdminContext();
+  if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };
+
+  const serviceClient = getServiceClient();
+
+  // Look up user by email
+  const { data: profile, error: profileError } = await serviceClient
+    .from('profiles')
+    .select('id, full_name, email')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (profileError) return { error: profileError.message };
+  if (!profile) return { error: 'Uzivatel s timto emailem neexistuje' };
+
+  // Check for duplicate membership
+  const { data: existing } = await serviceClient
+    .from('organization_members')
+    .select('id')
+    .eq('organization_id', orgId)
+    .eq('user_id', profile.id)
+    .maybeSingle();
+
+  if (existing) return { error: 'Uzivatel je jiz clenem teto organizace' };
+
+  const { error } = await serviceClient
+    .from('organization_members')
+    .insert({ organization_id: orgId, user_id: profile.id, role });
+
+  if (error) return { error: error.message };
+  return {
+    success: true,
+    member: {
+      user_id: profile.id,
+      email: profile.email,
+      full_name: profile.full_name,
+      role,
+    },
+  };
+}
