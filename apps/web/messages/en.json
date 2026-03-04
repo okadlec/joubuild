@@ -245,6 +245,7 @@
     "dateFrom": "From",
     "dateTo": "To",
     "allTags": "All tags",
+    "allPlanSets": "All plan sets",
     "captionLabel": "Caption / Description",
     "captionPlaceholder": "Photo description...",
     "tagsLabel": "Tags",

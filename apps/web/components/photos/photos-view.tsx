@@ -178,12 +178,20 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [tagFilter, setTagFilter] = useState('');
+  const [planSetFilter, setPlanSetFilter] = useState('');
 
   // All unique tags
   const allTags = useMemo(() => {
     const tags = new Set<string>();
     photos.forEach(p => p.tags?.forEach(t => tags.add(t)));
     return Array.from(tags).sort();
+  }, [photos]);
+
+  // All unique plan sets
+  const allPlanSets = useMemo(() => {
+    const sets = new Set<string>();
+    photos.forEach(p => { if (p.plan_set_name) sets.add(p.plan_set_name); });
+    return Array.from(sets).sort();
   }, [photos]);
 
   // Filtered photos
@@ -203,9 +211,10 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
         if (photoDate > dateTo) return false;
       }
       if (tagFilter && !(p.tags || []).includes(tagFilter)) return false;
+      if (planSetFilter && p.plan_set_name !== planSetFilter) return false;
       return true;
     });
-  }, [photos, searchQuery, dateFrom, dateTo, tagFilter]);
+  }, [photos, searchQuery, dateFrom, dateTo, tagFilter, planSetFilter]);
 
   const handleUpload = useCallback(async (files: FileList) => {
     setUploading(true);
@@ -254,6 +263,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     setDateFrom('');
     setDateTo('');
     setTagFilter('');
+    setPlanSetFilter('');
   };
 
   const handleDelete = useCallback(async (photo: Photo) => {
@@ -316,7 +326,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     toast.success(t('photoUpdated'));
   }, [selectedPhoto, editCaption, editTags]);
 
-  const activeFilterCount = [searchQuery, dateFrom, dateTo, tagFilter].filter(Boolean).length;
+  const activeFilterCount = [searchQuery, dateFrom, dateTo, tagFilter, planSetFilter].filter(Boolean).length;
 
   return (
     <div>
@@ -405,6 +415,16 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                 {allTags.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             )}
+            {allPlanSets.length > 0 && (
+              <select
+                value={planSetFilter}
+                onChange={(e) => setPlanSetFilter(e.target.value)}
+                className="h-8 rounded-md border bg-background px-2 text-sm"
+              >
+                <option value="">{t('allPlanSets')}</option>
+                {allPlanSets.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            )}
             {activeFilterCount > 0 && (
               <Button variant="ghost" size="sm" className="h-8" onClick={handleClearFilters}>
                 <X className="mr-1 h-3.5 w-3.5" />
@@ -449,12 +469,15 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                 />
               </div>
               <div className="p-2">
-                {photo.sheet_name && (
-                  <div className="mb-1 flex items-center gap-1">
-                    <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
-                    <span className="text-[10px] text-blue-600 dark:text-blue-400 truncate">{photo.sheet_name}</span>
-                  </div>
-                )}
+                <div className="mb-1 flex items-center gap-1">
+                  {photo.sheet_name && (
+                    <>
+                      <MapPin className="h-3 w-3 text-blue-500 shrink-0" />
+                      <span className="text-[10px] text-blue-600 dark:text-blue-400 truncate">{photo.sheet_name}</span>
+                    </>
+                  )}
+                  <span className="text-[10px] text-muted-foreground shrink-0 ml-auto">{formatDate(photo.taken_at || photo.created_at)}</span>
+                </div>
                 {photo.caption && (
                   <p className="text-xs text-muted-foreground truncate">{photo.caption}</p>
                 )}
@@ -526,11 +549,11 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {selectedPhoto.sheet_name && selectedPhoto.sheet_id && selectedPhoto.annotation_id && selectedPhoto.annotation_type && selectedPhoto.annotation_data ? (
+                  {selectedPhoto.sheet_id && selectedPhoto.annotation_id && selectedPhoto.annotation_type && selectedPhoto.annotation_data ? (
                     <AnnotationPlanPreview
                       projectId={projectId}
                       sheetId={selectedPhoto.sheet_id}
-                      sheetName={selectedPhoto.sheet_name}
+                      sheetName={selectedPhoto.sheet_name || ''}
                       annotationId={selectedPhoto.annotation_id}
                       annotationType={selectedPhoto.annotation_type}
                       annotationData={selectedPhoto.annotation_data}
@@ -540,25 +563,30 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                       planSetName={selectedPhoto.plan_set_name}
                       onNavigate={() => setSelectedPhoto(null)}
                     />
-                  ) : selectedPhoto.sheet_name && (
+                  ) : selectedPhoto.sheet_id && selectedPhoto.annotation_id ? (
+                    <div className="flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-blue-500" />
+                      {selectedPhoto.sheet_name && (
+                        <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{selectedPhoto.sheet_name}</span>
+                      )}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          router.push(`/project/${projectId}/plans?sheet=${selectedPhoto.sheet_id}&annotation=${selectedPhoto.annotation_id}`);
+                          setSelectedPhoto(null);
+                        }}
+                      >
+                        <MapPin className="mr-1 h-3.5 w-3.5" />
+                        {t('showOnPlan')}
+                      </Button>
+                    </div>
+                  ) : selectedPhoto.sheet_name ? (
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-blue-500" />
                       <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{selectedPhoto.sheet_name}</span>
-                      {selectedPhoto.sheet_id && selectedPhoto.annotation_id && (
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            router.push(`/project/${projectId}/plans?sheet=${selectedPhoto.sheet_id}&annotation=${selectedPhoto.annotation_id}`);
-                            setSelectedPhoto(null);
-                          }}
-                        >
-                          <MapPin className="mr-1 h-3.5 w-3.5" />
-                          {t('showOnPlan')}
-                        </Button>
-                      )}
                     </div>
-                  )}
+                  ) : null}
                   <div className="flex justify-between text-sm text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <span>{formatDate(selectedPhoto.created_at)}</span>
