@@ -117,7 +117,7 @@ export function TaskDialog({
     const supabase = getSupabaseClient();
     supabase
       .from('annotations')
-      .select('sheet_versions!inner ( sheets!inner ( id ) )')
+      .select('sheet_versions!inner ( sheets!sheet_id!inner ( id ) )')
       .eq('id', task.annotation_id)
       .maybeSingle()
       .then(({ data, error }) => {
