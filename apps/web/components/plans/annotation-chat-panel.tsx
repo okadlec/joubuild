@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Send, Pencil, Trash2, Check, X } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
@@ -162,7 +163,7 @@ export function AnnotationChatPanel({ annotationId }: AnnotationChatPanelProps) 
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex-1 space-y-3 overflow-auto p-3">
+      <div className={cn("space-y-3 overflow-auto p-3", comments.length > 0 && "flex-1")}>
         {comments.length === 0 && (
           <p className="text-center text-sm text-muted-foreground">Zatím žádné komentáře</p>
         )}

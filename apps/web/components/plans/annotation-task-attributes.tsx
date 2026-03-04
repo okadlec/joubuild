@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { CheckSquare, Plus } from 'lucide-react';
+import { CheckSquare, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -67,6 +67,7 @@ export function AnnotationTaskAttributes({
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [creating, setCreating] = useState(false);
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState<boolean | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load categories, members, tags, plan preview
@@ -134,6 +135,23 @@ export function AnnotationTaskAttributes({
         }
       });
   }, [annotationId, projectId]);
+
+  // Auto-expand advanced section if any advanced field has a value
+  useEffect(() => {
+    if (!selectedTask) {
+      setShowAdvanced(null);
+      return;
+    }
+    const hasAdvancedData =
+      !!selectedTask.start_date ||
+      !!selectedTask.due_date ||
+      selectedTask.estimated_hours != null ||
+      selectedTask.estimated_cost != null ||
+      taskTags.length > 0;
+    if (showAdvanced === null) {
+      setShowAdvanced(hasAdvancedData);
+    }
+  }, [selectedTask?.id, taskTags.length]);
 
   // Load task tags when selected task changes
   useEffect(() => {
@@ -448,76 +466,90 @@ export function AnnotationTaskAttributes({
             </div>
           )}
 
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Začátek</Label>
-              <Input
-                type="date"
-                value={selectedTask.start_date || ''}
-                onChange={(e) => autoSaveField('start_date', e.target.value || null)}
-                className="h-8 text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Termín</Label>
-              <Input
-                type="date"
-                value={selectedTask.due_date || ''}
-                onChange={(e) => autoSaveField('due_date', e.target.value || null)}
-                className="h-8 text-sm"
-              />
-            </div>
-          </div>
+          {/* Advanced toggle */}
+          <button
+            type="button"
+            onClick={() => setShowAdvanced(prev => !prev)}
+            className="flex w-full items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+            Rozšířené nastavení
+          </button>
 
-          {/* Hours & Costs */}
-          <div className="grid grid-cols-2 gap-2">
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Odhad hodin</Label>
-              <Input
-                type="number"
-                step="0.5"
-                value={selectedTask.estimated_hours ?? ''}
-                onChange={(e) => debouncedSave('estimated_hours', e.target.value ? parseFloat(e.target.value) : null)}
-                className="h-8 text-sm"
-                placeholder="0"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Odhad nákladů</Label>
-              <Input
-                type="number"
-                step="100"
-                value={selectedTask.estimated_cost ?? ''}
-                onChange={(e) => debouncedSave('estimated_cost', e.target.value ? parseFloat(e.target.value) : null)}
-                className="h-8 text-sm"
-                placeholder="0 Kč"
-              />
-            </div>
-          </div>
+          {showAdvanced && (
+            <>
+              {/* Dates */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Začátek</Label>
+                  <Input
+                    type="date"
+                    value={selectedTask.start_date || ''}
+                    onChange={(e) => autoSaveField('start_date', e.target.value || null)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Termín</Label>
+                  <Input
+                    type="date"
+                    value={selectedTask.due_date || ''}
+                    onChange={(e) => autoSaveField('due_date', e.target.value || null)}
+                    className="h-8 text-sm"
+                  />
+                </div>
+              </div>
 
-          {/* Tags */}
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Tagy</Label>
-            <TagPicker
-              tags={taskTags}
-              onChange={handleTagsChange}
-              suggestions={projectTags.map(t => t.name)}
-              placeholder="Přidat tag..."
-            />
-          </div>
+              {/* Hours & Costs */}
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Odhad hodin</Label>
+                  <Input
+                    type="number"
+                    step="0.5"
+                    value={selectedTask.estimated_hours ?? ''}
+                    onChange={(e) => debouncedSave('estimated_hours', e.target.value ? parseFloat(e.target.value) : null)}
+                    className="h-8 text-sm"
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs text-muted-foreground">Odhad nákladů</Label>
+                  <Input
+                    type="number"
+                    step="100"
+                    value={selectedTask.estimated_cost ?? ''}
+                    onChange={(e) => debouncedSave('estimated_cost', e.target.value ? parseFloat(e.target.value) : null)}
+                    className="h-8 text-sm"
+                    placeholder="0 Kč"
+                  />
+                </div>
+              </div>
 
-          {/* Delete task */}
-          <div className="border-t pt-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-              onClick={handleDeleteTask}
-            >
-              Smazat úkol
-            </Button>
-          </div>
+              {/* Tags */}
+              <div className="space-y-1">
+                <Label className="text-xs text-muted-foreground">Tagy</Label>
+                <TagPicker
+                  tags={taskTags}
+                  onChange={handleTagsChange}
+                  suggestions={projectTags.map(t => t.name)}
+                  placeholder="Přidat tag..."
+                />
+              </div>
+
+              {/* Delete task */}
+              <div className="border-t pt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={handleDeleteTask}
+                >
+                  Smazat úkol
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>
