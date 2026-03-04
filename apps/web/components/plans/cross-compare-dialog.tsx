@@ -392,14 +392,11 @@ function AlignStep({
         setError(null);
         const pdfjsLib = await import('pdfjs-dist');
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-        console.log('[CrossCompare/Align] pdfjs loaded, loading:', fileUrlA, fileUrlB);
-
         const [pdfA, pdfB] = await Promise.all([
           pdfjsLib.getDocument(fileUrlA).promise,
           pdfjsLib.getDocument(fileUrlB).promise,
         ]);
         if (cancelled) return;
-        console.log('[CrossCompare/Align] PDFs loaded, rendering...');
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const [pageA, pageB]: [any, any] = await Promise.all([
@@ -427,11 +424,9 @@ function AlignStep({
           if (ctx) await pageB.render({ canvasContext: ctx, viewport: vpB }).promise;
         }
 
-        console.log('[CrossCompare/Align] Render complete');
         setLoading(false);
       } catch (err) {
         if (!cancelled) {
-          console.error('[CrossCompare/Align] PDF load error:', err);
           setError(err instanceof Error ? err.message : 'Nepodařilo se načíst PDF');
           setLoading(false);
         }
@@ -546,37 +541,38 @@ function AlignStep({
             </div>
           </div>
         )}
-        {!loading && !error && (
-          <div className="relative mx-auto inline-block">
-            {/* Plan A – fixed, full opacity */}
+        <div
+          className="relative mx-auto inline-block"
+          style={{ display: loading || error ? 'none' : undefined }}
+        >
+          {/* Plan A – fixed, full opacity */}
+          <canvas
+            ref={canvasARef}
+            className="block"
+            style={{ maxWidth: '100%', height: 'auto' }}
+          />
+          {/* Plan B – draggable overlay */}
+          <div
+            className="absolute inset-0"
+            style={{ pointerEvents: 'none' }}
+          >
             <canvas
-              ref={canvasARef}
-              className="block"
-              style={{ maxWidth: '100%', height: 'auto' }}
+              ref={canvasBRef}
+              className="block origin-top-left cursor-move"
+              style={{
+                maxWidth: '100%',
+                height: 'auto',
+                opacity: 0.5,
+                transform: `translate(${localOffset.x}px, ${localOffset.y}px) scale(${localScale})`,
+                transformOrigin: '0 0',
+                pointerEvents: 'auto',
+              }}
+              onPointerDown={handlePointerDown}
+              onPointerMove={handlePointerMove}
+              onPointerUp={handlePointerUp}
             />
-            {/* Plan B – draggable overlay */}
-            <div
-              className="absolute inset-0"
-              style={{ pointerEvents: 'none' }}
-            >
-              <canvas
-                ref={canvasBRef}
-                className="block origin-top-left cursor-move"
-                style={{
-                  maxWidth: '100%',
-                  height: 'auto',
-                  opacity: 0.5,
-                  transform: `translate(${localOffset.x}px, ${localOffset.y}px) scale(${localScale})`,
-                  transformOrigin: '0 0',
-                  pointerEvents: 'auto',
-                }}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
-              />
-            </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
@@ -603,13 +599,13 @@ function ResultStep({
   overlayOpacity: number;
   setOverlayOpacity: (v: number) => void;
 }) {
-  const canvasARef = useRef<HTMLCanvasElement>(null);
-  const canvasBRef = useRef<HTMLCanvasElement>(null);
-  const diffCanvasRef = useRef<HTMLCanvasElement>(null);
+  const [renderedA, setRenderedA] = useState<string | null>(null);
+  const [renderedB, setRenderedB] = useState<string | null>(null);
+  const [renderedDiff, setRenderedDiff] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Render PDFs and compute diff
+  // Render PDFs to offscreen canvases and store as data URLs
   useEffect(() => {
     let cancelled = false;
     async function render() {
@@ -618,14 +614,12 @@ function ResultStep({
         setError(null);
         const pdfjsLib = await import('pdfjs-dist');
         pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
-        console.log('[CrossCompare/Result] pdfjs loaded, loading:', fileUrlA, fileUrlB);
 
         const [pdfA, pdfB] = await Promise.all([
           pdfjsLib.getDocument(fileUrlA).promise,
           pdfjsLib.getDocument(fileUrlB).promise,
         ]);
         if (cancelled) return;
-        console.log('[CrossCompare/Result] PDFs loaded, rendering...');
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const [pageA, pageB]: [any, any] = await Promise.all([
@@ -638,102 +632,96 @@ function ResultStep({
         const vpA = pageA.getViewport({ scale });
         const vpB = pageB.getViewport({ scale });
 
-        // Render A
-        if (canvasARef.current) {
-          canvasARef.current.width = vpA.width;
-          canvasARef.current.height = vpA.height;
-          const ctx = canvasARef.current.getContext('2d');
-          if (ctx) await pageA.render({ canvasContext: ctx, viewport: vpA }).promise;
-        }
+        // Render A to offscreen canvas
+        const canvasA = document.createElement('canvas');
+        canvasA.width = vpA.width;
+        canvasA.height = vpA.height;
+        const ctxA = canvasA.getContext('2d')!;
+        await pageA.render({ canvasContext: ctxA, viewport: vpA }).promise;
 
-        // Render B
-        if (canvasBRef.current) {
-          canvasBRef.current.width = vpB.width;
-          canvasBRef.current.height = vpB.height;
-          const ctx = canvasBRef.current.getContext('2d');
-          if (ctx) await pageB.render({ canvasContext: ctx, viewport: vpB }).promise;
-        }
+        // Render B to offscreen canvas
+        const canvasB = document.createElement('canvas');
+        canvasB.width = vpB.width;
+        canvasB.height = vpB.height;
+        const ctxB = canvasB.getContext('2d')!;
+        await pageB.render({ canvasContext: ctxB, viewport: vpB }).promise;
+
+        if (cancelled) return;
 
         // Compute diff with alignment
-        if (diffCanvasRef.current && canvasARef.current && canvasBRef.current) {
-          const w = vpA.width;
-          const h = vpA.height;
-          diffCanvasRef.current.width = w;
-          diffCanvasRef.current.height = h;
+        const w = vpA.width;
+        const h = vpA.height;
+        const diffCanvas = document.createElement('canvas');
+        diffCanvas.width = w;
+        diffCanvas.height = h;
+        const ctx = diffCanvas.getContext('2d')!;
 
-          const ctx = diffCanvasRef.current.getContext('2d');
-          const ctxA = canvasARef.current.getContext('2d');
-          const ctxB = canvasBRef.current.getContext('2d');
+        const dataA = ctxA.getImageData(0, 0, canvasA.width, canvasA.height);
+        const dataB = ctxB.getImageData(0, 0, canvasB.width, canvasB.height);
+        const diffData = ctx.createImageData(w, h);
 
-          if (ctx && ctxA && ctxB) {
-            const dataA = ctxA.getImageData(0, 0, canvasARef.current.width, canvasARef.current.height);
-            const dataB = ctxB.getImageData(0, 0, canvasBRef.current.width, canvasBRef.current.height);
-            const diffData = ctx.createImageData(w, h);
+        const { offsetX, offsetY, scale: alignScale } = alignment;
+        const bW = canvasB.width;
+        const bH = canvasB.height;
 
-            const { offsetX, offsetY, scale: alignScale } = alignment;
-            const bW = canvasBRef.current.width;
-            const bH = canvasBRef.current.height;
+        for (let y = 0; y < h; y++) {
+          for (let x = 0; x < w; x++) {
+            const di = (y * w + x) * 4;
 
-            for (let y = 0; y < h; y++) {
-              for (let x = 0; x < w; x++) {
-                const di = (y * w + x) * 4;
+            // Pixel from A
+            const aI = (y * canvasA.width + x) * 4;
+            const rA = x < canvasA.width && y < canvasA.height ? dataA.data[aI] : 255;
+            const gA = x < canvasA.width && y < canvasA.height ? dataA.data[aI + 1] : 255;
+            const bA = x < canvasA.width && y < canvasA.height ? dataA.data[aI + 2] : 255;
 
-                // Pixel from A
-                const aI = (y * canvasARef.current.width + x) * 4;
-                const rA = x < canvasARef.current.width && y < canvasARef.current.height ? dataA.data[aI] : 255;
-                const gA = x < canvasARef.current.width && y < canvasARef.current.height ? dataA.data[aI + 1] : 255;
-                const bA = x < canvasARef.current.width && y < canvasARef.current.height ? dataA.data[aI + 2] : 255;
-
-                // Pixel from B (with alignment transform)
-                const bx = Math.round((x - offsetX) / alignScale);
-                const by = Math.round((y - offsetY) / alignScale);
-                let rB = 255, gB = 255, bB2 = 255;
-                if (bx >= 0 && bx < bW && by >= 0 && by < bH) {
-                  const bI = (by * bW + bx) * 4;
-                  rB = dataB.data[bI];
-                  gB = dataB.data[bI + 1];
-                  bB2 = dataB.data[bI + 2];
-                }
-
-                const diff = (Math.abs(rA - rB) + Math.abs(gA - gB) + Math.abs(bA - bB2)) / 3;
-
-                if (diff > 30) {
-                  const brightA = (rA + gA + bA) / 3;
-                  const brightB = (rB + gB + bB2) / 3;
-
-                  if (brightA < brightB) {
-                    // A is darker → content in A (red)
-                    diffData.data[di] = 239;
-                    diffData.data[di + 1] = 68;
-                    diffData.data[di + 2] = 68;
-                    diffData.data[di + 3] = 180;
-                  } else {
-                    // B is darker → content in B (blue)
-                    diffData.data[di] = 59;
-                    diffData.data[di + 1] = 130;
-                    diffData.data[di + 2] = 246;
-                    diffData.data[di + 3] = 180;
-                  }
-                } else {
-                  // Same content – gray
-                  const avg = (rA + gA + bA) / 3;
-                  diffData.data[di] = avg;
-                  diffData.data[di + 1] = avg;
-                  diffData.data[di + 2] = avg;
-                  diffData.data[di + 3] = 255;
-                }
-              }
+            // Pixel from B (with alignment transform)
+            const bx = Math.round((x - offsetX) / alignScale);
+            const by = Math.round((y - offsetY) / alignScale);
+            let rB = 255, gB = 255, bB2 = 255;
+            if (bx >= 0 && bx < bW && by >= 0 && by < bH) {
+              const bI = (by * bW + bx) * 4;
+              rB = dataB.data[bI];
+              gB = dataB.data[bI + 1];
+              bB2 = dataB.data[bI + 2];
             }
 
-            ctx.putImageData(diffData, 0, 0);
+            const diff = (Math.abs(rA - rB) + Math.abs(gA - gB) + Math.abs(bA - bB2)) / 3;
+
+            if (diff > 30) {
+              const brightA = (rA + gA + bA) / 3;
+              const brightB = (rB + gB + bB2) / 3;
+
+              if (brightA < brightB) {
+                diffData.data[di] = 239;
+                diffData.data[di + 1] = 68;
+                diffData.data[di + 2] = 68;
+                diffData.data[di + 3] = 180;
+              } else {
+                diffData.data[di] = 59;
+                diffData.data[di + 1] = 130;
+                diffData.data[di + 2] = 246;
+                diffData.data[di + 3] = 180;
+              }
+            } else {
+              const avg = (rA + gA + bA) / 3;
+              diffData.data[di] = avg;
+              diffData.data[di + 1] = avg;
+              diffData.data[di + 2] = avg;
+              diffData.data[di + 3] = 255;
+            }
           }
         }
 
-        console.log('[CrossCompare/Result] Render complete');
-        if (!cancelled) setLoading(false);
+        ctx.putImageData(diffData, 0, 0);
+
+        if (!cancelled) {
+          setRenderedA(canvasA.toDataURL());
+          setRenderedB(canvasB.toDataURL());
+          setRenderedDiff(diffCanvas.toDataURL());
+          setLoading(false);
+        }
       } catch (err) {
         if (!cancelled) {
-          console.error('[CrossCompare/Result] PDF load error:', err);
           setError(err instanceof Error ? err.message : 'Nepodařilo se načíst PDF');
           setLoading(false);
         }
@@ -814,23 +802,26 @@ function ResultStep({
           </div>
         )}
 
-        {!loading && !error && mode === 'diff' && (
-          <canvas
-            ref={diffCanvasRef}
+        {!loading && !error && mode === 'diff' && renderedDiff && (
+          <img
+            src={renderedDiff}
+            alt="Diff"
             className="mx-auto block"
             style={{ maxWidth: '100%', height: 'auto' }}
           />
         )}
 
-        {!loading && !error && mode === 'overlay' && (
+        {!loading && !error && mode === 'overlay' && renderedA && renderedB && (
           <div className="relative mx-auto inline-block">
-            <canvas
-              ref={canvasARef}
+            <img
+              src={renderedA}
+              alt="Plan A"
               className="block"
               style={{ maxWidth: '100%', height: 'auto', opacity: 1 - overlayOpacity }}
             />
-            <canvas
-              ref={canvasBRef}
+            <img
+              src={renderedB}
+              alt="Plan B"
               className="absolute left-0 top-0 block"
               style={{
                 maxWidth: '100%',
@@ -844,20 +835,22 @@ function ResultStep({
           </div>
         )}
 
-        {!loading && !error && mode === 'side-by-side' && (
+        {!loading && !error && mode === 'side-by-side' && renderedA && renderedB && (
           <div className="flex gap-4">
             <div className="flex-1">
               <p className="mb-2 text-center text-sm font-medium text-red-500">Strana A</p>
-              <canvas
-                ref={canvasARef}
+              <img
+                src={renderedA}
+                alt="Plan A"
                 className="mx-auto block rounded border border-red-200"
                 style={{ maxWidth: '100%', height: 'auto' }}
               />
             </div>
             <div className="flex-1">
               <p className="mb-2 text-center text-sm font-medium text-blue-500">Strana B</p>
-              <canvas
-                ref={canvasBRef}
+              <img
+                src={renderedB}
+                alt="Plan B"
                 className="mx-auto block rounded border border-blue-200"
                 style={{ maxWidth: '100%', height: 'auto' }}
               />
@@ -865,14 +858,6 @@ function ResultStep({
           </div>
         )}
       </div>
-
-      {/* Hidden canvases for diff computation */}
-      {mode === 'diff' && (
-        <div className="hidden">
-          <canvas ref={canvasARef} />
-          <canvas ref={canvasBRef} />
-        </div>
-      )}
     </div>
   );
 }
