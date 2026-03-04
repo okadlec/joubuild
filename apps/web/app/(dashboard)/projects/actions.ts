@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { revalidatePath } from 'next/cache';
 
 export async function createOrganizationAndProject(data: {
   name: string;
@@ -76,9 +77,15 @@ export async function createOrganizationAndProject(data: {
   }
 
   // Add user as project admin
-  await serviceClient
+  const { error: memberError } = await serviceClient
     .from('project_members')
     .insert({ project_id: project.id, user_id: user.id, role: 'admin' });
+
+  if (memberError) {
+    return { error: 'Chyba při přidávání člena projektu: ' + memberError.message };
+  }
+
+  revalidatePath('/projects');
 
   return { data: project };
 }

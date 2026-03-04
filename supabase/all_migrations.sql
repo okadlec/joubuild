@@ -2045,3 +2045,35 @@ CREATE POLICY "Admin/member can delete specifications" ON storage.objects
 
 CREATE INDEX IF NOT EXISTS idx_org_members_user_role ON organization_members(user_id, role);
 CREATE INDEX IF NOT EXISTS idx_projects_org_id ON projects(organization_id);
+
+-- ============================================================
+-- Migration 00018: Fix projects table RLS policies
+-- Use SECURITY DEFINER helpers (consistent with 00017)
+-- ============================================================
+
+DROP POLICY IF EXISTS "Users can view projects" ON projects;
+CREATE POLICY "Users can view projects" ON projects
+  FOR SELECT USING (
+    id IN (SELECT get_user_project_ids(auth.uid()))
+    OR organization_id IN (SELECT get_user_org_ids(auth.uid()))
+  );
+
+DROP POLICY IF EXISTS "Org members can create projects" ON projects;
+CREATE POLICY "Org members can create projects" ON projects
+  FOR INSERT WITH CHECK (
+    organization_id IN (SELECT get_user_org_ids(auth.uid()))
+  );
+
+DROP POLICY IF EXISTS "Project admins can update projects" ON projects;
+CREATE POLICY "Project admins can update projects" ON projects
+  FOR UPDATE USING (
+    id IN (SELECT get_user_project_ids(auth.uid()))
+    OR organization_id IN (SELECT get_user_admin_org_ids(auth.uid()))
+  );
+
+DROP POLICY IF EXISTS "Project admins can delete projects" ON projects;
+CREATE POLICY "Project admins can delete projects" ON projects
+  FOR DELETE USING (
+    id IN (SELECT get_user_project_ids(auth.uid()))
+    OR organization_id IN (SELECT get_user_admin_org_ids(auth.uid()))
+  );
