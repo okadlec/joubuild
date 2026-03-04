@@ -22,6 +22,7 @@ interface AnnotationDetailDialogProps {
   annotationId: string;
   projectId: string;
   sheetVersionId: string;
+  initialTab?: Tab;
   onClose: () => void;
   onTaskCreated?: (task: Task) => void;
   onTaskUpdated?: (task: Task) => void;
@@ -33,32 +34,37 @@ export function AnnotationDetailDialog({
   projectId,
   sheetVersionId,
   onClose,
+  initialTab,
   onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
 }: AnnotationDetailDialogProps) {
   const t = useTranslations('plans.annotationDetail');
-  const [linkedTask, setLinkedTask] = useState<Task | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>('chat');
+  const [linkedTasks, setLinkedTasks] = useState<Task[]>([]);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? 'chat');
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleValue, setTitleValue] = useState('');
   const [commentCount, setCommentCount] = useState(0);
   const [photoCount, setPhotoCount] = useState(0);
   const isMobile = useIsMobile();
 
-  // Load linked task
+  const selectedTask = linkedTasks.find(t => t.id === selectedTaskId) ?? null;
+
+  // Load linked tasks
   useEffect(() => {
     const supabase = getSupabaseClient();
     supabase
       .from('tasks')
       .select('*')
       .eq('annotation_id', annotationId)
-      .limit(1)
-      .maybeSingle()
+      .order('created_at', { ascending: true })
       .then(({ data }) => {
-        if (data) {
-          setLinkedTask(data as Task);
-          setTitleValue(data.title);
+        if (data && data.length > 0) {
+          const tasks = data as Task[];
+          setLinkedTasks(tasks);
+          setSelectedTaskId(tasks[0].id);
+          setTitleValue(tasks[0].title);
         }
       });
 
@@ -86,7 +92,7 @@ export function AnnotationDetailDialog({
   }, [onClose]);
 
   const handleTitleSave = useCallback(async () => {
-    if (!linkedTask || !titleValue.trim()) {
+    if (!selectedTask || !titleValue.trim()) {
       setEditingTitle(false);
       return;
     }
@@ -94,37 +100,53 @@ export function AnnotationDetailDialog({
     const { data, error } = await supabase
       .from('tasks')
       .update({ title: titleValue.trim(), updated_at: new Date().toISOString() })
-      .eq('id', linkedTask.id)
+      .eq('id', selectedTask.id)
       .select()
       .single();
 
     if (error) {
-      setTitleValue(linkedTask.title);
+      setTitleValue(selectedTask.title);
     } else {
       const updated = data as Task;
-      setLinkedTask(updated);
+      setLinkedTasks(prev => prev.map(t => t.id === updated.id ? updated : t));
       onTaskUpdated?.(updated);
     }
     setEditingTitle(false);
-  }, [linkedTask, titleValue, onTaskUpdated]);
+  }, [selectedTask, titleValue, onTaskUpdated]);
 
   const handleTaskCreated = useCallback((task: Task) => {
-    setLinkedTask(task);
+    setLinkedTasks(prev => [...prev, task]);
+    setSelectedTaskId(task.id);
     setTitleValue(task.title);
     onTaskCreated?.(task);
   }, [onTaskCreated]);
 
   const handleTaskUpdated = useCallback((task: Task) => {
-    setLinkedTask(task);
-    setTitleValue(task.title);
+    setLinkedTasks(prev => prev.map(t => t.id === task.id ? task : t));
+    if (task.id === selectedTaskId) {
+      setTitleValue(task.title);
+    }
     onTaskUpdated?.(task);
-  }, [onTaskUpdated]);
+  }, [onTaskUpdated, selectedTaskId]);
 
   const handleTaskDeleted = useCallback((id: string) => {
-    setLinkedTask(null);
-    setTitleValue('');
+    setLinkedTasks(prev => {
+      const remaining = prev.filter(t => t.id !== id);
+      if (id === selectedTaskId) {
+        const next = remaining[0] ?? null;
+        setSelectedTaskId(next?.id ?? null);
+        setTitleValue(next?.title ?? '');
+      }
+      return remaining;
+    });
     onTaskDeleted?.(id);
-  }, [onTaskDeleted]);
+  }, [onTaskDeleted, selectedTaskId]);
+
+  const handleSelectTask = useCallback((task: Task) => {
+    setSelectedTaskId(task.id);
+    setTitleValue(task.title);
+    setEditingTitle(false);
+  }, []);
 
   const tabs = [
     { id: 'chat' as Tab, label: t('chat'), icon: MessageSquare, count: commentCount },
@@ -154,17 +176,22 @@ export function AnnotationDetailDialog({
           <div className="flex flex-1 flex-col overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3 border-b px-4 py-3">
-              {linkedTask && (
+              {selectedTask && (
                 <Badge
                   className="shrink-0 text-white text-xs"
-                  style={{ backgroundColor: TASK_STATUS_COLORS[linkedTask.status] || '#3B82F6' }}
+                  style={{ backgroundColor: TASK_STATUS_COLORS[selectedTask.status] || '#3B82F6' }}
                 >
-                  #{linkedTask.id.slice(0, 6)}
+                  #{selectedTask.id.slice(0, 6)}
+                </Badge>
+              )}
+              {linkedTasks.length > 1 && (
+                <Badge variant="secondary" className="shrink-0 text-[10px] h-5 px-1.5">
+                  {linkedTasks.length}
                 </Badge>
               )}
 
               <div className="flex-1 min-w-0">
-                {linkedTask ? (
+                {selectedTask ? (
                   editingTitle ? (
                     <Input
                       value={titleValue}
@@ -172,7 +199,7 @@ export function AnnotationDetailDialog({
                       onBlur={handleTitleSave}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleTitleSave();
-                        if (e.key === 'Escape') { setTitleValue(linkedTask.title); setEditingTitle(false); }
+                        if (e.key === 'Escape') { setTitleValue(selectedTask.title); setEditingTitle(false); }
                       }}
                       className="h-8 text-sm font-semibold"
                       autoFocus
@@ -183,7 +210,7 @@ export function AnnotationDetailDialog({
                       onClick={() => setEditingTitle(true)}
                       title={t('clickToEdit')}
                     >
-                      {linkedTask.title}
+                      {selectedTask.title}
                     </h3>
                   )
                 ) : (
@@ -240,7 +267,9 @@ export function AnnotationDetailDialog({
                 <AnnotationTaskAttributes
                   annotationId={annotationId}
                   projectId={projectId}
-                  linkedTask={linkedTask}
+                  linkedTasks={linkedTasks}
+                  selectedTask={selectedTask}
+                  onSelectTask={handleSelectTask}
                   onTaskCreated={handleTaskCreated}
                   onTaskUpdated={handleTaskUpdated}
                   onTaskDeleted={handleTaskDeleted}
@@ -249,13 +278,13 @@ export function AnnotationDetailDialog({
             </div>
 
             {/* Checklist — always visible below tabs on desktop when task exists */}
-            {linkedTask && activeTab === 'chat' && (
+            {selectedTask && activeTab === 'chat' && (
               <div className="border-t px-4 py-2">
                 <div className="flex items-center gap-1.5 mb-1">
                   <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-xs font-medium text-muted-foreground">{t('checklist')}</span>
                 </div>
-                <TaskChecklist taskId={linkedTask.id} />
+                <TaskChecklist taskId={selectedTask.id} />
               </div>
             )}
           </div>
@@ -269,7 +298,9 @@ export function AnnotationDetailDialog({
               <AnnotationTaskAttributes
                 annotationId={annotationId}
                 projectId={projectId}
-                linkedTask={linkedTask}
+                linkedTasks={linkedTasks}
+                selectedTask={selectedTask}
+                onSelectTask={handleSelectTask}
                 onTaskCreated={handleTaskCreated}
                 onTaskUpdated={handleTaskUpdated}
                 onTaskDeleted={handleTaskDeleted}

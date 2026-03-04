@@ -38,23 +38,26 @@ export default async function OrganizationPage() {
     );
   }
 
-  // Load members with profiles
+  // Load members, then profiles separately (embedded join doesn't work with auth.users FK)
   const { data: members } = await supabase
     .from('organization_members')
-    .select('id, user_id, role, profiles:user_id(email, full_name)')
+    .select('id, user_id, role')
     .eq('organization_id', org.id)
     .order('created_at');
 
-  const formattedMembers = (members || []).map((m: Record<string, unknown>) => {
-    const profile = m.profiles as Record<string, unknown> | null;
-    return {
-      id: m.id as string,
-      user_id: m.user_id as string,
-      role: m.role as string,
-      full_name: profile?.full_name as string | null,
-      email: profile?.email as string | null,
-    };
-  });
+  const userIds = (members || []).map(m => m.user_id);
+  const { data: profileRows } = userIds.length
+    ? await supabase.from('profiles').select('id, email, full_name').in('id', userIds)
+    : { data: [] as { id: string; email: string | null; full_name: string | null }[] };
+  const profileMap = Object.fromEntries((profileRows || []).map(p => [p.id, p]));
+
+  const formattedMembers = (members || []).map(m => ({
+    id: m.id as string,
+    user_id: m.user_id as string,
+    role: m.role as string,
+    full_name: profileMap[m.user_id]?.full_name ?? null,
+    email: profileMap[m.user_id]?.email ?? null,
+  }));
 
   const isAdmin = membership.role === 'owner' || membership.role === 'admin';
 

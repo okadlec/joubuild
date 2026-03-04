@@ -15,6 +15,8 @@ import {
   Grid3X3,
   Cloud,
   Link2,
+  Camera,
+  CheckSquare,
   Trash2,
   Undo2,
   Redo2,
@@ -41,7 +43,9 @@ export type AnnotationTool =
   | 'freehand'
   | 'measurement'
   | 'area'
-  | 'hyperlink';
+  | 'hyperlink'
+  | 'photo_pin'
+  | 'task_pin';
 
 interface AnnotationToolbarProps {
   activeTool: AnnotationTool;
@@ -76,11 +80,13 @@ const TOOL_DEFS: { tool: AnnotationTool; icon: typeof MousePointer2; labelKey: s
   { tool: 'freehand', icon: Pencil, labelKey: 'freehand' },
   { tool: 'measurement', icon: Ruler, labelKey: 'measurement' },
   { tool: 'area', icon: Grid3X3, labelKey: 'area' },
+  { tool: 'photo_pin', icon: Camera, labelKey: 'photoPin' },
+  { tool: 'task_pin', icon: CheckSquare, labelKey: 'taskPin' },
   { tool: 'hyperlink', icon: Link2, labelKey: 'hyperlink' },
 ];
 
 // Primary tools for mobile quick access
-const PRIMARY_MOBILE_TOOLS: AnnotationTool[] = ['select', 'freehand', 'rectangle', 'arrow', 'text', 'highlighter'];
+const PRIMARY_MOBILE_TOOLS: AnnotationTool[] = ['select', 'freehand', 'rectangle', 'arrow', 'text', 'photo_pin', 'task_pin'];
 
 export function AnnotationToolbar({
   activeTool,
@@ -109,6 +115,8 @@ export function AnnotationToolbar({
   const getToolLabel = (key: string) => {
     if (key === 'select') return t('select');
     if (key === 'hyperlink') return t('hyperlink');
+    if (key === 'photoPin') return t('photoPin');
+    if (key === 'taskPin') return t('taskPin');
     return tTypes(key);
   };
 

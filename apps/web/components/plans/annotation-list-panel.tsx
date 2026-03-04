@@ -15,6 +15,7 @@ import {
   Link2,
   MousePointer2,
   MessageSquare,
+  MapPin,
 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { formatRelativeTime } from '@joubuild/shared';
@@ -33,6 +34,7 @@ const ANNOTATION_TYPE_CONFIG: Record<string, { icon: typeof Minus; label: string
   measurement: { icon: Ruler, label: 'Měření' },
   area: { icon: Grid3X3, label: 'Plocha' },
   hyperlink: { icon: Link2, label: 'Hyperlink' },
+  pin: { icon: MapPin, label: 'Pin' },
   select: { icon: MousePointer2, label: 'Výběr' },
 };
 

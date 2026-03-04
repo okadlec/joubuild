@@ -19,6 +19,7 @@ import type { Task, TaskCategory, Tag } from '@joubuild/shared';
 import { toast } from 'sonner';
 import { TagPicker } from '@/components/shared/tag-picker';
 import { AnnotationPlanPreview } from '@/components/photos/annotation-plan-preview';
+import { cn } from '@/lib/utils';
 
 interface MemberInfo {
   user_id: string;
@@ -40,7 +41,9 @@ interface PlanPreviewData {
 interface AnnotationTaskAttributesProps {
   annotationId: string;
   projectId: string;
-  linkedTask: Task | null;
+  linkedTasks: Task[];
+  selectedTask: Task | null;
+  onSelectTask: (task: Task) => void;
   onTaskCreated: (task: Task) => void;
   onTaskUpdated: (task: Task) => void;
   onTaskDeleted: (id: string) => void;
@@ -49,7 +52,9 @@ interface AnnotationTaskAttributesProps {
 export function AnnotationTaskAttributes({
   annotationId,
   projectId,
-  linkedTask,
+  linkedTasks,
+  selectedTask,
+  onSelectTask,
   onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
@@ -61,6 +66,7 @@ export function AnnotationTaskAttributes({
   const [planPreviewData, setPlanPreviewData] = useState<PlanPreviewData | null>(null);
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load categories, members, tags, plan preview
@@ -74,20 +80,20 @@ export function AnnotationTaskAttributes({
       .order('sort_order')
       .then(({ data }) => { if (data) setCategories(data); });
 
-    supabase
-      .from('project_members')
-      .select('user_id, profiles:user_id(full_name, email)')
-      .eq('project_id', projectId)
-      .then(({ data }) => {
-        if (data) {
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          setMembers(data.map((m: any) => ({
-            user_id: m.user_id,
-            full_name: m.profiles?.full_name ?? null,
-            email: m.profiles?.email ?? m.user_id.slice(0, 8),
-          })));
-        }
-      });
+    async function loadMembers() {
+      const { data: memberRows } = await supabase
+        .from('project_members').select('user_id').eq('project_id', projectId);
+      if (!memberRows?.length) return;
+      const { data: profileRows } = await supabase
+        .from('profiles').select('id, full_name, email').in('id', memberRows.map(m => m.user_id));
+      const pm = Object.fromEntries((profileRows || []).map(p => [p.id, p]));
+      setMembers(memberRows.map(m => ({
+        user_id: m.user_id,
+        full_name: pm[m.user_id]?.full_name ?? null,
+        email: pm[m.user_id]?.email ?? m.user_id.slice(0, 8),
+      })));
+    }
+    loadMembers();
 
     supabase
       .from('tags')
@@ -129,9 +135,9 @@ export function AnnotationTaskAttributes({
       });
   }, [annotationId, projectId]);
 
-  // Load task tags when linked task changes
+  // Load task tags when selected task changes
   useEffect(() => {
-    if (!linkedTask) {
+    if (!selectedTask) {
       setTaskTags([]);
       return;
     }
@@ -139,22 +145,22 @@ export function AnnotationTaskAttributes({
     supabase
       .from('task_tags')
       .select('tag:tags!tag_id(name)')
-      .eq('task_id', linkedTask.id)
+      .eq('task_id', selectedTask.id)
       .then(({ data }) => {
         if (data) {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           setTaskTags(data.map((row: any) => (row.tag as { name: string }).name));
         }
       });
-  }, [linkedTask?.id]);
+  }, [selectedTask?.id]);
 
   const autoSaveField = useCallback(async (field: string, value: unknown) => {
-    if (!linkedTask) return;
+    if (!selectedTask) return;
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
       .from('tasks')
       .update({ [field]: value, updated_at: new Date().toISOString() })
-      .eq('id', linkedTask.id)
+      .eq('id', selectedTask.id)
       .select()
       .single();
 
@@ -163,7 +169,7 @@ export function AnnotationTaskAttributes({
       return;
     }
     onTaskUpdated(data as Task);
-  }, [linkedTask, onTaskUpdated]);
+  }, [selectedTask, onTaskUpdated]);
 
   const debouncedSave = useCallback((field: string, value: unknown) => {
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
@@ -201,24 +207,25 @@ export function AnnotationTaskAttributes({
     onTaskCreated(data as Task);
     setNewTaskTitle('');
     setCreating(false);
+    setShowCreateForm(false);
     toast.success('Úkol vytvořen');
   }, [projectId, annotationId, newTaskTitle, onTaskCreated]);
 
   const handleDeleteTask = useCallback(async () => {
-    if (!linkedTask) return;
+    if (!selectedTask) return;
     if (!confirm('Opravdu chcete smazat tento úkol?')) return;
     const supabase = getSupabaseClient();
-    const { error } = await supabase.from('tasks').delete().eq('id', linkedTask.id);
+    const { error } = await supabase.from('tasks').delete().eq('id', selectedTask.id);
     if (error) {
       toast.error(error.message);
       return;
     }
-    onTaskDeleted(linkedTask.id);
+    onTaskDeleted(selectedTask.id);
     toast.success('Úkol smazán');
-  }, [linkedTask, onTaskDeleted]);
+  }, [selectedTask, onTaskDeleted]);
 
   const handleTagsChange = useCallback(async (newTags: string[]) => {
-    if (!linkedTask) return;
+    if (!selectedTask) return;
     setTaskTags(newTags);
 
     const supabase = getSupabaseClient();
@@ -240,16 +247,16 @@ export function AnnotationTaskAttributes({
       }
     }
 
-    await supabase.from('task_tags').delete().eq('task_id', linkedTask.id);
+    await supabase.from('task_tags').delete().eq('task_id', selectedTask.id);
     if (tagIds.length > 0) {
       await supabase.from('task_tags').insert(
-        tagIds.map(tagId => ({ task_id: linkedTask.id, tag_id: tagId }))
+        tagIds.map(tagId => ({ task_id: selectedTask.id, tag_id: tagId }))
       );
     }
-  }, [linkedTask, projectTags, projectId]);
+  }, [selectedTask, projectTags, projectId]);
 
-  // No linked task — show create form
-  if (!linkedTask) {
+  // No linked tasks — show empty state with create form
+  if (linkedTasks.length === 0) {
     return (
       <div className="space-y-4 p-4">
         {planPreviewData && (
@@ -291,167 +298,228 @@ export function AnnotationTaskAttributes({
     );
   }
 
-  // Linked task — show attributes
+  // Tasks exist — show task list + selected task attributes
   return (
-    <div className="space-y-3 p-4">
-      {/* Status */}
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">Status</Label>
-        <div className="flex gap-1.5 flex-wrap">
-          {TASK_STATUSES.map((s) => (
+    <div className="flex flex-col">
+      {/* Task list */}
+      <div className="border-b">
+        <div className="max-h-[140px] overflow-y-auto">
+          {linkedTasks.map((task) => (
             <button
-              key={s}
-              onClick={() => autoSaveField('status', s)}
-              className="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors"
-              style={{
-                backgroundColor: linkedTask.status === s ? TASK_STATUS_COLORS[s] : undefined,
-                color: linkedTask.status === s ? '#fff' : TASK_STATUS_COLORS[s],
-                border: `1px solid ${TASK_STATUS_COLORS[s]}`,
-              }}
+              key={task.id}
+              onClick={() => onSelectTask(task)}
+              className={cn(
+                'flex w-full items-center gap-2 px-4 py-2 text-left text-sm transition-colors hover:bg-accent/50',
+                task.id === selectedTask?.id && 'bg-accent'
+              )}
             >
-              {TASK_STATUS_LABELS[s]}
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{ backgroundColor: TASK_STATUS_COLORS[task.status] || '#3B82F6' }}
+              />
+              <span className="flex-1 truncate">{task.title}</span>
+              <span className="shrink-0 text-[10px] text-muted-foreground">
+                #{task.id.slice(0, 4)}
+              </span>
             </button>
           ))}
         </div>
+
+        {/* Add task button / inline form */}
+        <div className="px-4 py-2">
+          {showCreateForm ? (
+            <div className="flex gap-2">
+              <Input
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder="Název úkolu..."
+                className="h-7 flex-1 text-sm"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateTask();
+                  if (e.key === 'Escape') { setShowCreateForm(false); setNewTaskTitle(''); }
+                }}
+                autoFocus
+              />
+              <Button size="sm" className="h-7 text-xs" onClick={handleCreateTask} disabled={creating || !newTaskTitle.trim()}>
+                <Plus className="mr-1 h-3 w-3" />
+                Vytvořit
+              </Button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              <Plus className="h-3 w-3" />
+              Přidat úkol
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Priority */}
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">Priorita</Label>
-        <Select
-          value={linkedTask.priority}
-          onChange={(e) => autoSaveField('priority', e.target.value)}
-          className="h-8 text-sm"
-        >
-          {TASK_PRIORITIES.map((p) => (
-            <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>
-          ))}
-        </Select>
-      </div>
+      {/* Selected task attributes */}
+      {selectedTask && (
+        <div className="space-y-3 p-4">
+          {/* Status */}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Status</Label>
+            <div className="flex gap-1.5 flex-wrap">
+              {TASK_STATUSES.map((s) => (
+                <button
+                  key={s}
+                  onClick={() => autoSaveField('status', s)}
+                  className="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors"
+                  style={{
+                    backgroundColor: selectedTask.status === s ? TASK_STATUS_COLORS[s] : undefined,
+                    color: selectedTask.status === s ? '#fff' : TASK_STATUS_COLORS[s],
+                    border: `1px solid ${TASK_STATUS_COLORS[s]}`,
+                  }}
+                >
+                  {TASK_STATUS_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          </div>
 
-      {/* Category */}
-      {categories.length > 0 && (
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Kategorie</Label>
-          <Select
-            value={linkedTask.category_id || ''}
-            onChange={(e) => autoSaveField('category_id', e.target.value || null)}
-            className="h-8 text-sm"
-          >
-            <option value="">— Bez kategorie —</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </Select>
+          {/* Priority */}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Priorita</Label>
+            <Select
+              value={selectedTask.priority}
+              onChange={(e) => autoSaveField('priority', e.target.value)}
+              className="h-8 text-sm"
+            >
+              {TASK_PRIORITIES.map((p) => (
+                <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>
+              ))}
+            </Select>
+          </div>
+
+          {/* Category */}
+          {categories.length > 0 && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Kategorie</Label>
+              <Select
+                value={selectedTask.category_id || ''}
+                onChange={(e) => autoSaveField('category_id', e.target.value || null)}
+                className="h-8 text-sm"
+              >
+                <option value="">— Bez kategorie —</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name}</option>
+                ))}
+              </Select>
+            </div>
+          )}
+
+          {/* Assignee */}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Zodpovědná osoba</Label>
+            <Select
+              value={selectedTask.assignee_id || ''}
+              onChange={(e) => autoSaveField('assignee_id', e.target.value || null)}
+              className="h-8 text-sm"
+            >
+              <option value="">— Nepřiřazeno —</option>
+              {members.map((m) => (
+                <option key={m.user_id} value={m.user_id}>
+                  {m.full_name || m.email}
+                </option>
+              ))}
+            </Select>
+          </div>
+
+          {/* Plan preview */}
+          {planPreviewData && (
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Plán</Label>
+              <AnnotationPlanPreview
+                projectId={projectId}
+                sheetId={planPreviewData.sheetId}
+                sheetName={planPreviewData.sheetName}
+                annotationId={annotationId}
+                annotationType={planPreviewData.annotationType}
+                annotationData={planPreviewData.annotationData}
+                thumbnailUrl={planPreviewData.thumbnailUrl}
+                sheetWidth={planPreviewData.sheetWidth}
+                sheetHeight={planPreviewData.sheetHeight}
+                planSetName={planPreviewData.planSetName}
+              />
+            </div>
+          )}
+
+          {/* Dates */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Začátek</Label>
+              <Input
+                type="date"
+                value={selectedTask.start_date || ''}
+                onChange={(e) => autoSaveField('start_date', e.target.value || null)}
+                className="h-8 text-sm"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Termín</Label>
+              <Input
+                type="date"
+                value={selectedTask.due_date || ''}
+                onChange={(e) => autoSaveField('due_date', e.target.value || null)}
+                className="h-8 text-sm"
+              />
+            </div>
+          </div>
+
+          {/* Hours & Costs */}
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Odhad hodin</Label>
+              <Input
+                type="number"
+                step="0.5"
+                value={selectedTask.estimated_hours ?? ''}
+                onChange={(e) => debouncedSave('estimated_hours', e.target.value ? parseFloat(e.target.value) : null)}
+                className="h-8 text-sm"
+                placeholder="0"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Odhad nákladů</Label>
+              <Input
+                type="number"
+                step="100"
+                value={selectedTask.estimated_cost ?? ''}
+                onChange={(e) => debouncedSave('estimated_cost', e.target.value ? parseFloat(e.target.value) : null)}
+                className="h-8 text-sm"
+                placeholder="0 Kč"
+              />
+            </div>
+          </div>
+
+          {/* Tags */}
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Tagy</Label>
+            <TagPicker
+              tags={taskTags}
+              onChange={handleTagsChange}
+              suggestions={projectTags.map(t => t.name)}
+              placeholder="Přidat tag..."
+            />
+          </div>
+
+          {/* Delete task */}
+          <div className="border-t pt-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+              onClick={handleDeleteTask}
+            >
+              Smazat úkol
+            </Button>
+          </div>
         </div>
       )}
-
-      {/* Assignee */}
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">Zodpovědná osoba</Label>
-        <Select
-          value={linkedTask.assignee_id || ''}
-          onChange={(e) => autoSaveField('assignee_id', e.target.value || null)}
-          className="h-8 text-sm"
-        >
-          <option value="">— Nepřiřazeno —</option>
-          {members.map((m) => (
-            <option key={m.user_id} value={m.user_id}>
-              {m.full_name || m.email}
-            </option>
-          ))}
-        </Select>
-      </div>
-
-      {/* Plan preview */}
-      {planPreviewData && (
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Plán</Label>
-          <AnnotationPlanPreview
-            projectId={projectId}
-            sheetId={planPreviewData.sheetId}
-            sheetName={planPreviewData.sheetName}
-            annotationId={annotationId}
-            annotationType={planPreviewData.annotationType}
-            annotationData={planPreviewData.annotationData}
-            thumbnailUrl={planPreviewData.thumbnailUrl}
-            sheetWidth={planPreviewData.sheetWidth}
-            sheetHeight={planPreviewData.sheetHeight}
-            planSetName={planPreviewData.planSetName}
-          />
-        </div>
-      )}
-
-      {/* Dates */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Začátek</Label>
-          <Input
-            type="date"
-            value={linkedTask.start_date || ''}
-            onChange={(e) => autoSaveField('start_date', e.target.value || null)}
-            className="h-8 text-sm"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Termín</Label>
-          <Input
-            type="date"
-            value={linkedTask.due_date || ''}
-            onChange={(e) => autoSaveField('due_date', e.target.value || null)}
-            className="h-8 text-sm"
-          />
-        </div>
-      </div>
-
-      {/* Hours & Costs */}
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Odhad hodin</Label>
-          <Input
-            type="number"
-            step="0.5"
-            value={linkedTask.estimated_hours ?? ''}
-            onChange={(e) => debouncedSave('estimated_hours', e.target.value ? parseFloat(e.target.value) : null)}
-            className="h-8 text-sm"
-            placeholder="0"
-          />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-xs text-muted-foreground">Odhad nákladů</Label>
-          <Input
-            type="number"
-            step="100"
-            value={linkedTask.estimated_cost ?? ''}
-            onChange={(e) => debouncedSave('estimated_cost', e.target.value ? parseFloat(e.target.value) : null)}
-            className="h-8 text-sm"
-            placeholder="0 Kč"
-          />
-        </div>
-      </div>
-
-      {/* Tags */}
-      <div className="space-y-1">
-        <Label className="text-xs text-muted-foreground">Tagy</Label>
-        <TagPicker
-          tags={taskTags}
-          onChange={handleTagsChange}
-          suggestions={projectTags.map(t => t.name)}
-          placeholder="Přidat tag..."
-        />
-      </div>
-
-      {/* Delete task */}
-      <div className="border-t pt-3">
-        <Button
-          variant="ghost"
-          size="sm"
-          className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-          onClick={handleDeleteTask}
-        >
-          Smazat úkol
-        </Button>
-      </div>
     </div>
   );
 }

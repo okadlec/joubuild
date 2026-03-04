@@ -82,23 +82,27 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
 
       const { data } = await supabase
         .from('comments')
-        .select('*, profiles:user_id(full_name, email)')
+        .select('*')
         .eq('photo_id', selectedPhoto!.id)
         .order('created_at', { ascending: true });
 
       if (cancelled) return;
       if (data) {
-        setPhotoComments(data.map((c: Record<string, unknown>) => {
-          const profile = c.profiles as Record<string, unknown> | null;
-          return {
-            id: c.id as string,
-            user_id: c.user_id as string | null,
-            body: c.body as string,
-            created_at: c.created_at as string,
-            user_name: profile?.full_name as string | null,
-            user_email: profile?.email as string | null,
-          };
-        }));
+        const userIds = [...new Set(data.map(c => c.user_id).filter(Boolean))] as string[];
+        const { data: profileRows } = userIds.length
+          ? await supabase.from('profiles').select('id, full_name, email').in('id', userIds)
+          : { data: [] as { id: string; full_name: string | null; email: string | null }[] };
+        const pm = Object.fromEntries((profileRows || []).map(p => [p.id, p]));
+
+        if (cancelled) return;
+        setPhotoComments(data.map(c => ({
+          id: c.id as string,
+          user_id: c.user_id as string | null,
+          body: c.body as string,
+          created_at: c.created_at as string,
+          user_name: c.user_id ? pm[c.user_id]?.full_name ?? null : null,
+          user_email: c.user_id ? pm[c.user_id]?.email ?? null : null,
+        })));
       }
     }
 

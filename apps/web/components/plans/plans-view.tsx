@@ -17,12 +17,15 @@ import { PdfViewer } from './pdf-viewer';
 import { VersionCompare } from './version-compare';
 import { CrossCompareDialog } from './cross-compare-dialog';
 import { useOfflinePdf } from '@/lib/hooks/use-offline-pdf';
+import { generatePdfThumbnail } from '@/lib/generate-pdf-thumbnail';
 
 interface SheetVersion {
   id: string;
   version_number: number;
   file_url: string;
   thumbnail_url: string | null;
+  width?: number | null;
+  height?: number | null;
   is_current: boolean;
   created_at: string;
 }
@@ -246,6 +249,33 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
     setUploading(false);
     setShowUpload(false);
     toast.success('Výkres nahrán');
+
+    // Generate thumbnail in background (non-blocking)
+    generatePdfThumbnail(file).then(async (result) => {
+      if (!result) return;
+      const thumbPath = `${projectId}/${version.id}.jpg`;
+      const { error: thumbUploadError } = await supabase.storage
+        .from('thumbnails')
+        .upload(thumbPath, result.blob, { contentType: 'image/jpeg' });
+      if (thumbUploadError) return;
+
+      const { data: thumbUrl } = supabase.storage.from('thumbnails').getPublicUrl(thumbPath);
+      await supabase.from('sheet_versions').update({
+        thumbnail_url: thumbUrl.publicUrl,
+        width: result.width,
+        height: result.height,
+      }).eq('id', version.id);
+
+      setPlanSets(prev => prev.map(ps => ({
+        ...ps,
+        sheets: ps.sheets.map(s => ({
+          ...s,
+          sheet_versions: s.sheet_versions.map(v =>
+            v.id === version.id ? { ...v, thumbnail_url: thumbUrl.publicUrl } : v
+          ),
+        })),
+      })));
+    });
   }, [projectId]);
 
   // Upload new revision of existing sheet
@@ -316,6 +346,40 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
     setShowNewVersion(false);
     setUploading(false);
     toast.success(`Verze ${newVersionNumber} nahrána`);
+
+    // Generate thumbnail in background (non-blocking)
+    generatePdfThumbnail(file).then(async (result) => {
+      if (!result) return;
+      const thumbPath = `${projectId}/${version.id}.jpg`;
+      const { error: thumbUploadError } = await supabase.storage
+        .from('thumbnails')
+        .upload(thumbPath, result.blob, { contentType: 'image/jpeg' });
+      if (thumbUploadError) return;
+
+      const { data: thumbUrl } = supabase.storage.from('thumbnails').getPublicUrl(thumbPath);
+      await supabase.from('sheet_versions').update({
+        thumbnail_url: thumbUrl.publicUrl,
+        width: result.width,
+        height: result.height,
+      }).eq('id', version.id);
+
+      // Update local state with thumbnail
+      const updateVersionThumbnail = (v: SheetVersion) =>
+        v.id === version.id ? { ...v, thumbnail_url: thumbUrl.publicUrl } : v;
+
+      setSelectedSheet(prev => prev ? {
+        ...prev,
+        sheet_versions: prev.sheet_versions.map(updateVersionThumbnail),
+      } : prev);
+
+      setPlanSets(prev => prev.map(ps => ({
+        ...ps,
+        sheets: ps.sheets.map(s => ({
+          ...s,
+          sheet_versions: s.sheet_versions.map(updateVersionThumbnail),
+        })),
+      })));
+    });
   }, [selectedSheet, projectId]);
 
   // Version comparison view
@@ -568,8 +632,16 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
-                        <div className="flex h-28 items-center justify-center rounded-t-lg bg-muted">
-                          <FileText className="h-10 w-10 text-muted-foreground" />
+                        <div className="flex h-28 items-center justify-center rounded-t-lg bg-muted overflow-hidden">
+                          {currentVersion?.thumbnail_url ? (
+                            <img
+                              src={currentVersion.thumbnail_url}
+                              alt={sheet.name}
+                              className="h-full w-full object-contain"
+                            />
+                          ) : (
+                            <FileText className="h-10 w-10 text-muted-foreground" />
+                          )}
                         </div>
                         <CardContent className="p-3">
                           <div className="flex items-center justify-between">

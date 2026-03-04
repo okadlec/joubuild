@@ -3,11 +3,12 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { Stage, Layer, Line, Rect, Ellipse, Arrow, Text, Circle, Group } from 'react-konva';
 import type Konva from 'konva';
+import type { AnnotationType } from '@joubuild/shared';
 import type { AnnotationTool } from './annotation-toolbar';
 
 export interface AnnotationData {
   id: string;
-  type: AnnotationTool;
+  type: AnnotationType;
   data: {
     points?: number[];
     x?: number;
@@ -22,6 +23,8 @@ export interface AnnotationData {
     // For measurements
     realDistance?: number;
     realArea?: number;
+    // For pin annotations
+    icon?: 'photo' | 'task';
   };
 }
 
@@ -37,6 +40,7 @@ interface AnnotationOverlayProps {
   selectedId: string | null;
   onSelectId: (id: string | null) => void;
   onAnnotationClick?: (id: string) => void;
+  onPinCreated?: (annotationId: string, initialTab: 'photos' | 'attributes') => void;
   pixelsPerMeter: number | null; // calibration ratio
   displayScale?: number; // CSS scale compensation when effectiveScale < zoom scale
 }
@@ -57,6 +61,7 @@ export function AnnotationOverlay({
   selectedId,
   onSelectId,
   onAnnotationClick,
+  onPinCreated,
   pixelsPerMeter,
   displayScale = 1,
 }: AnnotationOverlayProps) {
@@ -85,6 +90,24 @@ export function AnnotationOverlay({
     const pos = getRelativePointerPosition();
     if (!pos) return;
 
+    if (activeTool === 'photo_pin' || activeTool === 'task_pin') {
+      const id = generateId();
+      const newAnnotation: AnnotationData = {
+        id,
+        type: 'pin',
+        data: {
+          x: pos.x,
+          y: pos.y,
+          color: activeColor,
+          strokeWidth: 2,
+          icon: activeTool === 'photo_pin' ? 'photo' : 'task',
+        },
+      };
+      onAnnotationsChange([...annotations, newAnnotation]);
+      onPinCreated?.(id, activeTool === 'photo_pin' ? 'photos' : 'attributes');
+      return;
+    }
+
     if (activeTool === 'text') {
       setTextInput(pos);
       return;
@@ -98,7 +121,7 @@ export function AnnotationOverlay({
     } else if (activeTool === 'measurement' || activeTool === 'area') {
       setCurrentPoints([pos.x, pos.y]);
     }
-  }, [activeTool, getRelativePointerPosition]);
+  }, [activeTool, activeColor, annotations, onAnnotationsChange, onPinCreated, getRelativePointerPosition]);
 
   const handleMouseMove = useCallback((e?: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (!isDrawing) return;
@@ -478,6 +501,25 @@ export function AnnotationOverlay({
               padding={4}
               onClick={handleSelect}
               onTap={handleSelect}
+            />
+          </Group>
+        );
+      }
+
+      case 'pin': {
+        const pinX = ann.data.x!;
+        const pinY = ann.data.y!;
+        const radius = 10 / (displayScale ?? 1);
+        return (
+          <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}>
+            <Circle x={pinX + 1} y={pinY + 1} radius={radius} fill="rgba(0,0,0,0.3)" />
+            <Circle
+              x={pinX}
+              y={pinY}
+              radius={radius}
+              fill={isSelected ? '#0EA5E9' : ann.data.color}
+              stroke="#fff"
+              strokeWidth={2 / (displayScale ?? 1)}
             />
           </Group>
         );

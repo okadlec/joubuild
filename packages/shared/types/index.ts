@@ -118,7 +118,8 @@ export type AnnotationType =
   | 'highlighter'
   | 'freehand'
   | 'measurement'
-  | 'area';
+  | 'area'
+  | 'pin';
 
 export interface Annotation {
   id: string;

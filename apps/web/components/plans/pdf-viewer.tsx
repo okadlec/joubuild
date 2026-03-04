@@ -17,7 +17,7 @@ import { usePinchZoom } from '@/lib/hooks/use-pinch-zoom';
 import { getOfflinePdfData } from '@/lib/offline/pdf-offline';
 import { useProjectRole } from '@/lib/hooks/use-project-role';
 import { AnnotationListPanel } from './annotation-list-panel';
-import type { Task } from '@joubuild/shared';
+import type { Task, AnnotationType } from '@joubuild/shared';
 
 // --- Tile-based rendering types and helpers ---
 
@@ -144,6 +144,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
 
   // Annotation detail panel state
   const [detailAnnotationId, setDetailAnnotationId] = useState<string | null>(null);
+  const [detailInitialTab, setDetailInitialTab] = useState<'chat' | 'photos' | 'attributes'>('chat');
 
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -325,7 +326,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         setAnnotations(
           data.map((a: { id: string; type: string; data: AnnotationData['data'] }) => ({
             id: a.id,
-            type: a.type as AnnotationTool,
+            type: a.type as AnnotationType,
             data: a.data,
           }))
         );
@@ -910,7 +911,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       setAnnotations(
         reloaded.map((a: { id: string; type: string; data: AnnotationData['data'] }) => ({
           id: a.id,
-          type: a.type as AnnotationTool,
+          type: a.type as AnnotationType,
           data: a.data,
         }))
       );
@@ -1031,6 +1032,23 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       }
     }
     setDetailAnnotationId(id);
+  }, [annotations, sheetVersionId]);
+
+  // Handle pin tool creation — save to DB immediately and open detail dialog
+  const handlePinCreated = useCallback(async (annotationId: string, initialTab: 'photos' | 'attributes') => {
+    const annotation = annotations.find(a => a.id === annotationId);
+    if (!annotation) return;
+
+    const supabase = getSupabaseClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase.from('annotations').upsert(
+      { id: annotation.id, sheet_version_id: sheetVersionId, type: annotation.type, data: annotation.data, created_by: user?.id },
+      { onConflict: 'id', ignoreDuplicates: true }
+    );
+
+    setDetailInitialTab(initialTab);
+    setDetailAnnotationId(annotationId);
+    setActiveTool('select');
   }, [annotations, sheetVersionId]);
 
   // Handle task pin click — open the annotation dialog for the task's linked annotation
@@ -1267,6 +1285,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
               selectedId={selectedId}
               onSelectId={setSelectedId}
               onAnnotationClick={handleAnnotationClick}
+              onPinCreated={handlePinCreated}
               pixelsPerMeter={pixelsPerMeter}
               displayScale={ds}
             />
@@ -1295,7 +1314,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         annotationId={detailAnnotationId}
         projectId={projectId}
         sheetVersionId={sheetVersionId}
-        onClose={() => setDetailAnnotationId(null)}
+        initialTab={detailInitialTab}
+        onClose={() => { setDetailAnnotationId(null); setDetailInitialTab('chat'); }}
         onTaskCreated={handleDialogTaskCreated}
         onTaskUpdated={handleDialogTaskUpdated}
         onTaskDeleted={handleDialogTaskDeleted}
