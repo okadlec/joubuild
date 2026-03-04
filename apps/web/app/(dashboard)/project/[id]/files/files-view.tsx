@@ -11,6 +11,7 @@ import {
   ChevronRight,
   Home,
   Tag,
+  Eye,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,6 +23,7 @@ import { formatDate, formatFileSize } from '@joubuild/shared';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFolderPermissions } from '@/lib/hooks/use-folder-permissions';
 import { TagPicker } from '@/components/shared/tag-picker';
+import { SimplePdfViewer } from '@/components/shared/simple-pdf-viewer';
 import { toast } from 'sonner';
 
 interface Document {
@@ -60,6 +62,7 @@ export function FilesView({
   const [newFolderName, setNewFolderName] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [editingTagsDocId, setEditingTagsDocId] = useState<string | null>(null);
+  const [viewingDoc, setViewingDoc] = useState<Document | null>(null);
 
   const { hasPermission } = usePermissions(projectId);
   const canEdit = hasPermission('files', 'can_edit');
@@ -369,14 +372,25 @@ export function FilesView({
           ))}
 
           {/* Documents */}
-          {visibleDocuments.map(doc => (
+          {visibleDocuments.map(doc => {
+            const isPdf = doc.mime_type === 'application/pdf' || doc.name.toLowerCase().endsWith('.pdf');
+            return (
             <Card key={doc.id}>
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <FileText className="h-8 w-8 text-muted-foreground" />
                     <div>
-                      <p className="font-medium">{doc.name}</p>
+                      {isPdf ? (
+                        <button
+                          className="font-medium text-left hover:underline"
+                          onClick={() => setViewingDoc(doc)}
+                        >
+                          {doc.name}
+                        </button>
+                      ) : (
+                        <p className="font-medium">{doc.name}</p>
+                      )}
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
                         {doc.file_size && <span>{formatFileSize(doc.file_size)}</span>}
                         <span>{formatDate(doc.created_at)}</span>
@@ -399,6 +413,16 @@ export function FilesView({
                         title="Tagy"
                       >
                         <Tag className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {isPdf && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => setViewingDoc(doc)}
+                        title="Zobrazit PDF"
+                      >
+                        <Eye className="h-4 w-4" />
                       </Button>
                     )}
                     <a href={doc.file_url} target="_blank" rel="noopener noreferrer">
@@ -429,8 +453,18 @@ export function FilesView({
                 )}
               </CardContent>
             </Card>
-          ))}
+            );
+          })}
         </div>
+      )}
+
+      {/* PDF Viewer */}
+      {viewingDoc && (
+        <SimplePdfViewer
+          fileUrl={viewingDoc.file_url}
+          fileName={viewingDoc.name}
+          onClose={() => setViewingDoc(null)}
+        />
       )}
 
       {/* New folder dialog */}

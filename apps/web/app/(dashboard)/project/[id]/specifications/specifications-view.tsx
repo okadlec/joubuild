@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Upload, BookOpen, Download, Trash2 } from 'lucide-react';
+import { Upload, BookOpen, Download, Trash2, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { formatDate, formatFileSize } from '@joubuild/shared';
 import { usePermissions } from '@/lib/hooks/use-permissions';
+import { SimplePdfViewer } from '@/components/shared/simple-pdf-viewer';
 import { toast } from 'sonner';
 
 interface Specification {
@@ -27,6 +28,7 @@ export function SpecificationsView({
 }) {
   const [specifications, setSpecifications] = useState(initialSpecifications);
   const [uploading, setUploading] = useState(false);
+  const [viewingSpec, setViewingSpec] = useState<Specification | null>(null);
 
   const { hasPermission } = usePermissions(projectId);
   const canCreate = hasPermission('specifications', 'can_create');
@@ -152,7 +154,12 @@ export function SpecificationsView({
                 <div className="flex items-center gap-3">
                   <BookOpen className="h-8 w-8 text-muted-foreground" />
                   <div>
-                    <p className="font-medium">{spec.name}</p>
+                    <button
+                      className="font-medium text-left hover:underline"
+                      onClick={() => setViewingSpec(spec)}
+                    >
+                      {spec.name}
+                    </button>
                     <div className="flex items-center gap-3 text-sm text-muted-foreground">
                       {spec.file_size && <span>{formatFileSize(spec.file_size)}</span>}
                       <span>{formatDate(spec.created_at)}</span>
@@ -163,6 +170,14 @@ export function SpecificationsView({
                   </div>
                 </div>
                 <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setViewingSpec(spec)}
+                    title="Zobrazit PDF"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
                   <a href={spec.file_url} target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" size="icon">
                       <Download className="h-4 w-4" />
@@ -182,6 +197,15 @@ export function SpecificationsView({
             </Card>
           ))}
         </div>
+      )}
+
+      {/* PDF Viewer */}
+      {viewingSpec && (
+        <SimplePdfViewer
+          fileUrl={viewingSpec.file_url}
+          fileName={viewingSpec.name}
+          onClose={() => setViewingSpec(null)}
+        />
       )}
     </div>
   );
