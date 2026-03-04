@@ -2,7 +2,7 @@
 
 // IndexedDB-based offline queue for mutations
 const DB_NAME = 'joubuild-offline';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'sync-queue';
 
 interface QueuedAction {
@@ -22,6 +22,13 @@ function openDB(): Promise<IDBDatabase> {
       const db = (event.target as IDBOpenDBRequest).result;
       if (!db.objectStoreNames.contains(STORE_NAME)) {
         db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+      }
+      // Stores created by pdf-offline.ts — ensure they exist at version 2
+      if (!db.objectStoreNames.contains('offline-pdfs')) {
+        db.createObjectStore('offline-pdfs', { keyPath: 'sheetId' });
+      }
+      if (!db.objectStoreNames.contains('offline-pdf-blobs')) {
+        db.createObjectStore('offline-pdf-blobs', { keyPath: 'fileUrl' });
       }
     };
   });

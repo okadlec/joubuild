@@ -1,5 +1,4 @@
 import { redirect } from 'next/navigation';
-import { LayoutDashboard, Users, Building2 } from 'lucide-react';
 import { getCurrentAdminContext, type AdminContext } from '@/lib/supabase/admin';
 import { AdminShell, type NavItem } from './admin-shell';
 
@@ -16,13 +15,13 @@ export default async function AdminLayout({
 
   const navItems: NavItem[] = ctx.isSuperadmin
     ? [
-        { label: 'Prehled', href: '/admin', icon: LayoutDashboard },
-        { label: 'Organizace', href: '/admin/organizations', icon: Building2 },
-        { label: 'Uzivatele', href: '/admin/users', icon: Users },
+        { label: 'Prehled', href: '/admin', icon: 'LayoutDashboard' },
+        { label: 'Organizace', href: '/admin/organizations', icon: 'Building2' },
+        { label: 'Uzivatele', href: '/admin/users', icon: 'Users' },
       ]
     : [
-        { label: 'Prehled', href: '/admin', icon: LayoutDashboard },
-        { label: 'Clenove', href: '/admin/users', icon: Users },
+        { label: 'Prehled', href: '/admin', icon: 'LayoutDashboard' },
+        { label: 'Clenove', href: '/admin/users', icon: 'Users' },
       ];
 
   const title = ctx.isSuperadmin ? 'Admin Dashboard' : 'Sprava organizace';

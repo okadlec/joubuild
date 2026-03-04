@@ -1209,6 +1209,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
             const effectiveScale = Math.min(scale, MAX_KONVA_DIM / Math.max(pageSize.width, pageSize.height));
             const ds = scale / effectiveScale;
             return (
+              <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
               <TaskPinOverlay
                 width={pageSize.width}
                 height={pageSize.height}
@@ -1217,12 +1218,14 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
                 onTaskClick={() => {}}
                 displayScale={ds}
               />
+              </div>
             );
           })()}
           {showAnnotations && pageSize.width > 0 && (() => {
             const effectiveScale = Math.min(scale, MAX_KONVA_DIM / Math.max(pageSize.width, pageSize.height));
             const ds = scale / effectiveScale;
             return (
+            <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
             <AnnotationOverlay
               width={pageSize.width}
               height={pageSize.height}
@@ -1238,6 +1241,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
               pixelsPerMeter={pixelsPerMeter}
               displayScale={ds}
             />
+            </div>
             );
           })()}
         </div>

@@ -20,6 +20,10 @@ function openDb(): Promise<IDBDatabase> {
     const req = indexedDB.open(IDB_NAME, 2);
     req.onupgradeneeded = () => {
       const db = req.result;
+      // Ensure sync-queue store exists (created by index.ts at version 1)
+      if (!db.objectStoreNames.contains('sync-queue')) {
+        db.createObjectStore('sync-queue', { keyPath: 'id' });
+      }
       if (!db.objectStoreNames.contains(IDB_STORE)) {
         db.createObjectStore(IDB_STORE, { keyPath: 'sheetId' });
       }
