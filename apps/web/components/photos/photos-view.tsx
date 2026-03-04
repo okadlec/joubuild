@@ -8,7 +8,7 @@ import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { getSupabaseClient } from '@/lib/supabase/client';
-import { formatDate, formatRelativeTime } from '@joubuild/shared';
+import { formatDate, formatRelativeTime, sanitizeFileName } from '@joubuild/shared';
 import { Avatar } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -216,7 +216,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
       const isImage = file.type.startsWith('image/');
       const uploadBlob = isImage ? await compressImage(file) : file;
       const ext = isImage ? '.jpg' : file.name.match(/\.[^.]+$/)?.[0] || '';
-      const fileName = `${projectId}/${Date.now()}-${file.name.replace(/\.[^.]+$/, ext)}`;
+      const fileName = `${projectId}/${Date.now()}-${sanitizeFileName(file.name.replace(/\.[^.]+$/, ext))}`;
       const { error: uploadError } = await supabase.storage
         .from('photos')
         .upload(fileName, uploadBlob, isImage ? { contentType: 'image/jpeg' } : undefined);

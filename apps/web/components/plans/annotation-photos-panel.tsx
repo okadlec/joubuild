@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { compressImage } from '@/lib/compress-image';
+import { sanitizeFileName } from '@joubuild/shared';
 
 interface Photo {
   id: string;
@@ -56,7 +57,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
 
     for (const file of fileArray) {
       const compressed = await compressImage(file);
-      const fileName = `${projectId}/${Date.now()}-${file.name.replace(/\.[^.]+$/, '.jpg')}`;
+      const fileName = `${projectId}/${Date.now()}-${sanitizeFileName(file.name.replace(/\.[^.]+$/, '.jpg'))}`;
       const { error: uploadError } = await supabase.storage
         .from('photos')
         .upload(fileName, compressed, { contentType: 'image/jpeg' });

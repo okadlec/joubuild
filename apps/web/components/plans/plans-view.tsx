@@ -18,6 +18,7 @@ import { VersionCompare } from './version-compare';
 import { CrossCompareDialog } from './cross-compare-dialog';
 import { useOfflinePdf } from '@/lib/hooks/use-offline-pdf';
 import { generatePdfThumbnail } from '@/lib/generate-pdf-thumbnail';
+import { sanitizeFileName } from '@joubuild/shared';
 
 interface SheetVersion {
   id: string;
@@ -183,7 +184,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
     setUploading(true);
     const supabase = getSupabaseClient();
 
-    const fileName = `${projectId}/${planSetId}/${Date.now()}-${file.name}`;
+    const fileName = `${projectId}/${planSetId}/${Date.now()}-${sanitizeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage
       .from('plans')
       .upload(fileName, file);
@@ -285,7 +286,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
     const supabase = getSupabaseClient();
     const { data: { user } } = await supabase.auth.getUser();
 
-    const fileName = `${projectId}/versions/${Date.now()}-${file.name}`;
+    const fileName = `${projectId}/versions/${Date.now()}-${sanitizeFileName(file.name)}`;
     const { error: uploadError } = await supabase.storage
       .from('plans')
       .upload(fileName, file);

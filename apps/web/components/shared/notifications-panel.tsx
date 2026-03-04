@@ -15,6 +15,9 @@ const NOTIFICATION_ICONS: Record<string, string> = {
   status_changed: '🔄',
   comment_added: '💬',
   due_date_approaching: '⏰',
+  photo_added: '📷',
+  checklist_updated: '✅',
+  task_updated: '📝',
 };
 
 export function NotificationsPanel() {

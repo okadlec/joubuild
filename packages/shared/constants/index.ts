@@ -89,6 +89,9 @@ export const NOTIFICATION_TYPES = [
   'status_changed',
   'comment_added',
   'due_date_approaching',
+  'photo_added',
+  'checklist_updated',
+  'task_updated',
 ] as const;
 
 // Supabase Storage buckets

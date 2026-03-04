@@ -20,7 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { getSupabaseClient } from '@/lib/supabase/client';
-import { formatDate, formatFileSize } from '@joubuild/shared';
+import { formatDate, formatFileSize, sanitizeFileName } from '@joubuild/shared';
 import { usePermissions } from '@/lib/hooks/use-permissions';
 import { useFolderPermissions } from '@/lib/hooks/use-folder-permissions';
 import { TagPicker } from '@/components/shared/tag-picker';
@@ -113,7 +113,7 @@ export function FilesView({
       const fileArray = Array.from(files);
 
       for (const file of fileArray) {
-        const fileName = `${projectId}/${Date.now()}-${file.name}`;
+        const fileName = `${projectId}/${Date.now()}-${sanitizeFileName(file.name)}`;
         const { error: uploadError } = await supabase.storage
           .from('documents')
           .upload(fileName, file);

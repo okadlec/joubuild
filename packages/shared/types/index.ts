@@ -247,7 +247,10 @@ export type NotificationType =
   | 'task_assigned'
   | 'status_changed'
   | 'comment_added'
-  | 'due_date_approaching';
+  | 'due_date_approaching'
+  | 'photo_added'
+  | 'checklist_updated'
+  | 'task_updated';
 
 export interface Notification {
   id: string;

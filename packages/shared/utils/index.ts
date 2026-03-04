@@ -1,4 +1,15 @@
 /**
+ * Sanitize a file name by removing diacritics and non-ASCII characters.
+ * Preserves uppercase letters, digits, dots, hyphens, and underscores.
+ */
+export function sanitizeFileName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-zA-Z0-9._-]/g, '_');
+}
+
+/**
  * Generate a URL-safe slug from a string.
  */
 export function slugify(text: string): string {
