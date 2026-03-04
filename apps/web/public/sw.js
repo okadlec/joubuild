@@ -1,5 +1,5 @@
 // JouBuild Service Worker - Offline support
-const CACHE_NAME = 'joubuild-v2';
+const CACHE_NAME = 'joubuild-v3';
 const STATIC_ASSETS = [
   '/',
   '/projects',
