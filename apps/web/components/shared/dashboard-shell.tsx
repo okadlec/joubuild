@@ -53,7 +53,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header user={user} onMenuClick={handleMenuClick} hideHamburgerInProject={isInProject} />
         {/* pb accounts for bottom nav: 60px + safe-area-inset-bottom */}
-        <main className={`flex-1 overflow-auto p-2 sm:p-4 lg:p-6 ${isInProject ? 'pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-6' : ''}`}>
+        <main className={`flex-1 overflow-y-auto overflow-x-hidden p-2 sm:p-4 lg:p-6 ${isInProject ? 'pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-6' : ''}`}>
           {children}
         </main>
       </div>

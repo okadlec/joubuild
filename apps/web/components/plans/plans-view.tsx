@@ -391,7 +391,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
           <Button variant="ghost" size="sm" onClick={() => setCompareVersions(null)}>
             ← Zpět
           </Button>
-          <h2 className="text-lg font-semibold">
+          <h2 className="min-w-0 truncate text-lg font-semibold">
             Porovnání verzí - {selectedSheet?.name}
           </h2>
         </div>
@@ -414,46 +414,48 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
 
     return (
       <div className="h-full">
-        <div className="mb-4 flex items-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => { setSelectedSheet(null); setShowVersions(false); setViewingVersion(null); }}>
-            ← Zpět
+            ← <span className="hidden sm:inline">Zpět</span>
           </Button>
-          <h2 className="text-lg font-semibold">{selectedSheet.name}</h2>
+          <h2 className="min-w-0 truncate text-lg font-semibold">{selectedSheet.name}</h2>
           <Badge variant="outline">v{displayedVersion?.version_number ?? 1}</Badge>
           <div className="flex-1" />
-          <Button variant="outline" size="sm" onClick={() => setShowVersions(!showVersions)}>
-            <History className="mr-1 h-3.5 w-3.5" />
-            Verze ({selectedSheet.sheet_versions.length})
-          </Button>
-          <Button variant="outline" size="sm" onClick={() => setShowNewVersion(true)}>
-            <Upload className="mr-1 h-3.5 w-3.5" />
-            Nová revize
-          </Button>
-          {currentVersion && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                const planSet = planSets.find(ps => ps.sheets.some(s => s.id === selectedSheet.id));
-                setCrossCompareInitial({
-                  planSetId: planSet?.id ?? '',
-                  sheetId: selectedSheet.id,
-                  versionId: currentVersion.id,
-                });
-                setShowCrossCompare(true);
-              }}
-            >
-              <GitCompare className="mr-1 h-3.5 w-3.5" />
-              Porovnat
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="sm" onClick={() => setShowVersions(!showVersions)}>
+              <History className="sm:mr-1 h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Verze ({selectedSheet.sheet_versions.length})</span>
             </Button>
-          )}
-          {currentVersion && (
-            <OfflineDownloadButton
-              sheetId={selectedSheet.id}
-              name={selectedSheet.name}
-              fileUrl={currentVersion.file_url}
-            />
-          )}
+            <Button variant="outline" size="sm" onClick={() => setShowNewVersion(true)}>
+              <Upload className="sm:mr-1 h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Nová revize</span>
+            </Button>
+            {currentVersion && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  const planSet = planSets.find(ps => ps.sheets.some(s => s.id === selectedSheet.id));
+                  setCrossCompareInitial({
+                    planSetId: planSet?.id ?? '',
+                    sheetId: selectedSheet.id,
+                    versionId: currentVersion.id,
+                  });
+                  setShowCrossCompare(true);
+                }}
+              >
+                <GitCompare className="sm:mr-1 h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Porovnat</span>
+              </Button>
+            )}
+            {currentVersion && (
+              <OfflineDownloadButton
+                sheetId={selectedSheet.id}
+                name={selectedSheet.name}
+                fileUrl={currentVersion.file_url}
+              />
+            )}
+          </div>
         </div>
 
         {/* Versions panel */}
@@ -570,19 +572,19 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
   // Plan sets list view
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
           <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('noPlansDescription')}</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => setShowNewSet(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('newPlanSet')}
+          <Button variant="outline" size="sm" onClick={() => setShowNewSet(true)}>
+            <Plus className="sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">{t('newPlanSet')}</span>
           </Button>
-          <Button onClick={() => setShowUpload(true)} disabled={planSets.length === 0}>
-            <Upload className="mr-2 h-4 w-4" />
-            {t('uploadPlans')}
+          <Button size="sm" onClick={() => setShowUpload(true)} disabled={planSets.length === 0}>
+            <Upload className="sm:mr-2 h-4 w-4" />
+            <span className="hidden sm:inline">{t('uploadPlans')}</span>
           </Button>
         </div>
       </div>

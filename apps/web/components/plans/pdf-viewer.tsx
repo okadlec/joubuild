@@ -1165,7 +1165,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
           </>
         )}
         <div className="flex-1" />
-        {!isFullscreen && <span className="text-xs text-muted-foreground">ID: {sheetVersionId.slice(0, 8)}</span>}
+        {!isFullscreen && <span className="hidden sm:inline text-xs text-muted-foreground">ID: {sheetVersionId.slice(0, 8)}</span>}
       </div>
 
       {/* Annotation toolbar */}
