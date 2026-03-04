@@ -154,7 +154,7 @@ export function CrossCompareDialog({
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto">
+      <div className="flex-1 overflow-hidden flex flex-col">
         {step === 'select' && (
           <SelectStep
             planSets={planSets}
@@ -518,7 +518,7 @@ function AlignStep({
       {/* Canvas area */}
       <div
         ref={containerRef}
-        className="flex-1 overflow-auto bg-muted/30 p-4"
+        className="min-h-0 flex-1 overflow-auto bg-muted/30 p-4"
       >
         {loading && (
           <div className="flex h-full items-center justify-center">
@@ -764,7 +764,7 @@ function ResultStep({
       </div>
 
       {/* Canvas area */}
-      <div className="flex-1 overflow-auto bg-muted/50 p-4">
+      <div className="min-h-0 flex-1 overflow-auto bg-muted/50 p-4">
         {loading && (
           <div className="flex h-64 items-center justify-center">
             <p className="text-muted-foreground">Generování porovnání...</p>

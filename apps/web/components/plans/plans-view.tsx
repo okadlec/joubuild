@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 import { PdfViewer } from './pdf-viewer';
 import { VersionCompare } from './version-compare';
 import { CrossCompareDialog } from './cross-compare-dialog';
@@ -93,6 +94,9 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
     old: SheetVersion;
     new: SheetVersion;
   } | null>(null);
+
+  // Viewing a specific (possibly older) version
+  const [viewingVersion, setViewingVersion] = useState<SheetVersion | null>(null);
 
   // Cross-compare
   const [showCrossCompare, setShowCrossCompare] = useState(false);
@@ -335,16 +339,17 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
   if (selectedSheet) {
     const currentVersion = selectedSheet.sheet_versions.find(v => v.is_current)
       || selectedSheet.sheet_versions[0];
+    const displayedVersion = viewingVersion ?? currentVersion;
     const versionsSorted = [...selectedSheet.sheet_versions].sort((a, b) => b.version_number - a.version_number);
 
     return (
       <div className="h-full">
         <div className="mb-4 flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={() => { setSelectedSheet(null); setShowVersions(false); }}>
+          <Button variant="ghost" size="sm" onClick={() => { setSelectedSheet(null); setShowVersions(false); setViewingVersion(null); }}>
             ← Zpět
           </Button>
           <h2 className="text-lg font-semibold">{selectedSheet.name}</h2>
-          <Badge variant="outline">v{currentVersion?.version_number ?? 1}</Badge>
+          <Badge variant="outline">v{displayedVersion?.version_number ?? 1}</Badge>
           <div className="flex-1" />
           <Button variant="outline" size="sm" onClick={() => setShowVersions(!showVersions)}>
             <History className="mr-1 h-3.5 w-3.5" />
@@ -389,7 +394,11 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
               {versionsSorted.map((v, index) => (
                 <div
                   key={v.id}
-                  className="flex items-center justify-between rounded-md border p-2"
+                  className={cn(
+                    "flex items-center justify-between rounded-md border p-2 cursor-pointer hover:bg-accent/50",
+                    displayedVersion?.id === v.id && "border-primary bg-accent"
+                  )}
+                  onClick={() => setViewingVersion(v.id === currentVersion?.id ? null : v)}
                 >
                   <div className="flex items-center gap-2">
                     <Badge variant={v.is_current ? 'default' : 'outline'}>
@@ -405,10 +414,13 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => setCompareVersions({
-                          old: versionsSorted[index + 1],
-                          new: v,
-                        })}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCompareVersions({
+                            old: versionsSorted[index + 1],
+                            new: v,
+                          });
+                        }}
                       >
                         <GitCompare className="mr-1 h-3.5 w-3.5" />
                         Porovnat
@@ -421,9 +433,9 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
           </div>
         )}
 
-        {currentVersion && (
+        {displayedVersion && (
           <div className="relative">
-            {!currentVersion.is_current && (
+            {!displayedVersion.is_current && (
               <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                 <div className="rotate-[-30deg] rounded-lg border-4 border-red-500/30 px-8 py-4 text-4xl font-bold text-red-500/30">
                   NEAKTUÁLNÍ
@@ -431,11 +443,11 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
               </div>
             )}
             <PdfViewer
-              fileUrl={currentVersion.file_url}
-              sheetVersionId={currentVersion.id}
+              fileUrl={displayedVersion.file_url}
+              sheetVersionId={displayedVersion.id}
               sheetId={selectedSheet.id}
               projectId={projectId}
-              isCurrent={currentVersion.is_current}
+              isCurrent={displayedVersion.is_current}
               initialAnnotationId={initialAnnotationId ?? undefined}
             />
           </div>
