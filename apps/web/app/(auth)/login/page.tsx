@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 export default function LoginPage() {
   const router = useRouter();
   const t = useTranslations('auth');
+  const tCommon = useTranslations('common');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -44,7 +45,7 @@ export default function LoginPage() {
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">{t('email', { ns: 'common' })}</Label>
+            <Label htmlFor="email">{tCommon('email')}</Label>
             <Input
               id="email"
               type="email"
@@ -55,7 +56,7 @@ export default function LoginPage() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">{t('password', { ns: 'common' })}</Label>
+            <Label htmlFor="password">{tCommon('password')}</Label>
             <Input
               id="password"
               type="password"
