@@ -198,6 +198,12 @@ export function ProjectSettings({
     setSearchingUsers(false);
   }, [project.id]);
 
+  useEffect(() => {
+    if (showAddMember) {
+      doSearch('');
+    }
+  }, [showAddMember, doSearch]);
+
   function handleUserQueryChange(value: string) {
     setUserQuery(value);
     setNewMemberEmail(value);
@@ -394,7 +400,7 @@ export function ProjectSettings({
                 value={userQuery}
                 onChange={(e) => handleUserQueryChange(e.target.value)}
                 onFocus={() => { if (userResults.length > 0) setShowUserResults(true); else doSearch(userQuery); }}
-                placeholder="Hledat jméno nebo email..."
+                placeholder="Filtrovat uživatele..."
                 autoComplete="off"
               />
               {showUserResults && (

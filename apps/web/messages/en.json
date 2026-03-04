@@ -322,7 +322,8 @@
       "categoryName": "Category name",
       "categoryCreated": "Category created",
       "categoryDeleted": "Category deleted",
-      "deleteConfirm": "Are you sure you want to delete this category?"
+      "deleteConfirm": "Are you sure you want to delete this category?",
+      "color": "Color"
     },
     "kanban": {
       "noTasks": "No tasks",

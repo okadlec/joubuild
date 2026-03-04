@@ -322,7 +322,8 @@
       "categoryName": "Název kategorie",
       "categoryCreated": "Kategorie vytvořena",
       "categoryDeleted": "Kategorie smazána",
-      "deleteConfirm": "Opravdu chcete smazat tuto kategorii?"
+      "deleteConfirm": "Opravdu chcete smazat tuto kategorii?",
+      "color": "Barva"
     },
     "kanban": {
       "noTasks": "Žádné úkoly",

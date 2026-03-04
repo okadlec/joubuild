@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
+import { getCurrentAdminContext } from '@/lib/supabase/admin';
 
 export async function inviteMember(projectId: string, email: string, role: string) {
   const supabase = await createClient();
@@ -20,8 +21,11 @@ export async function inviteMember(projectId: string, email: string, role: strin
     .eq('user_id', user.id)
     .maybeSingle();
 
-  if (!callerMember || callerMember.role !== 'admin') {
-    return { error: 'Nemáte oprávnění přidávat členy' };
+  if (callerMember?.role !== 'admin') {
+    const adminCtx = await getCurrentAdminContext();
+    if (!adminCtx?.isSuperadmin && !adminCtx?.isOrgAdmin) {
+      return { error: 'Nemáte oprávnění přidávat členy' };
+    }
   }
 
   // Use service role to look up user by email in profiles
@@ -92,8 +96,7 @@ export async function searchUsers(projectId: string, query: string) {
   const trimmed = query.trim();
   let queryBuilder = serviceClient
     .from('profiles')
-    .select('id, email, full_name')
-    .limit(10);
+    .select('id, email, full_name');
 
   if (trimmed) {
     queryBuilder = queryBuilder.or(`email.ilike.%${trimmed}%,full_name.ilike.%${trimmed}%`);
