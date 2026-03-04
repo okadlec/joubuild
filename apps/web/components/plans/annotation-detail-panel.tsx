@@ -459,6 +459,24 @@ export function AnnotationDetailPanel({
         </Button>
       </div>
 
+      {/* Plan preview — always visible */}
+      {planPreviewData && (
+        <div className="border-b px-3 py-2">
+          <AnnotationPlanPreview
+            projectId={projectId}
+            sheetId={planPreviewData.sheetId}
+            sheetName={planPreviewData.sheetName}
+            annotationId={annotationId}
+            annotationType={planPreviewData.annotationType}
+            annotationData={planPreviewData.annotationData}
+            thumbnailUrl={planPreviewData.thumbnailUrl}
+            sheetWidth={planPreviewData.sheetWidth}
+            sheetHeight={planPreviewData.sheetHeight}
+            planSetName={planPreviewData.planSetName}
+          />
+        </div>
+      )}
+
       {/* Tabs */}
       <div className="flex border-b">
         {tabs.map((tab) => (
@@ -603,21 +621,6 @@ export function AnnotationDetailPanel({
 
                     {photo.caption && (
                       <p className="text-sm text-muted-foreground">{photo.caption}</p>
-                    )}
-
-                    {planPreviewData && (
-                      <AnnotationPlanPreview
-                        projectId={projectId}
-                        sheetId={planPreviewData.sheetId}
-                        sheetName={planPreviewData.sheetName}
-                        annotationId={annotationId}
-                        annotationType={planPreviewData.annotationType}
-                        annotationData={planPreviewData.annotationData}
-                        thumbnailUrl={planPreviewData.thumbnailUrl}
-                        sheetWidth={planPreviewData.sheetWidth}
-                        sheetHeight={planPreviewData.sheetHeight}
-                        planSetName={planPreviewData.planSetName}
-                      />
                     )}
                   </div>
                 );
