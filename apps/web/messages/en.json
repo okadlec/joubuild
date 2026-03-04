@@ -314,7 +314,9 @@
       "noComments": "No comments",
       "commentAdded": "Comment added",
       "commentDeleted": "Comment deleted",
-      "edited": "edited"
+      "edited": "edited",
+      "empty": "No comments",
+      "anonymous": "Unknown user"
     },
     "checklist": "Checklist",
     "addChecklistItem": "Add item",

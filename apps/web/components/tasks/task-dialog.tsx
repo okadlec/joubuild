@@ -120,8 +120,16 @@ export function TaskDialog({
       .select('sheet_versions!inner ( sheets!inner ( id ) )')
       .eq('id', task.annotation_id)
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error }) => {
+        if (error) {
+          console.error('[TaskDialog] Failed to resolve annotation sheet:', error.message, { annotation_id: task!.annotation_id });
+          setLinkedSheetId(null);
+          return;
+        }
         const sv = data?.sheet_versions as unknown as { sheets: { id: string } } | undefined;
+        if (!sv?.sheets.id) {
+          console.warn('[TaskDialog] Annotation has no linked sheet', { annotation_id: task!.annotation_id, data });
+        }
         setLinkedSheetId(sv?.sheets.id ?? null);
       });
   }, [task?.annotation_id]);

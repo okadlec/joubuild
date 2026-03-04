@@ -314,7 +314,9 @@
       "noComments": "Žádné komentáře",
       "commentAdded": "Komentář přidán",
       "commentDeleted": "Komentář smazán",
-      "edited": "upraveno"
+      "edited": "upraveno",
+      "empty": "Žádné komentáře",
+      "anonymous": "Neznámý uživatel"
     },
     "checklist": "Kontrolní seznam",
     "addChecklistItem": "Přidat položku",
