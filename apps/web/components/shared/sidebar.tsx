@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
   Map,
@@ -37,28 +38,29 @@ interface SidebarProps {
 
 export function Sidebar({ organizations = [], currentOrgId, onOrgChange, onNavigate }: SidebarProps) {
   const pathname = usePathname();
+  const t = useTranslations('sidebar');
   const projectMatch = pathname.match(/\/project\/([^/]+)/);
   const projectId = projectMatch ? projectMatch[1] : undefined;
   const [collapsed, setCollapsed] = useState(false);
   const { hasAccess: isAdmin } = useAdminAccess();
 
   const mainNav = [
-    { href: '/projects', label: 'Projekty', icon: FolderOpen },
-    { href: '/organization', label: 'Organizace', icon: Building2 },
-    ...(isAdmin ? [{ href: '/admin', label: 'Admin', icon: Shield }] : []),
+    { href: '/projects', label: t('projects'), icon: FolderOpen },
+    { href: '/organization', label: t('organization'), icon: Building2 },
+    ...(isAdmin ? [{ href: '/admin', label: t('admin'), icon: Shield }] : []),
   ];
 
   const projectNav = projectId
     ? [
-        { href: `/project/${projectId}/plans`, label: 'Výkresy', icon: Map },
-        { href: `/project/${projectId}/tasks`, label: 'Úkoly', icon: CheckSquare },
-        { href: `/project/${projectId}/photos`, label: 'Fotky', icon: Camera },
-        { href: `/project/${projectId}/forms`, label: 'Formuláře', icon: ClipboardList },
-        { href: `/project/${projectId}/timesheets`, label: 'Výkazy', icon: Clock },
-        { href: `/project/${projectId}/reports`, label: 'Reporty', icon: BarChart2 },
-        { href: `/project/${projectId}/files`, label: 'Soubory', icon: FileText },
-        { href: `/project/${projectId}/specifications`, label: 'Specifikace', icon: BookOpen },
-        { href: `/project/${projectId}/settings`, label: 'Nastavení', icon: Settings },
+        { href: `/project/${projectId}/plans`, label: t('plans'), icon: Map },
+        { href: `/project/${projectId}/tasks`, label: t('tasks'), icon: CheckSquare },
+        { href: `/project/${projectId}/photos`, label: t('photos'), icon: Camera },
+        { href: `/project/${projectId}/forms`, label: t('forms'), icon: ClipboardList },
+        { href: `/project/${projectId}/timesheets`, label: t('timesheets'), icon: Clock },
+        { href: `/project/${projectId}/reports`, label: t('reports'), icon: BarChart2 },
+        { href: `/project/${projectId}/files`, label: t('files'), icon: FileText },
+        { href: `/project/${projectId}/specifications`, label: t('specifications'), icon: BookOpen },
+        { href: `/project/${projectId}/settings`, label: t('settings'), icon: Settings },
       ]
     : [];
 
@@ -123,7 +125,7 @@ export function Sidebar({ organizations = [], currentOrgId, onOrgChange, onNavig
             <div className="my-3 border-t" />
             {!collapsed && (
               <p className="mb-1 px-3 text-xs font-semibold uppercase text-muted-foreground">
-                Projekt
+                {t('projectSection')}
               </p>
             )}
             {projectNav.map((item) => {

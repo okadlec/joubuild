@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, Minimize2, Ruler, Layers, ChevronLeft, ChevronRight, X, Trash2, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { getSupabaseClient } from '@/lib/supabase/client';
@@ -96,6 +97,8 @@ interface PdfViewerProps {
 }
 
 export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurrent = true, initialAnnotationId }: PdfViewerProps) {
+  const t = useTranslations('plans');
+  const tCommon = useTranslations('common');
   const canvasARef = useRef<HTMLCanvasElement>(null);
   const canvasBRef = useRef<HTMLCanvasElement>(null);
   const frontBufferRef = useRef<'A' | 'B'>('A');
@@ -248,6 +251,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   // Load PDF
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
+    setLoadProgress(0);
 
     async function loadPdf() {
       try {
@@ -287,7 +292,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         setLoading(false);
       } catch (err) {
         if (!cancelled) {
-          setError('Nepodařilo se načíst PDF');
+          setError(t('pdfLoadError'));
           setLoading(false);
           console.error(err);
         }
@@ -888,7 +893,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       );
 
       if (error) {
-        toast.error('Chyba při ukládání anotací');
+        toast.error(t('saveAnnotationsError'));
         setSaving(false);
         return;
       }
@@ -911,13 +916,13 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       );
     }
 
-    toast.success('Anotace uloženy');
+    toast.success(t('annotationsSaved'));
     setSaving(false);
   }, [annotations, sheetVersionId]);
 
   // Delete all annotations (admin only)
   const handleDeleteAllAnnotations = useCallback(async () => {
-    if (!confirm('Opravdu chcete smazat všechny anotace?')) return;
+    if (!confirm(t('deleteAllConfirm'))) return;
 
     const supabase = getSupabaseClient();
     const { error } = await supabase
@@ -926,7 +931,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       .eq('sheet_version_id', sheetVersionId);
 
     if (error) {
-      toast.error('Chyba při mazání anotací');
+      toast.error(t('deleteAllError'));
       return;
     }
 
@@ -935,7 +940,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     setRedoStack([]);
     setSelectedId(null);
     setDetailAnnotationId(null);
-    toast.success('Všechny anotace smazány');
+    toast.success(t('allAnnotationsDeleted'));
   }, [sheetVersionId]);
 
   // Calibration handlers
@@ -997,7 +1002,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       created_by: user?.id,
     });
 
-    toast.success('Měřítko kalibrováno');
+    toast.success(t('scaleCalibrated'));
   }, [calibrationPoints, sheetVersionId]);
 
   // Auto-save a single annotation to DB before opening its detail panel.
@@ -1088,7 +1093,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
           variant="outline"
           size="icon"
           onClick={() => setIsFullscreen(f => !f)}
-          title={isFullscreen ? 'Ukončit celou obrazovku' : 'Celá obrazovka'}
+          title={isFullscreen ? t('exitFullscreen') : t('fullscreen')}
         >
           {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
         </Button>
@@ -1099,14 +1104,14 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
           onClick={() => setShowAnnotations(!showAnnotations)}
         >
           <Layers className="mr-1 h-3.5 w-3.5" />
-          <span className="hidden lg:inline">Anotace</span>
+          <span className="hidden lg:inline">{t('annotations')}</span>
         </Button>
         {showAnnotations && (
           <Button
             variant={showListView ? 'default' : 'outline'}
             size="icon"
             onClick={() => setShowListView(!showListView)}
-            title="Seznam anotací"
+            title={t('annotationList')}
           >
             <List className="h-4 w-4" />
           </Button>
@@ -1119,13 +1124,13 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
             className="text-destructive hover:bg-destructive hover:text-destructive-foreground"
           >
             <Trash2 className="mr-1 h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Smazat vše</span>
+            <span className="hidden lg:inline">{tCommon('delete')}</span>
           </Button>
         )}
         {!isFullscreen && (
           <Button variant="outline" size="sm" onClick={() => setShowCalibration(true)}>
             <Ruler className="mr-1 h-3.5 w-3.5" />
-            <span className="hidden lg:inline">Kalibrace</span>
+            <span className="hidden lg:inline">{t('calibrate')}</span>
             {pixelsPerMeter && <span className="ml-1 text-xs text-green-500">&#10003;</span>}
           </Button>
         )}
@@ -1191,7 +1196,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       >
         {loading && (
           <div className="flex h-full flex-col items-center justify-center gap-3">
-            <p className="text-muted-foreground">Načítání PDF... {loadProgress > 0 ? `${loadProgress}%` : ''}</p>
+            <p className="text-muted-foreground">{tCommon('loading')} {loadProgress > 0 ? `${loadProgress}%` : ''}</p>
             {loadProgress > 0 && (
               <Progress value={loadProgress} className="w-48" />
             )}
@@ -1206,8 +1211,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
           <div className="absolute left-1/2 top-4 z-50 -translate-x-1/2 rounded-lg border bg-background px-4 py-2 shadow-lg">
             <p className="text-sm font-medium">
               {calibrationStep === 1
-                ? 'Klikněte na první bod kóty'
-                : 'Klikněte na druhý bod kóty'}
+                ? t('measureFirstPoint')
+                : t('measureSecondPoint')}
             </p>
           </div>
         )}

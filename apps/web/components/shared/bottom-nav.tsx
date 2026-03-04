@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   Map,
   CheckSquare,
@@ -24,6 +25,8 @@ interface BottomNavProps {
 
 export function BottomNav({ hidden }: BottomNavProps) {
   const pathname = usePathname();
+  const t = useTranslations('sidebar');
+  const tCommon = useTranslations('common');
   const projectMatch = pathname.match(/\/project\/([^/]+)/);
   const projectId = projectMatch ? projectMatch[1] : undefined;
   const [showMore, setShowMore] = useState(false);
@@ -32,18 +35,18 @@ export function BottomNav({ hidden }: BottomNavProps) {
   if (!projectId || hidden) return null;
 
   const items = [
-    { href: `/project/${projectId}/plans`, label: 'Výkresy', icon: Map },
-    { href: `/project/${projectId}/tasks`, label: 'Úkoly', icon: CheckSquare },
-    { href: `/project/${projectId}/photos`, label: 'Fotky', icon: Camera },
-    { href: `/project/${projectId}/files`, label: 'Soubory', icon: FileText },
+    { href: `/project/${projectId}/plans`, label: t('plans'), icon: Map },
+    { href: `/project/${projectId}/tasks`, label: t('tasks'), icon: CheckSquare },
+    { href: `/project/${projectId}/photos`, label: t('photos'), icon: Camera },
+    { href: `/project/${projectId}/files`, label: t('files'), icon: FileText },
   ];
 
   const moreItems = [
-    { href: `/project/${projectId}/specifications`, label: 'Specifikace', icon: BookOpen },
-    { href: `/project/${projectId}/forms`, label: 'Formuláře', icon: ClipboardList },
-    { href: `/project/${projectId}/timesheets`, label: 'Výkazy', icon: Clock },
-    { href: `/project/${projectId}/reports`, label: 'Reporty', icon: BarChart2 },
-    { href: `/project/${projectId}/settings`, label: 'Nastavení', icon: Settings },
+    { href: `/project/${projectId}/specifications`, label: t('specifications'), icon: BookOpen },
+    { href: `/project/${projectId}/forms`, label: t('forms'), icon: ClipboardList },
+    { href: `/project/${projectId}/timesheets`, label: t('timesheets'), icon: Clock },
+    { href: `/project/${projectId}/reports`, label: t('reports'), icon: BarChart2 },
+    { href: `/project/${projectId}/settings`, label: t('settings'), icon: Settings },
   ];
 
   return (
@@ -58,7 +61,7 @@ export function BottomNav({ hidden }: BottomNavProps) {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-3 flex items-center justify-between">
-              <span className="text-sm font-semibold">Více</span>
+              <span className="text-sm font-semibold">{tCommon('more')}</span>
               <button onClick={() => setShowMore(false)} className="rounded-md p-1 hover:bg-accent">
                 <X className="h-4 w-4" />
               </button>
@@ -112,7 +115,7 @@ export function BottomNav({ hidden }: BottomNavProps) {
           )}
         >
           <MoreHorizontal className="h-5 w-5" />
-          <span className="text-[10px] font-medium">Více</span>
+          <span className="text-[10px] font-medium">{tCommon('more')}</span>
         </button>
       </nav>
     </>

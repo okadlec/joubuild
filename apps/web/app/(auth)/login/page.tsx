@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,6 +13,7 @@ import { toast } from 'sonner';
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations('auth');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,24 +38,24 @@ export default function LoginPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Přihlášení</CardTitle>
-        <CardDescription>Zadejte svůj email a heslo</CardDescription>
+        <CardTitle>{t('login')}</CardTitle>
+        <CardDescription>{t('loginDescription')}</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t('email', { ns: 'common' })}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="vas@email.cz"
+              placeholder={t('emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Heslo</Label>
+            <Label htmlFor="password">{t('password', { ns: 'common' })}</Label>
             <Input
               id="password"
               type="password"
@@ -64,18 +66,18 @@ export default function LoginPage() {
           </div>
           <div className="text-right">
             <Link href="/forgot-password" className="text-sm text-primary hover:underline">
-              Zapomenuté heslo?
+              {t('forgotPassword')}
             </Link>
           </div>
         </CardContent>
         <CardFooter className="flex-col space-y-3">
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Přihlašování...' : 'Přihlásit se'}
+            {loading ? t('loggingIn') : t('loginButton')}
           </Button>
           <p className="text-sm text-muted-foreground">
-            Nemáte účet?{' '}
+            {t('noAccount')}{' '}
             <Link href="/register" className="text-primary hover:underline">
-              Registrovat se
+              {t('registerButton')}
             </Link>
           </p>
         </CardFooter>

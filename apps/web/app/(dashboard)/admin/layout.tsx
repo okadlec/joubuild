@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { getTranslations } from 'next-intl/server';
 import { getCurrentAdminContext, type AdminContext } from '@/lib/supabase/admin';
 import { AdminShell, type NavItem } from './admin-shell';
 
@@ -13,21 +14,23 @@ export default async function AdminLayout({
     redirect('/projects');
   }
 
+  const t = await getTranslations('admin');
+
   const navItems: NavItem[] = ctx.isSuperadmin
     ? [
-        { label: 'Prehled', href: '/admin', icon: 'LayoutDashboard' },
-        { label: 'Organizace', href: '/admin/organizations', icon: 'Building2' },
-        { label: 'Uzivatele', href: '/admin/users', icon: 'Users' },
+        { label: t('overview'), href: '/admin', icon: 'LayoutDashboard' },
+        { label: t('organizations'), href: '/admin/organizations', icon: 'Building2' },
+        { label: t('users'), href: '/admin/users', icon: 'Users' },
       ]
     : [
-        { label: 'Prehled', href: '/admin', icon: 'LayoutDashboard' },
-        { label: 'Clenove', href: '/admin/users', icon: 'Users' },
+        { label: t('overview'), href: '/admin', icon: 'LayoutDashboard' },
+        { label: t('members'), href: '/admin/users', icon: 'Users' },
       ];
 
-  const title = ctx.isSuperadmin ? 'Admin Dashboard' : 'Sprava organizace';
+  const title = ctx.isSuperadmin ? t('title') : t('orgAdminTitle');
   const subtitle = ctx.isSuperadmin
-    ? 'Sprava platformy JouBuild'
-    : 'Sprava clenu a projektu vasi organizace';
+    ? t('superadminSubtitle')
+    : t('orgAdminSubtitle');
 
   return (
     <AdminShell title={title} subtitle={subtitle} navItems={navItems}>

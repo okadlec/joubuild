@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { Plus, MapPin, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -11,7 +12,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { formatDate } from '@joubuild/shared';
-import { PROJECT_STATUS_LABELS } from '@joubuild/shared';
 import { toast } from 'sonner';
 import { createOrganizationAndProject } from './actions';
 
@@ -27,6 +27,8 @@ interface Project {
 }
 
 export function ProjectsList({ initialProjects }: { initialProjects: Project[] }) {
+  const t = useTranslations('projects');
+  const tCommon = useTranslations('common');
   const [projects, setProjects] = useState(initialProjects);
   const [showCreate, setShowCreate] = useState(false);
   const [name, setName] = useState('');
@@ -56,7 +58,7 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
     setDescription('');
     setAddress('');
     setLoading(false);
-    toast.success('Projekt vytvořen');
+    toast.success(t('projectCreated'));
   }
 
   const statusVariant: Record<string, 'default' | 'secondary' | 'outline'> = {
@@ -70,17 +72,17 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
       <div className="mb-4">
         <Button onClick={() => setShowCreate(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Nový projekt
+          {t('newProject')}
         </Button>
       </div>
 
       {projects.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-          <p className="mb-2 text-lg font-medium">Žádné projekty</p>
-          <p className="mb-4 text-sm text-muted-foreground">Vytvořte svůj první stavební projekt</p>
+          <p className="mb-2 text-lg font-medium">{t('noProjects')}</p>
+          <p className="mb-4 text-sm text-muted-foreground">{t('noProjectsDescription')}</p>
           <Button onClick={() => setShowCreate(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Nový projekt
+            {t('newProject')}
           </Button>
         </div>
       ) : (
@@ -101,7 +103,7 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
                   <div className="mb-2 flex items-start justify-between">
                     <h3 className="font-semibold">{project.name}</h3>
                     <Badge variant={statusVariant[project.status] || 'default'}>
-                      {PROJECT_STATUS_LABELS[project.status] || project.status}
+                      {t(`statuses.${project.status}`)}
                     </Badge>
                   </div>
                   {project.description && (
@@ -130,26 +132,24 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
 
       <Dialog open={showCreate} onClose={() => setShowCreate(false)}>
         <DialogHeader>
-          <DialogTitle>Nový projekt</DialogTitle>
+          <DialogTitle>{t('newProject')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="project-name">Název projektu *</Label>
+            <Label htmlFor="project-name">{tCommon('name')} *</Label>
             <Input
               id="project-name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Bytový dům Vinohrady"
               required
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="project-desc">Popis</Label>
+            <Label htmlFor="project-desc">{tCommon('description')}</Label>
             <Textarea
               id="project-desc"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Popis projektu..."
             />
           </div>
           <div className="space-y-2">
@@ -158,15 +158,14 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
               id="project-addr"
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              placeholder="Vinohradská 123, Praha"
             />
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>
-              Zrušit
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Vytváření...' : 'Vytvořit'}
+              {loading ? tCommon('loading') : tCommon('create')}
             </Button>
           </div>
         </form>

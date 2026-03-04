@@ -16,6 +16,7 @@ import { Photo360Viewer } from './photo-360-viewer';
 import { AnnotationPlanPreview } from './annotation-plan-preview';
 import { TagPicker } from '@/components/shared/tag-picker';
 import { compressImage } from '@/lib/compress-image';
+import { useTranslations } from 'next-intl';
 
 interface Photo {
   id: string;
@@ -41,6 +42,8 @@ interface Photo {
 
 export function PhotosView({ projectId, initialPhotos }: { projectId: string; initialPhotos: Photo[] }) {
   const router = useRouter();
+  const t = useTranslations('photos');
+  const tCommon = useTranslations('common');
   const [photos, setPhotos] = useState(initialPhotos);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -215,7 +218,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
         .upload(fileName, uploadBlob, isImage ? { contentType: 'image/jpeg' } : undefined);
 
       if (uploadError) {
-        toast.error(`Chyba při nahrávání ${file.name}`);
+        toast.error(t('uploadError', { name: file.name }));
         continue;
       }
 
@@ -228,6 +231,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
           file_url: urlData.publicUrl,
           type: file.type.startsWith('video/') ? 'video' : 'photo',
           taken_by: user?.id,
+          file_size: uploadBlob.size,
         })
         .select()
         .single();
@@ -238,7 +242,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     }
 
     setUploading(false);
-    toast.success('Fotky nahrány');
+    toast.success(t('uploadSuccess'));
   }, [projectId]);
 
   const handleClearFilters = () => {
@@ -249,7 +253,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
   };
 
   const handleDelete = useCallback(async (photo: Photo) => {
-    if (!confirm('Opravdu chcete smazat tuto fotku?')) return;
+    if (!confirm(t('deleteConfirm'))) return;
 
     const supabase = getSupabaseClient();
 
@@ -261,7 +265,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     // Delete from database
     const { error } = await supabase.from('photos').delete().eq('id', photo.id);
     if (error) {
-      toast.error('Chyba při mazání fotky');
+      toast.error(t('deleteError'));
       return;
     }
 
@@ -272,7 +276,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
 
     setPhotos(prev => prev.filter(p => p.id !== photo.id));
     setSelectedPhoto(null);
-    toast.success('Fotka smazána');
+    toast.success(t('photoDeleted'));
   }, []);
 
   const handleStartEdit = useCallback(() => {
@@ -305,7 +309,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     setSelectedPhoto(updated);
     setEditingPhoto(false);
     setSavingEdit(false);
-    toast.success('Fotka aktualizována');
+    toast.success(t('photoUpdated'));
   }, [selectedPhoto, editCaption, editTags]);
 
   const activeFilterCount = [searchQuery, dateFrom, dateTo, tagFilter].filter(Boolean).length;
@@ -314,9 +318,11 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Fotogalerie</h1>
+          <h1 className="text-2xl font-bold">{t('gallery')}</h1>
           <p className="text-sm text-muted-foreground">
-            {filteredPhotos.length}{filteredPhotos.length !== photos.length ? ` z ${photos.length}` : ''} fotek
+            {filteredPhotos.length !== photos.length
+              ? t('photoCountFiltered', { filtered: filteredPhotos.length, total: photos.length })
+              : t('photoCount', { count: filteredPhotos.length })}
           </p>
         </div>
         <div className="flex gap-2">
@@ -326,7 +332,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
             onClick={() => setShowFilters(!showFilters)}
           >
             <Filter className="mr-2 h-4 w-4" />
-            Filtr
+            {t('filter')}
             {activeFilterCount > 0 && (
               <Badge variant="secondary" className="ml-1">{activeFilterCount}</Badge>
             )}
@@ -349,11 +355,11 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
           />
           <Button variant="outline" onClick={() => document.getElementById('photo-camera')?.click()} disabled={uploading}>
             <Camera className="mr-2 h-4 w-4" />
-            Vyfotit
+            {t('takePhoto')}
           </Button>
           <Button onClick={() => document.getElementById('photo-upload')?.click()} disabled={uploading}>
             <Upload className="mr-2 h-4 w-4" />
-            {uploading ? 'Nahrávání...' : 'Nahrát fotky'}
+            {uploading ? t('uploading') : t('uploadPhotos')}
           </Button>
         </div>
       </div>
@@ -365,7 +371,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
             <div className="relative">
               <Search className="absolute left-2 top-2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Hledat..."
+                placeholder={t('searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="h-8 w-48 pl-8"
@@ -376,14 +382,14 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
               value={dateFrom}
               onChange={(e) => setDateFrom(e.target.value)}
               className="h-8 w-auto"
-              placeholder="Od"
+              placeholder={t('dateFrom')}
             />
             <Input
               type="date"
               value={dateTo}
               onChange={(e) => setDateTo(e.target.value)}
               className="h-8 w-auto"
-              placeholder="Do"
+              placeholder={t('dateTo')}
             />
             {allTags.length > 0 && (
               <select
@@ -391,14 +397,14 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                 onChange={(e) => setTagFilter(e.target.value)}
                 className="h-8 rounded-md border bg-background px-2 text-sm"
               >
-                <option value="">Všechny tagy</option>
+                <option value="">{t('allTags')}</option>
                 {allTags.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             )}
             {activeFilterCount > 0 && (
               <Button variant="ghost" size="sm" className="h-8" onClick={handleClearFilters}>
                 <X className="mr-1 h-3.5 w-3.5" />
-                Zrušit
+                {tCommon('cancel')}
               </Button>
             )}
           </div>
@@ -408,18 +414,18 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
       {filteredPhotos.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
           <Camera className="mb-4 h-12 w-12 text-muted-foreground" />
-          <p className="mb-2 text-lg font-medium">{photos.length === 0 ? 'Žádné fotky' : 'Žádné fotky odpovídající filtru'}</p>
+          <p className="mb-2 text-lg font-medium">{photos.length === 0 ? t('noPhotos') : t('noPhotosFiltered')}</p>
           {photos.length === 0 ? (
             <>
-              <p className="mb-4 text-sm text-muted-foreground">Nahrajte fotky ze stavby</p>
+              <p className="mb-4 text-sm text-muted-foreground">{t('noPhotosHint')}</p>
               <Button onClick={() => document.getElementById('photo-upload')?.click()}>
                 <Upload className="mr-2 h-4 w-4" />
-                Nahrát fotky
+                {t('uploadPhotos')}
               </Button>
             </>
           ) : (
             <Button variant="outline" size="sm" onClick={handleClearFilters}>
-              Zrušit filtry
+              {t('clearFilters')}
             </Button>
           )}
         </div>
@@ -434,7 +440,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
               <div className="aspect-square bg-muted">
                 <img
                   src={photo.thumbnail_url || photo.file_url}
-                  alt={photo.caption || 'Fotka ze stavby'}
+                  alt={photo.caption || t('photoAlt')}
                   className="h-full w-full object-cover"
                 />
               </div>
@@ -467,11 +473,11 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
           <>
             <DialogHeader>
               <div className="flex items-center gap-2">
-                <DialogTitle className="flex-1">{selectedPhoto.caption || 'Fotka'}</DialogTitle>
+                <DialogTitle className="flex-1">{selectedPhoto.caption || t('photo')}</DialogTitle>
                 {!editingPhoto && (
                   <Button variant="ghost" size="sm" onClick={handleStartEdit}>
                     <Pencil className="mr-1 h-3.5 w-3.5" />
-                    Upravit
+                    {tCommon('edit')}
                   </Button>
                 )}
               </div>
@@ -490,27 +496,27 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
               {editingPhoto ? (
                 <div className="space-y-3 rounded-lg border bg-muted/50 p-3">
                   <div>
-                    <label className="mb-1 block text-xs font-medium">Název / Popis</label>
+                    <label className="mb-1 block text-xs font-medium">{t('captionLabel')}</label>
                     <Input
                       value={editCaption}
                       onChange={(e) => setEditCaption(e.target.value)}
-                      placeholder="Popis fotky..."
+                      placeholder={t('captionPlaceholder')}
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium">Tagy</label>
+                    <label className="mb-1 block text-xs font-medium">{t('tagsLabel')}</label>
                     <TagPicker
                       tags={editTags}
                       onChange={setEditTags}
                       suggestions={allTags}
-                      placeholder="Nový tag..."
+                      placeholder={t('newTagPlaceholder')}
                     />
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setEditingPhoto(false)}>Zrušit</Button>
+                    <Button variant="outline" size="sm" onClick={() => setEditingPhoto(false)}>{tCommon('cancel')}</Button>
                     <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
                       <Check className="mr-1 h-3.5 w-3.5" />
-                      {savingEdit ? 'Ukládání...' : 'Uložit'}
+                      {savingEdit ? tCommon('saving') : tCommon('save')}
                     </Button>
                   </div>
                 </div>
@@ -544,7 +550,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                           }}
                         >
                           <MapPin className="mr-1 h-3.5 w-3.5" />
-                          Zobrazit na plánu
+                          {t('showOnPlan')}
                         </Button>
                       )}
                     </div>
@@ -560,12 +566,12 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                       <a href={selectedPhoto.file_url} target="_blank" rel="noopener noreferrer">
                         <Button variant="outline" size="sm">
                           <Download className="mr-2 h-4 w-4" />
-                          Stáhnout
+                          {tCommon('download')}
                         </Button>
                       </a>
                       <Button variant="destructive" size="sm" onClick={() => handleDelete(selectedPhoto)}>
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Smazat
+                        {tCommon('delete')}
                       </Button>
                     </div>
                   </div>
@@ -581,7 +587,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                   >
                     <div className="flex items-center gap-2">
                       <MessageSquare className="h-4 w-4" />
-                      Komentáře
+                      {t('comments')}
                       {photoComments.length > 0 && (
                         <Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
                           {photoComments.length}
@@ -594,10 +600,10 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                     <div className="border-t">
                       <div className="max-h-60 space-y-2 overflow-auto p-3">
                         {photoComments.length === 0 && (
-                          <p className="text-center text-sm text-muted-foreground">Zatím žádné komentáře</p>
+                          <p className="text-center text-sm text-muted-foreground">{t('noComments')}</p>
                         )}
                         {photoComments.map((comment) => {
-                          const displayName = comment.user_name || comment.user_email || comment.user_id?.slice(0, 8) || 'Uživatel';
+                          const displayName = comment.user_name || comment.user_email || comment.user_id?.slice(0, 8) || t('anonymousUser');
                           return (
                             <div key={comment.id} className="flex gap-2">
                               <Avatar name={displayName} size="sm" />
@@ -619,7 +625,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                         <Input
                           value={commentBody}
                           onChange={(e) => setCommentBody(e.target.value)}
-                          placeholder="Napište komentář..."
+                          placeholder={t('commentPlaceholder')}
                           className="flex-1"
                         />
                         <Button type="submit" size="icon" disabled={sendingComment || !commentBody.trim()}>

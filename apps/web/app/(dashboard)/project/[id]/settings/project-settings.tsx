@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Save, UserPlus, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +60,10 @@ export function ProjectSettings({
   folders?: FolderInfo[];
 }) {
   const router = useRouter();
+  const t = useTranslations('settings');
+  const tCommon = useTranslations('common');
+  const tProjects = useTranslations('projects');
+  const tRoles = useTranslations('roles');
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description || '');
   const [address, setAddress] = useState(project.address || '');
@@ -89,7 +94,7 @@ export function ProjectSettings({
     if (error) {
       toast.error(error.message);
     } else {
-      toast.success('Nastavení uloženo');
+      toast.success(t('saved'));
       router.refresh();
     }
     setSaving(false);
@@ -122,7 +127,7 @@ export function ProjectSettings({
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success('Člen byl přidán do projektu');
+      toast.success(t('memberInvited'));
       setShowAddMember(false);
       setNewMemberEmail('');
       setNewMemberRole('member');
@@ -134,7 +139,7 @@ export function ProjectSettings({
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Nastavení projektu</h1>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
         <p className="text-sm text-muted-foreground">Úprava detailů a správa členů projektu</p>
       </div>
 
@@ -145,7 +150,7 @@ export function ProjectSettings({
         <CardContent>
           <form onSubmit={handleSave} className="space-y-4">
             <div className="space-y-2">
-              <Label>Název projektu</Label>
+              <Label>{t('projectName')}</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div className="space-y-2">
@@ -160,13 +165,13 @@ export function ProjectSettings({
               <Label>Status</Label>
               <Select value={status} onChange={(e) => setStatus(e.target.value)}>
                 {PROJECT_STATUSES.map((s) => (
-                  <option key={s} value={s}>{PROJECT_STATUS_LABELS[s]}</option>
+                  <option key={s} value={s}>{tProjects(`statuses.${s}`)}</option>
                 ))}
               </Select>
             </div>
             <Button type="submit" disabled={saving}>
               <Save className="mr-2 h-4 w-4" />
-              {saving ? 'Ukládání...' : 'Uložit'}
+              {saving ? tCommon('loading') : tCommon('save')}
             </Button>
           </form>
         </CardContent>
@@ -174,7 +179,7 @@ export function ProjectSettings({
 
       <Card>
         <CardHeader className="flex-row items-center justify-between">
-          <CardTitle>Členové</CardTitle>
+          <CardTitle>{t('members')}</CardTitle>
           <Button size="sm" variant="outline" onClick={() => setShowAddMember(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
             Přidat
@@ -200,7 +205,7 @@ export function ProjectSettings({
                   </div>
                   <div className="flex items-center gap-1">
                     <Badge variant="secondary">
-                      {PROJECT_ROLE_LABELS[member.role] || member.role}
+                      {tRoles(member.role)}
                     </Badge>
                     <ProjectRolePermissionsInfo />
                   </div>
@@ -239,7 +244,7 @@ export function ProjectSettings({
 
       <Dialog open={showAddMember} onClose={() => setShowAddMember(false)}>
         <DialogHeader>
-          <DialogTitle>Přidat člena</DialogTitle>
+          <DialogTitle>{t('inviteMember')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">

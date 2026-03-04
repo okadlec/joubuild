@@ -1,10 +1,10 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import {
-  TASK_STATUS_LABELS,
   TASK_STATUS_COLORS,
   TASK_PRIORITY_COLORS,
   type Task,
@@ -27,6 +27,7 @@ interface KanbanBoardProps {
 }
 
 export function KanbanBoard({ tasks, onTaskClick, onTasksReorder, projectId, categories = [], members = [] }: KanbanBoardProps) {
+  const t = useTranslations('tasks');
   async function handleDrop(taskId: string, newStatus: string) {
     const supabase = getSupabaseClient();
     const { error } = await supabase
@@ -73,7 +74,7 @@ export function KanbanBoard({ tasks, onTaskClick, onTasksReorder, projectId, cat
                 style={{ backgroundColor: TASK_STATUS_COLORS[status] }}
               />
               <h3 className="text-sm font-semibold">
-                {TASK_STATUS_LABELS[status]}
+                {t(`statuses.${status}`)}
               </h3>
               <Badge variant="secondary" className="ml-auto">
                 {columnTasks.length}

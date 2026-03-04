@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Plus, Upload, FileText, ChevronRight, GitCompare, History, Trash2, MoreVertical, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -79,6 +80,8 @@ interface PlansViewProps {
 
 export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
   const searchParams = useSearchParams();
+  const t = useTranslations('plans');
+  const tCommon = useTranslations('common');
   const [planSets, setPlanSets] = useState(initialPlanSets);
   const [selectedSheet, setSelectedSheet] = useState<Sheet | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -214,6 +217,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
         file_url: urlData.publicUrl,
         version_number: 1,
         is_current: true,
+        file_size: file.size,
       })
       .select()
       .single();
@@ -280,6 +284,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
         version_number: newVersionNumber,
         is_current: true,
         uploaded_by: user?.id,
+        file_size: file.size,
       })
       .select()
       .single();
@@ -502,17 +507,17 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Výkresy</h1>
-          <p className="text-sm text-muted-foreground">Správa stavebních výkresů a plánů</p>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('noPlansDescription')}</p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => setShowNewSet(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Nová sada
+            {t('newPlanSet')}
           </Button>
           <Button onClick={() => setShowUpload(true)} disabled={planSets.length === 0}>
             <Upload className="mr-2 h-4 w-4" />
-            Nahrát PDF
+            {t('uploadPlans')}
           </Button>
         </div>
       </div>
@@ -520,11 +525,11 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       {planSets.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
           <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
-          <p className="mb-2 text-lg font-medium">Žádné výkresy</p>
-          <p className="mb-4 text-sm text-muted-foreground">Vytvořte sadu a nahrajte PDF výkresy</p>
+          <p className="mb-2 text-lg font-medium">{t('noPlans')}</p>
+          <p className="mb-4 text-sm text-muted-foreground">{t('noPlansDescription')}</p>
           <Button onClick={() => setShowNewSet(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Nová sada
+            {t('newPlanSet')}
           </Button>
         </div>
       ) : (
@@ -604,11 +609,11 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       {/* New Set Dialog */}
       <Dialog open={showNewSet} onClose={() => setShowNewSet(false)}>
         <DialogHeader>
-          <DialogTitle>Nová sada výkresů</DialogTitle>
+          <DialogTitle>{t('newPlanSet')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleCreateSet} className="space-y-4">
           <div className="space-y-2">
-            <Label>Název sady</Label>
+            <Label>{t('planSetName')}</Label>
             <Input
               value={newSetName}
               onChange={(e) => setNewSetName(e.target.value)}
@@ -617,8 +622,8 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
             />
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setShowNewSet(false)}>Zrušit</Button>
-            <Button type="submit">Vytvořit</Button>
+            <Button type="button" variant="outline" onClick={() => setShowNewSet(false)}>{tCommon('cancel')}</Button>
+            <Button type="submit">{tCommon('create')}</Button>
           </div>
         </form>
       </Dialog>
@@ -626,7 +631,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       {/* Upload Dialog */}
       <Dialog open={showUpload} onClose={() => setShowUpload(false)}>
         <DialogHeader>
-          <DialogTitle>Nahrát výkres</DialogTitle>
+          <DialogTitle>{t('uploadSheets')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">

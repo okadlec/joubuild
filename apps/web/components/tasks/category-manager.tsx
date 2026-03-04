@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { DEFAULT_CATEGORY_COLORS, type TaskCategory } from '@joubuild/shared';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 interface CategoryManagerProps {
   projectId: string;
@@ -17,6 +18,8 @@ interface CategoryManagerProps {
 }
 
 export function CategoryManager({ projectId, categories, onCategoriesChange }: CategoryManagerProps) {
+  const t = useTranslations('tasks');
+  const tCommon = useTranslations('common');
   const [newName, setNewName] = useState('');
   const [newColor, setNewColor] = useState<string>(DEFAULT_CATEGORY_COLORS[0]);
   const [adding, setAdding] = useState(false);
@@ -48,7 +51,7 @@ export function CategoryManager({ projectId, categories, onCategoriesChange }: C
     setNewName('');
     setNewColor(DEFAULT_CATEGORY_COLORS[(categories.length + 1) % DEFAULT_CATEGORY_COLORS.length]);
     setAdding(false);
-    toast.success('Kategorie vytvořena');
+    toast.success(t('categories.categoryCreated'));
   }
 
   async function handleDelete(id: string) {
@@ -59,7 +62,7 @@ export function CategoryManager({ projectId, categories, onCategoriesChange }: C
       return;
     }
     onCategoriesChange(categories.filter(c => c.id !== id));
-    toast.success('Kategorie smazána');
+    toast.success(t('categories.categoryDeleted'));
   }
 
   async function handleUpdate(id: string, updates: Partial<TaskCategory>) {
@@ -79,7 +82,7 @@ export function CategoryManager({ projectId, categories, onCategoriesChange }: C
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Kategorie úkolů</CardTitle>
+        <CardTitle>{t('categories.title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {categories.length > 0 && (
@@ -115,7 +118,7 @@ export function CategoryManager({ projectId, categories, onCategoriesChange }: C
 
         <form onSubmit={handleAdd} className="flex items-end gap-2">
           <div className="flex-1 space-y-1">
-            <Label className="text-xs">Nová kategorie</Label>
+            <Label className="text-xs">{t('categories.newCategory')}</Label>
             <Input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -124,7 +127,7 @@ export function CategoryManager({ projectId, categories, onCategoriesChange }: C
             />
           </div>
           <div className="space-y-1">
-            <Label className="text-xs">Barva</Label>
+            <Label className="text-xs">{t('categories.color')}</Label>
             <div className="flex gap-1">
               {DEFAULT_CATEGORY_COLORS.map((c) => (
                 <button
@@ -139,7 +142,7 @@ export function CategoryManager({ projectId, categories, onCategoriesChange }: C
           </div>
           <Button type="submit" size="sm" disabled={adding || !newName.trim()}>
             <Plus className="mr-1 h-3.5 w-3.5" />
-            Přidat
+            {tCommon('add')}
           </Button>
         </form>
       </CardContent>

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, CheckCheck, X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { getSupabaseClient } from '@/lib/supabase/client';
@@ -17,6 +18,7 @@ const NOTIFICATION_ICONS: Record<string, string> = {
 };
 
 export function NotificationsPanel() {
+  const t = useTranslations('notifications');
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
@@ -107,11 +109,11 @@ export function NotificationsPanel() {
       {open && (
         <div className="absolute right-0 top-full z-50 mt-2 w-80 rounded-lg border bg-background shadow-lg">
           <div className="flex items-center justify-between border-b p-3">
-            <h3 className="text-sm font-semibold">Notifikace</h3>
+            <h3 className="text-sm font-semibold">{t('title')}</h3>
             {unreadCount > 0 && (
               <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={markAllRead}>
                 <CheckCheck className="mr-1 h-3 w-3" />
-                Označit vše
+                {t('markAll')}
               </Button>
             )}
           </div>
@@ -120,7 +122,7 @@ export function NotificationsPanel() {
             {notifications.length === 0 ? (
               <div className="p-8 text-center">
                 <Bell className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Žádné notifikace</p>
+                <p className="text-sm text-muted-foreground">{t('empty')}</p>
               </div>
             ) : (
               notifications.map((notif) => (

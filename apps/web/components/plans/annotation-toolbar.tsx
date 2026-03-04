@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   MousePointer2,
   Minus,
@@ -63,19 +64,19 @@ interface AnnotationToolbarProps {
 const COLORS = ['#EF4444', '#3B82F6', '#22C55E', '#F59E0B', '#8B5CF6', '#000000', '#FFFFFF'];
 const STROKE_WIDTHS = [1, 2, 3, 5, 8];
 
-const tools: { tool: AnnotationTool; icon: typeof MousePointer2; label: string }[] = [
-  { tool: 'select', icon: MousePointer2, label: 'Výběr' },
-  { tool: 'line', icon: Minus, label: 'Čára' },
-  { tool: 'rectangle', icon: Square, label: 'Obdélník' },
-  { tool: 'ellipse', icon: Circle, label: 'Elipsa' },
-  { tool: 'cloud', icon: Cloud, label: 'Oblak' },
-  { tool: 'arrow', icon: ArrowRight, label: 'Šipka' },
-  { tool: 'text', icon: Type, label: 'Text' },
-  { tool: 'highlighter', icon: Highlighter, label: 'Zvýrazňovač' },
-  { tool: 'freehand', icon: Pencil, label: 'Volná ruka' },
-  { tool: 'measurement', icon: Ruler, label: 'Měření' },
-  { tool: 'area', icon: Grid3X3, label: 'Plocha' },
-  { tool: 'hyperlink', icon: Link2, label: 'Hyperlink' },
+const TOOL_DEFS: { tool: AnnotationTool; icon: typeof MousePointer2; labelKey: string }[] = [
+  { tool: 'select', icon: MousePointer2, labelKey: 'select' },
+  { tool: 'line', icon: Minus, labelKey: 'line' },
+  { tool: 'rectangle', icon: Square, labelKey: 'rectangle' },
+  { tool: 'ellipse', icon: Circle, labelKey: 'ellipse' },
+  { tool: 'cloud', icon: Cloud, labelKey: 'cloud' },
+  { tool: 'arrow', icon: ArrowRight, labelKey: 'arrow' },
+  { tool: 'text', icon: Type, labelKey: 'text' },
+  { tool: 'highlighter', icon: Highlighter, labelKey: 'highlighter' },
+  { tool: 'freehand', icon: Pencil, labelKey: 'freehand' },
+  { tool: 'measurement', icon: Ruler, labelKey: 'measurement' },
+  { tool: 'area', icon: Grid3X3, labelKey: 'area' },
+  { tool: 'hyperlink', icon: Link2, labelKey: 'hyperlink' },
 ];
 
 // Primary tools for mobile quick access
@@ -98,9 +99,18 @@ export function AnnotationToolbar({
   saving,
   autoSaveStatus = 'idle',
 }: AnnotationToolbarProps) {
+  const t = useTranslations('plans.toolbar');
+  const tTypes = useTranslations('plans.annotationTypes');
+  const tCommon = useTranslations('common');
   const isMobile = useIsMobile();
   const [showAllTools, setShowAllTools] = useState(false);
   const [showStyleOptions, setShowStyleOptions] = useState(false);
+
+  const getToolLabel = (key: string) => {
+    if (key === 'select') return t('select');
+    if (key === 'hyperlink') return t('hyperlink');
+    return tTypes(key);
+  };
 
   if (isMobile) {
     return (
@@ -124,9 +134,9 @@ export function AnnotationToolbar({
             {autoSaveStatus === 'saving' ? (
               <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />...</>
             ) : autoSaveStatus === 'saved' ? (
-              <><Check className="mr-1 h-3.5 w-3.5 text-green-500" />Uloženo</>
+              <><Check className="mr-1 h-3.5 w-3.5 text-green-500" />{t('saved')}</>
             ) : (
-              <><Save className="mr-1 h-3.5 w-3.5" />{saving ? '...' : 'Uložit'}</>
+              <><Save className="mr-1 h-3.5 w-3.5" />{saving ? '...' : tCommon('save')}</>
             )}
           </Button>
         </div>
@@ -170,8 +180,8 @@ export function AnnotationToolbar({
 
         {/* Mobile bottom tool bar */}
         <div className="flex items-center gap-1 rounded-lg border bg-background p-1.5 shadow-sm">
-          {tools
-            .filter((t) => PRIMARY_MOBILE_TOOLS.includes(t.tool))
+          {TOOL_DEFS
+            .filter((td) => PRIMARY_MOBILE_TOOLS.includes(td.tool))
             .map(({ tool, icon: Icon }) => (
               <Button
                 key={tool}
@@ -207,13 +217,13 @@ export function AnnotationToolbar({
         {showAllTools && (
           <div className="rounded-lg border bg-background p-3 shadow-lg">
             <div className="mb-2 flex items-center justify-between">
-              <span className="text-xs font-semibold">Všechny nástroje</span>
+              <span className="text-xs font-semibold">{t('allTools')}</span>
               <button onClick={() => setShowAllTools(false)} className="rounded p-1 hover:bg-accent">
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="grid grid-cols-6 gap-2">
-              {tools.map(({ tool, icon: Icon, label }) => (
+              {TOOL_DEFS.map(({ tool, icon: Icon, labelKey }) => (
                 <button
                   key={tool}
                   className={cn(
@@ -226,7 +236,7 @@ export function AnnotationToolbar({
                   }}
                 >
                   <Icon className="h-5 w-5" />
-                  <span className="text-[9px] font-medium leading-tight">{label}</span>
+                  <span className="text-[9px] font-medium leading-tight">{getToolLabel(labelKey)}</span>
                 </button>
               ))}
             </div>
@@ -240,14 +250,14 @@ export function AnnotationToolbar({
   return (
     <div className="flex items-center gap-1 rounded-lg border bg-background p-1.5 shadow-sm">
       {/* Tools */}
-      {tools.map(({ tool, icon: Icon, label }) => (
+      {TOOL_DEFS.map(({ tool, icon: Icon, labelKey }) => (
         <Button
           key={tool}
           variant={activeTool === tool ? 'default' : 'ghost'}
           size="icon"
           className="h-8 w-8"
           onClick={() => onToolChange(tool)}
-          title={label}
+          title={getToolLabel(labelKey)}
         >
           <Icon className="h-4 w-4" />
         </Button>
@@ -295,13 +305,13 @@ export function AnnotationToolbar({
       <div className="mx-1 h-6 w-px bg-border" />
 
       {/* Actions */}
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onUndo} disabled={!canUndo} title="Zpět">
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onUndo} disabled={!canUndo} title={t('undo')}>
         <Undo2 className="h-4 w-4" />
       </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRedo} disabled={!canRedo} title="Vpřed">
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onRedo} disabled={!canRedo} title={t('redo')}>
         <Redo2 className="h-4 w-4" />
       </Button>
-      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDeleteSelected} disabled={!hasSelection} title="Smazat">
+      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onDeleteSelected} disabled={!hasSelection} title={tCommon('delete')}>
         <Trash2 className="h-4 w-4" />
       </Button>
 
@@ -309,11 +319,11 @@ export function AnnotationToolbar({
 
       <Button size="sm" onClick={onSave} disabled={saving}>
         {autoSaveStatus === 'saving' ? (
-          <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />Ukládání...</>
+          <><Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />{t('saving')}</>
         ) : autoSaveStatus === 'saved' ? (
-          <><Check className="mr-1 h-3.5 w-3.5 text-green-500" />Uloženo</>
+          <><Check className="mr-1 h-3.5 w-3.5 text-green-500" />{t('saved')}</>
         ) : (
-          <><Save className="mr-1 h-3.5 w-3.5" />{saving ? 'Ukládání...' : 'Uložit'}</>
+          <><Save className="mr-1 h-3.5 w-3.5" />{saving ? t('saving') : tCommon('save')}</>
         )}
       </Button>
     </div>

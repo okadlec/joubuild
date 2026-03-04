@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
 import {
   Upload,
   FileText,
@@ -54,6 +55,8 @@ export function FilesView({
   initialDocuments: Document[];
   initialFolders: Folder[];
 }) {
+  const t = useTranslations('files');
+  const tCommon = useTranslations('common');
   const [documents, setDocuments] = useState(initialDocuments);
   const [folders, setFolders] = useState(initialFolders);
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
@@ -144,7 +147,7 @@ export function FilesView({
       }
 
       setUploading(false);
-      toast.success('Soubory nahrány');
+      toast.success(t('fileUploaded'));
     },
     [projectId, currentFolderId, canCreate, canCreateInFolder]
   );
@@ -268,7 +271,7 @@ export function FilesView({
     >
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Soubory</h1>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
             {visibleDocuments.length} souborů, {visibleFolders.length} složek
           </p>
@@ -277,7 +280,7 @@ export function FilesView({
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => setShowNewFolder(true)}>
               <FolderPlus className="mr-2 h-4 w-4" />
-              Nová složka
+              {t('newFolder')}
             </Button>
             <input
               type="file"
@@ -291,7 +294,7 @@ export function FilesView({
               disabled={uploading}
             >
               <Upload className="mr-2 h-4 w-4" />
-              {uploading ? 'Nahrávání...' : 'Nahrát'}
+              {uploading ? tCommon('loading') : tCommon('upload')}
             </Button>
           </div>
         )}
@@ -470,7 +473,7 @@ export function FilesView({
       {/* New folder dialog */}
       <Dialog open={showNewFolder} onClose={() => setShowNewFolder(false)}>
         <DialogHeader>
-          <DialogTitle>Nová složka</DialogTitle>
+          <DialogTitle>{t('newFolder')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <Input

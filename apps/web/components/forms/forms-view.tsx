@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Plus, ClipboardList, FileCheck, Send, MessageSquare, CheckCircle, XCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -57,6 +58,8 @@ const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 
 };
 
 export function FormsView({ projectId, initialTemplates, initialSubmissions, initialRfis = [] }: FormsViewProps) {
+  const t = useTranslations('forms');
+  const tCommon = useTranslations('common');
   const [templates, setTemplates] = useState(initialTemplates);
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [showCreate, setShowCreate] = useState(false);
@@ -130,7 +133,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
 
     setSubmissions(prev => [data, ...prev]);
     setSelectedSubmission(data);
-    toast.success('Nový formulář vytvořen');
+    toast.success(t('formCreated'));
   }
 
   async function handleApproveReject(submissionId: string, newStatus: 'approved' | 'rejected') {
@@ -176,7 +179,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Formuláře</h1>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">Stavební deníky, inspekce a formuláře</p>
         </div>
         <Button onClick={() => setShowCreate(true)}>
@@ -193,7 +196,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
           </TabsTrigger>
           <TabsTrigger value="templates">
             <ClipboardList className="mr-1 h-4 w-4" />
-            Šablony
+            {t('templates')}
           </TabsTrigger>
           <TabsTrigger value="rfi">
             <MessageSquare className="mr-1 h-4 w-4" />
@@ -224,7 +227,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
                       <div className="flex items-center gap-3 text-sm text-muted-foreground">
                         <span>{formatDate(sub.created_at)}</span>
                         {sub.form_templates?.type && (
-                          <span>{FORM_TYPE_LABELS[sub.form_templates.type]}</span>
+                          <span>{t(`formTypes.${sub.form_templates.type}`)}</span>
                         )}
                       </div>
                     </div>
@@ -255,7 +258,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">{tmpl.name}</CardTitle>
                     <Badge variant="secondary" className="w-fit">
-                      {FORM_TYPE_LABELS[tmpl.type] || tmpl.type}
+                      {t(`formTypes.${tmpl.type}`)}
                     </Badge>
                   </CardHeader>
                   <CardContent className="flex gap-2 pt-0">

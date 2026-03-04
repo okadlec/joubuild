@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import {
   UserPlus, MoreVertical, Trash2, Shield, ShieldOff,
   UserMinus, Search,
@@ -23,13 +24,6 @@ import {
   deleteUser,
   removeUserFromOrg,
 } from './actions';
-
-const ORG_ROLE_LABELS: Record<OrgRole, string> = {
-  owner: 'Vlastnik',
-  admin: 'Admin',
-  member: 'Clen',
-  viewer: 'Prohlizejici',
-};
 
 const ORG_ROLE_VARIANTS: Record<OrgRole, 'default' | 'secondary' | 'outline'> = {
   owner: 'default',
@@ -65,11 +59,18 @@ export function UsersList({
   availableRoles,
 }: UsersListProps) {
   const router = useRouter();
+  const t = useTranslations('admin');
+  const tRoles = useTranslations('roles');
+  const tCommon = useTranslations('common');
   const [users, setUsers] = useState(initialUsers);
   const [search, setSearch] = useState('');
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+
+  function getRoleLabel(role: OrgRole): string {
+    return tRoles(role);
+  }
 
   const filtered = users.filter((u) => {
     const q = search.toLowerCase();
@@ -93,7 +94,7 @@ export function UsersList({
     });
     setCreating(false);
     if (result.error) { toast.error(result.error); return; }
-    toast.success('Uzivatel vytvoren');
+    toast.success(t('usersList.title'));
     setShowCreateDialog(false);
     router.refresh();
   }
@@ -107,7 +108,6 @@ export function UsersList({
       )
     );
     setOpenMenuId(null);
-    toast.success(result.data!.is_superadmin ? 'Superadmin pridan' : 'Superadmin odebran');
   }
 
   async function handleRoleChange(userId: string, orgId: string, newRole: OrgRole) {
@@ -117,20 +117,18 @@ export function UsersList({
       prev.map((u) => (u.id === userId ? { ...u, org_role: newRole } : u))
     );
     setOpenMenuId(null);
-    toast.success('Role zmenena');
   }
 
   async function handleDeleteUser(userId: string) {
-    if (!confirm('Opravdu chcete smazat tohoto uzivatele? Tato akce je nevratna.')) return;
+    if (!confirm(tCommon('confirm') + '?')) return;
     const result = await deleteUser(userId);
     if (result.error) { toast.error(result.error); return; }
     setUsers((prev) => prev.filter((u) => u.id !== userId));
     setOpenMenuId(null);
-    toast.success('Uzivatel smazan');
   }
 
   async function handleRemoveFromOrg(userId: string, orgId: string) {
-    if (!confirm('Opravdu chcete odebrat uzivatele z organizace?')) return;
+    if (!confirm(tCommon('confirm') + '?')) return;
     const result = await removeUserFromOrg(userId, orgId);
     if (result.error) { toast.error(result.error); return; }
     if (isSuperadmin) {
@@ -141,7 +139,6 @@ export function UsersList({
       setUsers((prev) => prev.filter((u) => u.id !== userId));
     }
     setOpenMenuId(null);
-    toast.success('Uzivatel odebran z organizace');
   }
 
   return (
@@ -149,12 +146,12 @@ export function UsersList({
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>{isSuperadmin ? 'Uzivatele' : 'Clenove organizace'}</CardTitle>
+            <CardTitle>{isSuperadmin ? t('users') : t('members')}</CardTitle>
             <div className="flex items-center gap-2">
               <div className="relative flex-1 sm:w-64">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Hledat..."
+                  placeholder={t('usersList.searchPlaceholder')}
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="pl-9"
@@ -162,7 +159,7 @@ export function UsersList({
               </div>
               <Button onClick={() => setShowCreateDialog(true)} size="sm">
                 <UserPlus className="mr-2 h-4 w-4" />
-                Pridat
+                {tCommon('add')}
               </Button>
             </div>
           </div>
@@ -171,7 +168,7 @@ export function UsersList({
           <div className="space-y-2">
             {filtered.length === 0 && (
               <p className="py-8 text-center text-sm text-muted-foreground">
-                Zadni uzivatele nenalezeni
+                {t('usersList.noUsers')}
               </p>
             )}
             {filtered.map((user) => (
@@ -190,7 +187,7 @@ export function UsersList({
                 <div className="flex items-center gap-2 shrink-0">
                   {user.org_role && (
                     <Badge variant={ORG_ROLE_VARIANTS[user.org_role] || 'outline'}>
-                      {ORG_ROLE_LABELS[user.org_role] || user.org_role}
+                      {getRoleLabel(user.org_role)}
                     </Badge>
                   )}
                   {isSuperadmin && user.org_name && (
@@ -209,25 +206,23 @@ export function UsersList({
                       </Button>
                       {openMenuId === user.id && (
                         <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-md border bg-popover p-1 shadow-md">
-                          {/* Superadmin toggle */}
                           {isSuperadmin && (
                             <button
                               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
                               onClick={() => handleToggleSuperadmin(user.id)}
                             >
                               {user.is_superadmin ? (
-                                <><ShieldOff className="h-4 w-4" /> Odebrat superadmin</>
+                                <><ShieldOff className="h-4 w-4" /> {tCommon('remove')} superadmin</>
                               ) : (
-                                <><Shield className="h-4 w-4" /> Nastavit superadmin</>
+                                <><Shield className="h-4 w-4" /> Superadmin</>
                               )}
                             </button>
                           )}
 
-                          {/* Role management */}
                           {user.org_id && (
                             <>
                               <div className="my-1 border-t" />
-                              <p className="px-2 py-1 text-xs text-muted-foreground">Org role</p>
+                              <p className="px-2 py-1 text-xs text-muted-foreground">{t('usersList.role')}</p>
                               {availableRoles.map((role) => (
                                 <button
                                   key={role}
@@ -236,7 +231,7 @@ export function UsersList({
                                   }`}
                                   onClick={() => handleRoleChange(user.id, user.org_id!, role)}
                                 >
-                                  {ORG_ROLE_LABELS[role]}
+                                  {getRoleLabel(role)}
                                   {user.org_role === role && ' *'}
                                 </button>
                               ))}
@@ -245,12 +240,11 @@ export function UsersList({
                                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
                                 onClick={() => handleRemoveFromOrg(user.id, user.org_id!)}
                               >
-                                <UserMinus className="h-4 w-4" /> Odebrat z organizace
+                                <UserMinus className="h-4 w-4" /> {tCommon('remove')}
                               </button>
                             </>
                           )}
 
-                          {/* Delete user - superadmin only */}
                           {isSuperadmin && (
                             <>
                               <div className="my-1 border-t" />
@@ -258,7 +252,7 @@ export function UsersList({
                                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
                                 onClick={() => handleDeleteUser(user.id)}
                               >
-                                <Trash2 className="h-4 w-4" /> Smazat uzivatele
+                                <Trash2 className="h-4 w-4" /> {tCommon('delete')}
                               </button>
                             </>
                           )}
@@ -276,37 +270,37 @@ export function UsersList({
       {/* Create User Dialog */}
       <Dialog open={showCreateDialog} onClose={() => setShowCreateDialog(false)}>
         <DialogHeader>
-          <DialogTitle>Vytvorit uzivatele</DialogTitle>
+          <DialogTitle>{tCommon('create')} {tCommon('user').toLowerCase()}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleCreateUser} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="fullName">Jmeno</Label>
-            <Input id="fullName" name="fullName" required placeholder="Jan Novak" />
+            <Label htmlFor="fullName">{t('usersList.name')}</Label>
+            <Input id="fullName" name="fullName" required />
           </div>
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
-            <Input id="email" name="email" type="email" required placeholder="jan@firma.cz" />
+            <Input id="email" name="email" type="email" required />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Heslo</Label>
-            <Input id="password" name="password" type="password" required minLength={6} placeholder="Min. 6 znaku" />
+            <Label htmlFor="password">{tCommon('password')}</Label>
+            <Input id="password" name="password" type="password" required minLength={6} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="orgRole">Role v organizaci</Label>
+            <Label htmlFor="orgRole">{t('usersList.role')}</Label>
             <Select id="orgRole" name="orgRole" defaultValue="member">
               {availableRoles.map((role) => (
                 <option key={role} value={role}>
-                  {ORG_ROLE_LABELS[role]}
+                  {getRoleLabel(role)}
                 </option>
               ))}
             </Select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)}>
-              Zrusit
+              {tCommon('cancel')}
             </Button>
             <Button type="submit" disabled={creating}>
-              {creating ? 'Vytvari se...' : 'Vytvorit'}
+              {creating ? tCommon('loading') : tCommon('create')}
             </Button>
           </div>
         </form>

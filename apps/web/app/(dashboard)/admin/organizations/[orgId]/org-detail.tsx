@@ -2,40 +2,32 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import {
   ArrowLeft, Users, FolderOpen, HardDrive, Image,
-  FileText, Sheet, MoreVertical, UserMinus,
+  FileText, Sheet, MoreVertical, UserMinus, UserPlus,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
+import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { formatBytes } from '@/lib/utils';
 import type { OrgRole } from '@joubuild/shared';
-import { updateMemberRole, removeMember } from './actions';
-
-const ORG_ROLE_LABELS: Record<OrgRole, string> = {
-  owner: 'Vlastnik',
-  admin: 'Admin',
-  member: 'Clen',
-  viewer: 'Prohlizejici',
-};
+import { updateMemberRole, removeMember, addMemberByEmail } from './actions';
 
 const ORG_ROLE_VARIANTS: Record<OrgRole, 'default' | 'secondary' | 'outline'> = {
   owner: 'default',
   admin: 'secondary',
   member: 'outline',
   viewer: 'outline',
-};
-
-const PROJECT_STATUS_LABELS: Record<string, string> = {
-  active: 'Aktivni',
-  archived: 'Archivovany',
-  completed: 'Dokonceny',
 };
 
 interface Member {
@@ -73,13 +65,21 @@ interface OrgDetailProps {
 
 export function OrgDetail({ org, members: initialMembers, projects, storage }: OrgDetailProps) {
   const router = useRouter();
+  const t = useTranslations('admin');
+  const tRoles = useTranslations('roles');
+  const tCommon = useTranslations('common');
+  const tProjects = useTranslations('projects');
   const [members, setMembers] = useState(initialMembers);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [newMemberEmail, setNewMemberEmail] = useState('');
+  const [newMemberRole, setNewMemberRole] = useState<OrgRole>('member');
+  const [inviting, setInviting] = useState(false);
 
   const storageItems = [
-    { label: 'Fotky', value: storage.photos, icon: Image },
-    { label: 'Dokumenty', value: storage.documents, icon: FileText },
-    { label: 'Plany', value: storage.sheets, icon: Sheet },
+    { label: t('storage.photos'), value: storage.photos, icon: Image },
+    { label: t('storage.documents'), value: storage.documents, icon: FileText },
+    { label: t('storage.plans'), value: storage.sheets, icon: Sheet },
   ];
 
   const maxStorage = Math.max(storage.total, 1);
@@ -91,16 +91,29 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
       prev.map((m) => (m.user_id === userId ? { ...m, role: newRole } : m))
     );
     setOpenMenuId(null);
-    toast.success('Role zmenena');
   }
 
   async function handleRemoveMember(userId: string) {
-    if (!confirm('Opravdu chcete odebrat tohoto clena?')) return;
+    if (!confirm(tCommon('confirm') + '?')) return;
     const result = await removeMember(userId, org.id);
     if (result.error) { toast.error(result.error); return; }
     setMembers((prev) => prev.filter((m) => m.user_id !== userId));
     setOpenMenuId(null);
-    toast.success('Clen odebran');
+  }
+
+  async function handleAddMember() {
+    if (!newMemberEmail.trim()) return;
+    setInviting(true);
+    const result = await addMemberByEmail(org.id, newMemberEmail.trim(), newMemberRole);
+    if (result.error) {
+      toast.error(result.error);
+    } else if (result.member) {
+      setMembers((prev) => [...prev, result.member!]);
+      setShowAddMember(false);
+      setNewMemberEmail('');
+      setNewMemberRole('member');
+    }
+    setInviting(false);
   }
 
   return (
@@ -122,9 +135,9 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
 
       <Tabs defaultValue="overview">
         <TabsList>
-          <TabsTrigger value="overview">Prehled</TabsTrigger>
-          <TabsTrigger value="members">Clenove ({members.length})</TabsTrigger>
-          <TabsTrigger value="projects">Projekty ({projects.length})</TabsTrigger>
+          <TabsTrigger value="overview">{t('overview')}</TabsTrigger>
+          <TabsTrigger value="members">{t('members')} ({members.length})</TabsTrigger>
+          <TabsTrigger value="projects">{t('orgDetail.projects')} ({projects.length})</TabsTrigger>
         </TabsList>
 
         {/* Overview Tab */}
@@ -137,7 +150,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{members.length}</p>
-                  <p className="text-sm text-muted-foreground">Clenove</p>
+                  <p className="text-sm text-muted-foreground">{t('members')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -148,7 +161,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{projects.length}</p>
-                  <p className="text-sm text-muted-foreground">Projekty</p>
+                  <p className="text-sm text-muted-foreground">{t('orgDetail.projects')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -159,7 +172,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{formatBytes(storage.total)}</p>
-                  <p className="text-sm text-muted-foreground">Uloziste</p>
+                  <p className="text-sm text-muted-foreground">{t('storage.title')}</p>
                 </div>
               </CardContent>
             </Card>
@@ -169,7 +182,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <HardDrive className="h-5 w-5" />
-                Uloziste — {formatBytes(storage.total)}
+                {t('storage.title')} — {formatBytes(storage.total)}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -193,9 +206,16 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
         <TabsContent value="members">
           <Card>
             <CardContent className="pt-6">
+              <div className="mb-4 flex items-center justify-between">
+                <h3 className="text-sm font-semibold">{t('members')}</h3>
+                <Button size="sm" variant="outline" onClick={() => setShowAddMember(true)}>
+                  <UserPlus className="mr-2 h-4 w-4" />
+                  {t('orgDetail.addMember')}
+                </Button>
+              </div>
               <div className="space-y-2">
                 {members.length === 0 && (
-                  <p className="py-8 text-center text-sm text-muted-foreground">Zadni clenove</p>
+                  <p className="py-8 text-center text-sm text-muted-foreground">{tCommon('noResults')}</p>
                 )}
                 {members.map((member) => (
                   <div key={member.user_id} className="flex items-center justify-between rounded-md border p-3">
@@ -212,7 +232,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={ORG_ROLE_VARIANTS[member.role]}>
-                        {ORG_ROLE_LABELS[member.role]}
+                        {tRoles(member.role)}
                       </Badge>
                       <div className="relative">
                         <Button
@@ -226,7 +246,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
                         </Button>
                         {openMenuId === member.user_id && (
                           <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-md border bg-popover p-1 shadow-md">
-                            <p className="px-2 py-1 text-xs text-muted-foreground">Zmenit roli</p>
+                            <p className="px-2 py-1 text-xs text-muted-foreground">{t('orgDetail.changeRole')}</p>
                             {(['owner', 'admin', 'member', 'viewer'] as OrgRole[]).map((role) => (
                               <button
                                 key={role}
@@ -235,7 +255,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
                                 }`}
                                 onClick={() => handleRoleChange(member.user_id, role)}
                               >
-                                {ORG_ROLE_LABELS[role]}
+                                {tRoles(role)}
                                 {member.role === role && ' *'}
                               </button>
                             ))}
@@ -244,7 +264,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
                               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
                               onClick={() => handleRemoveMember(member.user_id)}
                             >
-                              <UserMinus className="h-4 w-4" /> Odebrat
+                              <UserMinus className="h-4 w-4" /> {t('orgDetail.removeMember')}
                             </button>
                           </div>
                         )}
@@ -263,7 +283,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
             <CardContent className="pt-6">
               <div className="space-y-2">
                 {projects.length === 0 && (
-                  <p className="py-8 text-center text-sm text-muted-foreground">Zadne projekty</p>
+                  <p className="py-8 text-center text-sm text-muted-foreground">{tCommon('noResults')}</p>
                 )}
                 {projects.map((project) => (
                   <div key={project.id} className="flex items-center justify-between rounded-md border p-3">
@@ -274,7 +294,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
                       </p>
                     </div>
                     <Badge variant="outline">
-                      {PROJECT_STATUS_LABELS[project.status] || project.status}
+                      {tProjects(`statuses.${project.status}`)}
                     </Badge>
                   </div>
                 ))}
@@ -283,6 +303,38 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Add member dialog */}
+      <Dialog open={showAddMember} onClose={() => setShowAddMember(false)}>
+        <DialogHeader>
+          <DialogTitle>{t('orgDetail.addMember')}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Email</Label>
+            <Input
+              type="email"
+              value={newMemberEmail}
+              onChange={(e) => setNewMemberEmail(e.target.value)}
+              placeholder="email@example.com"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>{t('usersList.role')}</Label>
+            <Select value={newMemberRole} onChange={(e) => setNewMemberRole(e.target.value as OrgRole)}>
+              <option value="admin">{tRoles('admin')}</option>
+              <option value="member">{tRoles('member')}</option>
+              <option value="viewer">{tRoles('viewer')}</option>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowAddMember(false)}>{tCommon('cancel')}</Button>
+            <Button onClick={handleAddMember} disabled={inviting}>
+              {inviting ? tCommon('loading') : tCommon('add')}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

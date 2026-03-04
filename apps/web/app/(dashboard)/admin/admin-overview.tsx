@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
 import { Users, FolderOpen, Building2, Database, HardDrive, Image, FileText, Sheet } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -35,10 +36,12 @@ interface OrgAdminOverviewProps {
 type AdminOverviewProps = SuperadminOverviewProps | OrgAdminOverviewProps;
 
 export function AdminOverview(props: AdminOverviewProps) {
+  const t = useTranslations('admin');
+
   const storageItems = [
-    { label: 'Fotky', value: props.storage.photos, icon: Image, color: 'bg-blue-500' },
-    { label: 'Dokumenty', value: props.storage.documents, icon: FileText, color: 'bg-green-500' },
-    { label: 'Plany', value: props.storage.sheets, icon: Sheet, color: 'bg-orange-500' },
+    { label: t('storage.photos'), value: props.storage.photos, icon: Image, color: 'bg-blue-500' },
+    { label: t('storage.documents'), value: props.storage.documents, icon: FileText, color: 'bg-green-500' },
+    { label: t('storage.plans'), value: props.storage.sheets, icon: Sheet, color: 'bg-orange-500' },
   ];
 
   const maxStorage = Math.max(props.storage.total, 1);
@@ -49,15 +52,15 @@ export function AdminOverview(props: AdminOverviewProps) {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {props.kind === 'superadmin' ? (
           <>
-            <StatCard icon={Users} label="Uzivatele" value={props.stats.users} />
-            <StatCard icon={FolderOpen} label="Projekty" value={props.stats.projects} />
-            <StatCard icon={Building2} label="Organizace" value={props.stats.organizations} />
-            <StatCard icon={Database} label="Databaze" value={formatBytes(props.stats.dbSize)} />
+            <StatCard icon={Users} label={t('stats.users')} value={props.stats.users} />
+            <StatCard icon={FolderOpen} label={t('stats.projects')} value={props.stats.projects} />
+            <StatCard icon={Building2} label={t('stats.organizations')} value={props.stats.organizations} />
+            <StatCard icon={Database} label={t('stats.database')} value={formatBytes(props.stats.dbSize)} />
           </>
         ) : (
           <>
-            <StatCard icon={Users} label="Clenove" value={props.stats.members} />
-            <StatCard icon={FolderOpen} label="Projekty" value={props.stats.projects} />
+            <StatCard icon={Users} label={t('stats.members')} value={props.stats.members} />
+            <StatCard icon={FolderOpen} label={t('stats.projects')} value={props.stats.projects} />
           </>
         )}
       </div>
@@ -67,7 +70,7 @@ export function AdminOverview(props: AdminOverviewProps) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <HardDrive className="h-5 w-5" />
-            Uloziste — {formatBytes(props.storage.total)}
+            {t('storage.title')} — {formatBytes(props.storage.total)}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">

@@ -8,6 +8,7 @@ import { Avatar } from '@/components/ui/avatar';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { formatRelativeTime } from '@joubuild/shared';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 
 interface Comment {
   id: string;
@@ -20,6 +21,7 @@ interface Comment {
 }
 
 export function TaskComments({ taskId }: { taskId: string }) {
+  const t = useTranslations('tasks');
   const [comments, setComments] = useState<Comment[]>([]);
   const [body, setBody] = useState('');
   const [loading, setLoading] = useState(false);
@@ -122,15 +124,15 @@ export function TaskComments({ taskId }: { taskId: string }) {
 
   return (
     <div>
-      <h4 className="mb-3 text-sm font-semibold">Komentáře</h4>
+      <h4 className="mb-3 text-sm font-semibold">{t('comments.title')}</h4>
 
       <div className="mb-3 max-h-64 space-y-3 overflow-y-auto">
         {comments.length === 0 && (
-          <p className="text-sm text-muted-foreground">Zatím žádné komentáře</p>
+          <p className="text-sm text-muted-foreground">{t('comments.empty')}</p>
         )}
         {comments.map((comment) => {
           const isOwn = comment.user_id === currentUserId;
-          const displayName = comment.user_name || comment.user_email || comment.user_id?.slice(0, 8) || 'Uživatel';
+          const displayName = comment.user_name || comment.user_email || comment.user_id?.slice(0, 8) || t('comments.anonymous');
 
           return (
             <div key={comment.id} className="group flex gap-2">
@@ -192,7 +194,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
         <Input
           value={body}
           onChange={(e) => setBody(e.target.value)}
-          placeholder="Napište komentář..."
+          placeholder={t('comments.placeholder')}
           className="flex-1"
         />
         <Button type="submit" size="icon" disabled={loading || !body.trim()}>

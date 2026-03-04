@@ -1,12 +1,14 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { LogOut, User, Menu } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { LogOut, User, Building2, Menu } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu';
 import { OfflineIndicator } from './offline-indicator';
 import { NotificationsPanel } from './notifications-panel';
+import { LanguageSwitcher } from './language-switcher';
 
 interface HeaderProps {
   user: {
@@ -20,6 +22,8 @@ interface HeaderProps {
 
 export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProps) {
   const router = useRouter();
+  const t = useTranslations('header');
+  const tSidebar = useTranslations('sidebar');
 
   async function handleSignOut() {
     const supabase = getSupabaseClient();
@@ -42,6 +46,7 @@ export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProp
       </div>
 
       <div className="flex items-center gap-3">
+        <LanguageSwitcher />
         <OfflineIndicator />
         <NotificationsPanel />
 
@@ -57,18 +62,22 @@ export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProp
           }
         >
           <div className="px-2 py-1.5">
-            <p className="text-sm font-medium">{user.full_name || 'Uživatel'}</p>
+            <p className="text-sm font-medium">{user.full_name || t('user')}</p>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
           <DropdownSeparator />
-          <DropdownItem onClick={() => router.push('/organization')}>
+          <DropdownItem onClick={() => router.push('/profile')}>
             <User className="mr-2 h-4 w-4" />
-            Profil
+            {t('profile')}
+          </DropdownItem>
+          <DropdownItem onClick={() => router.push('/organization')}>
+            <Building2 className="mr-2 h-4 w-4" />
+            {tSidebar('organization')}
           </DropdownItem>
           <DropdownSeparator />
           <DropdownItem onClick={handleSignOut} destructive>
             <LogOut className="mr-2 h-4 w-4" />
-            Odhlásit se
+            {t('signOut')}
           </DropdownItem>
         </DropdownMenu>
       </div>

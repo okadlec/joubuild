@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, ArrowLeft, Check, Layers, RotateCcw } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { X, ArrowLeft, Check, Layers, RotateCcw, Loader2, ZoomIn, ZoomOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 // --- Types (local, matching plans-view) ---
 
@@ -57,6 +59,8 @@ export function CrossCompareDialog({
   initialSheetId,
   initialVersionId,
 }: CrossCompareDialogProps) {
+  const t = useTranslations('plans.crossCompareDialog');
+  const tCommon = useTranslations('common');
   const [step, setStep] = useState<Step>('select');
 
   // Side A selections
@@ -125,13 +129,13 @@ export function CrossCompareDialog({
             onClick={() => setStep(step === 'result' ? 'align' : 'select')}
           >
             <ArrowLeft className="mr-1 h-4 w-4" />
-            Zpět
+            {tCommon('back')}
           </Button>
         )}
         <h2 className="text-lg font-semibold">
-          {step === 'select' && 'Porovnat verze'}
-          {step === 'align' && 'Zarovnat stránky'}
-          {step === 'result' && 'Výsledek porovnání'}
+          {step === 'select' && t('title')}
+          {step === 'align' && t('alignPages')}
+          {step === 'result' && t('result')}
         </h2>
         <div className="flex-1" />
 
@@ -141,7 +145,7 @@ export function CrossCompareDialog({
             onClick={() => setStep('result')}
           >
             <Check className="mr-1 h-4 w-4" />
-            Potvrdit zarovnání
+            {t('confirmAlignment')}
           </Button>
         )}
 
@@ -245,12 +249,14 @@ function SelectStep({
     }
   }, [sheetIdB, versionsB, versionIdB, setVersionIdB]);
 
+  const t = useTranslations('plans.crossCompareDialog');
+
   return (
     <div className="mx-auto max-w-3xl p-8">
       <div className="grid grid-cols-2 gap-8">
         {/* Side A */}
         <div className="space-y-4 rounded-lg border p-4">
-          <h3 className="font-semibold text-red-600">Strana A (základ)</h3>
+          <h3 className="font-semibold text-red-600">{t('sideABase')}</h3>
           <CascadeSelects
             planSets={planSets}
             planSetId={planSetIdA}
@@ -265,7 +271,7 @@ function SelectStep({
         </div>
         {/* Side B */}
         <div className="space-y-4 rounded-lg border p-4">
-          <h3 className="font-semibold text-blue-600">Strana B</h3>
+          <h3 className="font-semibold text-blue-600">{t('sideB')}</h3>
           <CascadeSelects
             planSets={planSets}
             planSetId={planSetIdB}
@@ -282,7 +288,7 @@ function SelectStep({
 
       <div className="mt-8 flex justify-center">
         <Button size="lg" disabled={!canProceed} onClick={onProceed}>
-          Pokračovat k zarovnání →
+          {t('proceedToAlign')} →
         </Button>
       </div>
     </div>
@@ -300,16 +306,18 @@ function CascadeSelects({
   sheets: Sheet[]; sheetId: string; setSheetId: (id: string) => void;
   versions: SheetVersion[]; versionId: string; setVersionId: (id: string) => void;
 }) {
+  const t = useTranslations('plans.crossCompareDialog');
+
   return (
     <>
       <div className="space-y-1">
-        <Label className="text-xs">Sada výkresů</Label>
+        <Label className="text-xs">{t('planSetLabel')}</Label>
         <select
           className="w-full rounded-md border bg-background px-3 py-2 text-sm"
           value={planSetId}
           onChange={(e) => setPlanSetId(e.target.value)}
         >
-          <option value="">— vyberte —</option>
+          <option value="">{t('selectPlaceholder')}</option>
           {planSets.map(ps => (
             <option key={ps.id} value={ps.id}>{ps.name}</option>
           ))}
@@ -317,14 +325,14 @@ function CascadeSelects({
       </div>
 
       <div className="space-y-1">
-        <Label className="text-xs">List</Label>
+        <Label className="text-xs">{t('sheetLabel')}</Label>
         <select
           className="w-full rounded-md border bg-background px-3 py-2 text-sm"
           value={sheetId}
           onChange={(e) => setSheetId(e.target.value)}
           disabled={sheets.length === 0}
         >
-          <option value="">— vyberte —</option>
+          <option value="">{t('selectPlaceholder')}</option>
           {sheets.map(s => (
             <option key={s.id} value={s.id}>
               {s.name}{s.sheet_number ? ` (#${s.sheet_number})` : ''}
@@ -334,17 +342,17 @@ function CascadeSelects({
       </div>
 
       <div className="space-y-1">
-        <Label className="text-xs">Verze</Label>
+        <Label className="text-xs">{t('versionLabel')}</Label>
         <select
           className="w-full rounded-md border bg-background px-3 py-2 text-sm"
           value={versionId}
           onChange={(e) => setVersionId(e.target.value)}
           disabled={versions.length === 0}
         >
-          <option value="">— vyberte —</option>
+          <option value="">{t('selectPlaceholder')}</option>
           {[...versions].sort((a, b) => b.version_number - a.version_number).map(v => (
             <option key={v.id} value={v.id}>
-              v{v.version_number}{v.is_current ? ' (aktuální)' : ''}
+              v{v.version_number}{v.is_current ? ` ${t('currentLabel')}` : ''}
             </option>
           ))}
         </select>
@@ -427,7 +435,7 @@ function AlignStep({
         setLoading(false);
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Nepodařilo se načíst PDF');
+          setError(err instanceof Error ? err.message : 'PDF load error');
           setLoading(false);
         }
       }
@@ -497,15 +505,17 @@ function AlignStep({
     setAlignment({ offsetX: 0, offsetY: 0, scale: 1 });
   }, [setAlignment]);
 
+  const t = useTranslations('plans.crossCompareDialog');
+
   return (
     <div className="flex h-full flex-col">
       {/* Controls */}
       <div className="flex items-center gap-4 border-b px-4 py-2">
         <span className="text-sm text-muted-foreground">
-          Tip: Přetáhněte druhý plán a nastavte velikost
+          {t('tipDragAlign')}
         </span>
         <div className="flex items-center gap-2">
-          <Label className="text-xs">Velikost:</Label>
+          <Label className="text-xs">{t('sizeLabel')}:</Label>
           <span className="w-10 text-right text-xs">{Math.round(localScale * 100)}%</span>
           <input
             type="range"
@@ -519,7 +529,7 @@ function AlignStep({
         </div>
         <Button variant="outline" size="sm" onClick={handleReset}>
           <RotateCcw className="mr-1 h-3.5 w-3.5" />
-          Resetovat
+          {t('resetAlignment')}
         </Button>
       </div>
 
@@ -530,13 +540,14 @@ function AlignStep({
       >
         {loading && !error && (
           <div className="flex h-full items-center justify-center">
-            <p className="text-muted-foreground">Načítání plánů...</p>
+            <Loader2 className="mr-2 h-5 w-5 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground">{t('loadingPlans')}</p>
           </div>
         )}
         {error && (
           <div className="flex h-full items-center justify-center">
             <div className="text-center">
-              <p className="text-destructive font-medium">Chyba při načítání</p>
+              <p className="text-destructive font-medium">{t('loadErrorTitle')}</p>
               <p className="text-sm text-muted-foreground mt-1">{error}</p>
             </div>
           </div>
@@ -604,6 +615,60 @@ function ResultStep({
   const [renderedDiff, setRenderedDiff] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const t = useTranslations('plans.crossCompareDialog');
+  const tCommon = useTranslations('common');
+
+  // Zoom/pan state
+  const [viewScale, setViewScale] = useState(1);
+  const [viewOffset, setViewOffset] = useState({ x: 0, y: 0 });
+  const dragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0 });
+  const offsetAtDragStart = useRef({ x: 0, y: 0 });
+
+  // Zoom handlers
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault();
+    setViewScale((prev) => {
+      const delta = e.deltaY < 0 ? 0.1 : -0.1;
+      return Math.min(5, Math.max(0.25, prev + delta));
+    });
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    setViewScale((prev) => Math.min(5, prev + 0.25));
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    setViewScale((prev) => Math.max(0.25, prev - 0.25));
+  }, []);
+
+  const handleResetView = useCallback(() => {
+    setViewScale(1);
+    setViewOffset({ x: 0, y: 0 });
+  }, []);
+
+  // Pan handlers
+  const handleViewPointerDown = useCallback((e: React.PointerEvent) => {
+    dragging.current = true;
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    offsetAtDragStart.current = { x: viewOffset.x, y: viewOffset.y };
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  }, [viewOffset]);
+
+  const handleViewPointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragging.current) return;
+    const dx = e.clientX - dragStart.current.x;
+    const dy = e.clientY - dragStart.current.y;
+    setViewOffset({
+      x: offsetAtDragStart.current.x + dx,
+      y: offsetAtDragStart.current.y + dy,
+    });
+  }, []);
+
+  const handleViewPointerUp = useCallback(() => {
+    dragging.current = false;
+  }, []);
 
   // Render PDFs to offscreen canvases and store as data URLs
   useEffect(() => {
@@ -722,7 +787,7 @@ function ResultStep({
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : 'Nepodařilo se načíst PDF');
+          setError(err instanceof Error ? err.message : 'PDF load error');
           setLoading(false);
         }
       }
@@ -735,33 +800,25 @@ function ResultStep({
     <div className="flex h-full flex-col">
       {/* Toolbar */}
       <div className="flex items-center gap-2 border-b px-4 py-2">
-        <Button
-          variant={mode === 'overlay' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setMode('overlay')}
-        >
-          <Layers className="mr-1 h-3.5 w-3.5" />
-          Překryv
-        </Button>
-        <Button
-          variant={mode === 'side-by-side' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setMode('side-by-side')}
-        >
-          Vedle sebe
-        </Button>
-        <Button
-          variant={mode === 'diff' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setMode('diff')}
-        >
-          Rozdíly
-        </Button>
+        <Tabs value={mode} onValueChange={(v) => setMode(v as ResultMode)} defaultValue="diff">
+          <TabsList>
+            <TabsTrigger value="overlay">
+              <Layers className="mr-1.5 h-3.5 w-3.5" />
+              {t('overlay')}
+            </TabsTrigger>
+            <TabsTrigger value="side-by-side">
+              {t('sideBySide')}
+            </TabsTrigger>
+            <TabsTrigger value="diff">
+              {t('differences')}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
 
         {mode === 'overlay' && (
           <>
             <div className="mx-2 h-6 w-px bg-border" />
-            <span className="text-xs text-muted-foreground">Průhlednost:</span>
+            <span className="text-xs text-muted-foreground">{tCommon('transparency')}:</span>
             <input
               type="range"
               min="0"
@@ -778,83 +835,113 @@ function ResultStep({
           <>
             <div className="mx-2 h-6 w-px bg-border" />
             <div className="flex items-center gap-2 text-xs">
-              <span className="inline-block h-3 w-3 rounded-full bg-red-500" /> Strana A
-              <span className="inline-block h-3 w-3 rounded-full bg-blue-500" /> Strana B
+              <span className="inline-block h-3 w-3 rounded-full bg-red-500" /> {t('sideALabel')}
+              <span className="inline-block h-3 w-3 rounded-full bg-blue-500" /> {t('sideBLabel')}
             </div>
           </>
         )}
+
+        {/* Zoom controls */}
+        <div className="flex items-center gap-1 ml-auto">
+          <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleZoomOut}>
+            <ZoomOut className="h-3.5 w-3.5" />
+          </Button>
+          <span className="w-12 text-center text-xs tabular-nums">{Math.round(viewScale * 100)}%</span>
+          <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleZoomIn}>
+            <ZoomIn className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-7 w-7" onClick={handleResetView}>
+            <RotateCcw className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
 
-      {/* Canvas area */}
-      <div className="min-h-0 flex-1 overflow-auto bg-muted/50 p-4">
+      {/* Canvas area with zoom/pan */}
+      <div
+        className="min-h-0 flex-1 overflow-hidden bg-muted/50"
+        style={{ cursor: dragging.current ? 'grabbing' : 'grab' }}
+        onWheel={handleWheel}
+        onPointerDown={handleViewPointerDown}
+        onPointerMove={handleViewPointerMove}
+        onPointerUp={handleViewPointerUp}
+      >
         {loading && !error && (
           <div className="flex h-64 items-center justify-center">
-            <p className="text-muted-foreground">Generování porovnání...</p>
+            <Loader2 className="mr-2 h-5 w-5 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground">{t('generating')}</p>
           </div>
         )}
 
         {error && (
           <div className="flex h-64 items-center justify-center">
             <div className="text-center">
-              <p className="text-destructive font-medium">Chyba při načítání</p>
+              <p className="text-destructive font-medium">{t('loadErrorTitle')}</p>
               <p className="text-sm text-muted-foreground mt-1">{error}</p>
             </div>
           </div>
         )}
 
-        {!loading && !error && mode === 'diff' && renderedDiff && (
-          <img
-            src={renderedDiff}
-            alt="Diff"
-            className="mx-auto block"
-            style={{ maxWidth: '100%', height: 'auto' }}
-          />
-        )}
-
-        {!loading && !error && mode === 'overlay' && renderedA && renderedB && (
-          <div className="relative mx-auto inline-block">
-            <img
-              src={renderedA}
-              alt="Plan A"
-              className="block"
-              style={{ maxWidth: '100%', height: 'auto', opacity: 1 - overlayOpacity }}
-            />
-            <img
-              src={renderedB}
-              alt="Plan B"
-              className="absolute left-0 top-0 block"
-              style={{
-                maxWidth: '100%',
-                height: 'auto',
-                opacity: overlayOpacity,
-                mixBlendMode: 'multiply',
-                transform: `translate(${alignment.offsetX}px, ${alignment.offsetY}px) scale(${alignment.scale})`,
-                transformOrigin: '0 0',
-              }}
-            />
-          </div>
-        )}
-
-        {!loading && !error && mode === 'side-by-side' && renderedA && renderedB && (
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <p className="mb-2 text-center text-sm font-medium text-red-500">Strana A</p>
+        {!loading && !error && (
+          <div style={{
+            transform: `translate(${viewOffset.x}px, ${viewOffset.y}px) scale(${viewScale})`,
+            transformOrigin: '0 0',
+            padding: '1rem',
+          }}>
+            {mode === 'diff' && renderedDiff && (
               <img
-                src={renderedA}
-                alt="Plan A"
-                className="mx-auto block rounded border border-red-200"
+                src={renderedDiff}
+                alt="Diff"
+                className="mx-auto block"
                 style={{ maxWidth: '100%', height: 'auto' }}
               />
-            </div>
-            <div className="flex-1">
-              <p className="mb-2 text-center text-sm font-medium text-blue-500">Strana B</p>
-              <img
-                src={renderedB}
-                alt="Plan B"
-                className="mx-auto block rounded border border-blue-200"
-                style={{ maxWidth: '100%', height: 'auto' }}
-              />
-            </div>
+            )}
+
+            {mode === 'overlay' && renderedA && renderedB && (
+              <div className="relative mx-auto inline-block">
+                <img
+                  src={renderedA}
+                  alt="Plan A"
+                  className="block"
+                  style={{ maxWidth: '100%', height: 'auto', opacity: 1 - overlayOpacity }}
+                />
+                <img
+                  src={renderedB}
+                  alt="Plan B"
+                  className="absolute left-0 top-0 block"
+                  style={{
+                    maxWidth: '100%',
+                    height: 'auto',
+                    opacity: overlayOpacity,
+                    mixBlendMode: 'multiply',
+                    transform: `translate(${alignment.offsetX}px, ${alignment.offsetY}px) scale(${alignment.scale})`,
+                    transformOrigin: '0 0',
+                  }}
+                />
+              </div>
+            )}
+
+            {mode === 'side-by-side' && renderedA && renderedB && (
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <p className="mb-2 text-center text-sm font-medium text-red-500">{t('sideALabel')}</p>
+                  <img
+                    src={renderedA}
+                    alt="Plan A"
+                    className="mx-auto block rounded border border-red-200"
+                    style={{ maxWidth: '100%', height: 'auto' }}
+                  />
+                </div>
+                <div className="flex-1">
+                  <p className="mb-2 text-center text-sm font-medium text-blue-500">{t('sideBLabel')}</p>
+                  <img
+                    src={renderedB}
+                    alt="Plan B"
+                    className="mx-auto block rounded border border-blue-200"
+                    style={{ maxWidth: '100%', height: 'auto' }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

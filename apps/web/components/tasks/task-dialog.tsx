@@ -12,6 +12,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TASK_PRIORITIES, TASK_PRIORITY_LABELS } from '@joubuild/shared';
 import type { Task, TaskCategory, ProjectMember, Tag } from '@joubuild/shared';
 import { toast } from 'sonner';
+import { useTranslations } from 'next-intl';
 import { TaskComments } from './task-comments';
 import { TaskChecklist } from './task-checklist';
 import { TagPicker } from '@/components/shared/tag-picker';
@@ -61,6 +62,8 @@ export function TaskDialog({
   const [assigneeId, setAssigneeId] = useState('');
   const [taskTags, setTaskTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
+  const t = useTranslations('tasks');
+  const tCommon = useTranslations('common');
 
   useEffect(() => {
     if (task) {
@@ -143,7 +146,7 @@ export function TaskDialog({
       }
       taskId = data.id;
       onUpdated(data as Task);
-      toast.success('Úkol aktualizován');
+      toast.success(t('taskUpdated'));
     } else {
       const { data: { user } } = await supabase.auth.getUser();
       const { data, error } = await supabase
@@ -164,7 +167,7 @@ export function TaskDialog({
       }
       taskId = data.id;
       onCreated(data as Task);
-      toast.success('Úkol vytvořen');
+      toast.success(t('taskCreated'));
     }
 
     // Sync task tags
@@ -214,7 +217,7 @@ export function TaskDialog({
   return (
     <Dialog open={open} onClose={onClose} className="max-w-2xl">
       <DialogHeader>
-        <DialogTitle>{task ? 'Upravit úkol' : 'Nový úkol'}</DialogTitle>
+        <DialogTitle>{task ? t('editTask') : t('newTask')}</DialogTitle>
       </DialogHeader>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
@@ -222,13 +225,13 @@ export function TaskDialog({
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            placeholder="Název úkolu"
+            placeholder={t('taskName')}
             required
           />
         </div>
 
         <div className="space-y-2">
-          <Label>Popis</Label>
+          <Label>{tCommon('description')}</Label>
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
@@ -238,18 +241,18 @@ export function TaskDialog({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Status</Label>
+            <Label>{tCommon('status')}</Label>
             <Select value={status} onChange={(e) => setStatus(e.target.value)}>
               {TASK_STATUSES.map((s) => (
-                <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
+                <option key={s} value={s}>{t(`statuses.${s}`)}</option>
               ))}
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Priorita</Label>
+            <Label>{t('priority')}</Label>
             <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
               {TASK_PRIORITIES.map((p) => (
-                <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>
+                <option key={p} value={p}>{t(`priorities.${p}`)}</option>
               ))}
             </Select>
           </div>
@@ -258,7 +261,7 @@ export function TaskDialog({
         <div className="grid grid-cols-2 gap-4">
           {categories.length > 0 && (
             <div className="space-y-2">
-              <Label>Kategorie</Label>
+              <Label>{t('category')}</Label>
               <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
                 <option value="">— Bez kategorie —</option>
                 {categories.map((c) => (
@@ -302,7 +305,7 @@ export function TaskDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>Termín</Label>
+            <Label>{t('dueDate')}</Label>
             <Input
               type="date"
               value={dueDate}
@@ -381,9 +384,9 @@ export function TaskDialog({
             )}
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>Zrušit</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{tCommon('cancel')}</Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Ukládání...' : task ? 'Uložit' : 'Vytvořit'}
+              {loading ? 'Ukládání...' : task ? t('updateTask') : t('createTask')}
             </Button>
           </div>
         </div>

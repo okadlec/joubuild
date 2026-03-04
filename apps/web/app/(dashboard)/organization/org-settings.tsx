@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslations } from 'next-intl';
 import { Save, Upload, UserPlus, Trash2, MoreVertical, Building2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -16,13 +17,6 @@ import { updateOrganization, uploadOrgLogo, addOrgMember, removeOrgMember, updat
 import { toast } from 'sonner';
 
 type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
-
-const ROLE_LABELS: Record<OrgRole, string> = {
-  owner: 'Vlastník',
-  admin: 'Admin',
-  member: 'Člen',
-  viewer: 'Prohlížející',
-};
 
 const ROLE_VARIANTS: Record<OrgRole, 'default' | 'secondary' | 'outline'> = {
   owner: 'default',
@@ -55,6 +49,9 @@ interface OrgSettingsProps {
 
 export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettingsProps) {
   const router = useRouter();
+  const t = useTranslations('organization');
+  const tRoles = useTranslations('roles');
+  const tCommon = useTranslations('common');
   const [name, setName] = useState(org.name);
   const [slug, setSlug] = useState(org.slug);
   const [logoUrl, setLogoUrl] = useState(org.logo_url);
@@ -74,7 +71,7 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success('Organizace aktualizována');
+      toast.success(t('orgUpdated'));
       router.refresh();
     }
     setSaving(false);
@@ -89,22 +86,18 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
       toast.error(result.error);
     } else if (result.data) {
       setLogoUrl(result.data.logo_url);
-      toast.success('Logo nahráno');
     }
     setUploadingLogo(false);
   }
 
   async function handleAddMember() {
-    if (!newMemberEmail.trim()) {
-      toast.error('Zadejte email');
-      return;
-    }
+    if (!newMemberEmail.trim()) return;
     setInviting(true);
     const result = await addOrgMember(org.id, newMemberEmail.trim(), newMemberRole);
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success('Člen přidán');
+      toast.success(t('memberInvited'));
       setShowAddMember(false);
       setNewMemberEmail('');
       setNewMemberRole('member');
@@ -114,14 +107,14 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
   }
 
   async function handleRemoveMember(userId: string) {
-    if (!confirm('Opravdu chcete odebrat tohoto člena?')) return;
+    if (!confirm(tCommon('confirm') + '?')) return;
     const result = await removeOrgMember(org.id, userId);
     if (result.error) {
       toast.error(result.error);
     } else {
       setMembers(prev => prev.filter(m => m.user_id !== userId));
       setOpenMenuId(null);
-      toast.success('Člen odebrán');
+      toast.success(t('memberRemoved'));
     }
   }
 
@@ -132,21 +125,20 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
     } else {
       setMembers(prev => prev.map(m => m.user_id === userId ? { ...m, role } : m));
       setOpenMenuId(null);
-      toast.success('Role změněna');
     }
   }
 
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Organizace</h1>
-        <p className="text-sm text-muted-foreground">Správa organizace a členů</p>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <p className="text-sm text-muted-foreground">{t('settings')}</p>
       </div>
 
       {/* Organization info */}
       <Card>
         <CardHeader>
-          <CardTitle>Nastavení organizace</CardTitle>
+          <CardTitle>{t('settings')}</CardTitle>
         </CardHeader>
         <CardContent>
           {/* Logo */}
@@ -174,7 +166,7 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
                   disabled={uploadingLogo}
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  {uploadingLogo ? 'Nahrávání...' : 'Nahrát logo'}
+                  {uploadingLogo ? tCommon('loading') : tCommon('upload')}
                 </Button>
               </div>
             )}
@@ -182,21 +174,21 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
 
           <form onSubmit={handleSave} className="space-y-4">
             <div className="space-y-2">
-              <Label>Název organizace</Label>
+              <Label>{t('name')}</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} required disabled={!isAdmin} />
             </div>
             <div className="space-y-2">
-              <Label>Slug</Label>
+              <Label>{t('slug')}</Label>
               <Input value={slug} onChange={(e) => setSlug(e.target.value)} required disabled={!isAdmin} />
             </div>
             <div className="space-y-2">
-              <Label>Plán</Label>
+              <Label>{t('plan')}</Label>
               <Badge variant="secondary">{org.plan}</Badge>
             </div>
             {isAdmin && (
               <Button type="submit" disabled={saving}>
                 <Save className="mr-2 h-4 w-4" />
-                {saving ? 'Ukládání...' : 'Uložit'}
+                {saving ? tCommon('loading') : tCommon('save')}
               </Button>
             )}
           </form>
@@ -207,19 +199,19 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
       <Card>
         <CardHeader className="flex-row items-center justify-between">
           <div className="flex items-center gap-2">
-            <CardTitle>Členové</CardTitle>
+            <CardTitle>{t('members')}</CardTitle>
             <OrgRolePermissionsInfo />
           </div>
           {isAdmin && (
             <Button size="sm" variant="outline" onClick={() => setShowAddMember(true)}>
               <UserPlus className="mr-2 h-4 w-4" />
-              Přidat
+              {tCommon('add')}
             </Button>
           )}
         </CardHeader>
         <CardContent>
           {members.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Žádní členové</p>
+            <p className="text-sm text-muted-foreground">{t('noMembers')}</p>
           ) : (
             <div className="space-y-2">
               {members.map((member) => {
@@ -239,7 +231,7 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={ROLE_VARIANTS[memberRole] || 'outline'}>
-                        {ROLE_LABELS[memberRole] || member.role}
+                        {tRoles(memberRole)}
                       </Badge>
                       {isAdmin && (
                         <div className="relative">
@@ -252,14 +244,14 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
                           </Button>
                           {openMenuId === member.user_id && (
                             <div className="absolute right-0 top-full z-10 mt-1 w-44 rounded-md border bg-popover p-1 shadow-md">
-                              <p className="px-2 py-1 text-xs text-muted-foreground">Změnit roli</p>
+                              <p className="px-2 py-1 text-xs text-muted-foreground">{tCommon('edit')}</p>
                               {(['owner', 'admin', 'member', 'viewer'] as OrgRole[]).map((role) => (
                                 <button
                                   key={role}
                                   className={`flex w-full items-center rounded-sm px-2 py-1.5 text-sm hover:bg-accent ${memberRole === role ? 'font-semibold text-primary' : ''}`}
                                   onClick={() => handleRoleChange(member.user_id, role)}
                                 >
-                                  {ROLE_LABELS[role]}
+                                  {tRoles(role)}
                                   {memberRole === role && ' •'}
                                 </button>
                               ))}
@@ -268,7 +260,7 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
                                 className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive hover:bg-destructive/10"
                                 onClick={() => handleRemoveMember(member.user_id)}
                               >
-                                <Trash2 className="h-4 w-4" /> Odebrat
+                                <Trash2 className="h-4 w-4" /> {tCommon('remove')}
                               </button>
                             </div>
                           )}
@@ -286,7 +278,7 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
       {/* Add member dialog */}
       <Dialog open={showAddMember} onClose={() => setShowAddMember(false)}>
         <DialogHeader>
-          <DialogTitle>Přidat člena</DialogTitle>
+          <DialogTitle>{t('inviteMember')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -299,17 +291,17 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
             />
           </div>
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label>{tCommon('status')}</Label>
             <Select value={newMemberRole} onChange={(e) => setNewMemberRole(e.target.value as OrgRole)}>
-              <option value="admin">Admin</option>
-              <option value="member">Člen</option>
-              <option value="viewer">Prohlížející</option>
+              <option value="admin">{tRoles('admin')}</option>
+              <option value="member">{tRoles('member')}</option>
+              <option value="viewer">{tRoles('viewer')}</option>
             </Select>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowAddMember(false)}>Zrušit</Button>
+            <Button variant="outline" onClick={() => setShowAddMember(false)}>{tCommon('cancel')}</Button>
             <Button onClick={handleAddMember} disabled={inviting}>
-              {inviting ? 'Přidávání...' : 'Přidat'}
+              {inviting ? tCommon('loading') : tCommon('add')}
             </Button>
           </div>
         </div>

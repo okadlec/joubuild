@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useTranslations } from 'next-intl';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +11,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription }
 import { toast } from 'sonner';
 
 export default function ForgotPasswordPage(): React.JSX.Element {
+  const t = useTranslations('auth');
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [sent, setSent] = useState(false);
@@ -37,14 +39,14 @@ export default function ForgotPasswordPage(): React.JSX.Element {
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Email odeslán</CardTitle>
+          <CardTitle>{t('emailSent')}</CardTitle>
           <CardDescription>
-            Pokud existuje účet s emailem {email}, obdržíte odkaz pro obnovení hesla.
+            {t('emailSentDescription', { email })}
           </CardDescription>
         </CardHeader>
         <CardFooter>
           <Link href="/login" className="w-full">
-            <Button variant="outline" className="w-full">Zpět na přihlášení</Button>
+            <Button variant="outline" className="w-full">{t('backToLogin')}</Button>
           </Link>
         </CardFooter>
       </Card>
@@ -54,8 +56,8 @@ export default function ForgotPasswordPage(): React.JSX.Element {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Obnovení hesla</CardTitle>
-        <CardDescription>Zadejte svůj email a my vám pošleme odkaz pro obnovení hesla</CardDescription>
+        <CardTitle>{t('resetPassword')}</CardTitle>
+        <CardDescription>{t('resetPasswordDescription')}</CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
@@ -64,7 +66,7 @@ export default function ForgotPasswordPage(): React.JSX.Element {
             <Input
               id="email"
               type="email"
-              placeholder="vas@email.cz"
+              placeholder={t('emailPlaceholder')}
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
@@ -73,10 +75,10 @@ export default function ForgotPasswordPage(): React.JSX.Element {
         </CardContent>
         <CardFooter className="flex-col space-y-3">
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? 'Odesílání...' : 'Odeslat odkaz'}
+            {loading ? t('sending') : t('sendLink')}
           </Button>
           <Link href="/login" className="text-sm text-primary hover:underline">
-            Zpět na přihlášení
+            {t('backToLogin')}
           </Link>
         </CardFooter>
       </form>

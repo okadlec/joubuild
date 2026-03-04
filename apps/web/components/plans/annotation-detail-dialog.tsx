@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { X, MessageSquare, Camera, CheckSquare, Settings2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -36,6 +37,7 @@ export function AnnotationDetailDialog({
   onTaskUpdated,
   onTaskDeleted,
 }: AnnotationDetailDialogProps) {
+  const t = useTranslations('plans.annotationDetail');
   const [linkedTask, setLinkedTask] = useState<Task | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>('chat');
   const [editingTitle, setEditingTitle] = useState(false);
@@ -125,9 +127,9 @@ export function AnnotationDetailDialog({
   }, [onTaskDeleted]);
 
   const tabs = [
-    { id: 'chat' as Tab, label: 'Chat', icon: MessageSquare, count: commentCount },
-    { id: 'photos' as Tab, label: 'Fotky', icon: Camera, count: photoCount },
-    ...(isMobile ? [{ id: 'attributes' as Tab, label: 'Atributy', icon: Settings2, count: 0 }] : []),
+    { id: 'chat' as Tab, label: t('chat'), icon: MessageSquare, count: commentCount },
+    { id: 'photos' as Tab, label: t('photos'), icon: Camera, count: photoCount },
+    ...(isMobile ? [{ id: 'attributes' as Tab, label: t('attributes'), icon: Settings2, count: 0 }] : []),
   ];
 
   return (
@@ -179,14 +181,14 @@ export function AnnotationDetailDialog({
                     <h3
                       className="cursor-pointer truncate text-sm font-semibold hover:text-primary"
                       onClick={() => setEditingTitle(true)}
-                      title="Klikněte pro úpravu"
+                      title={t('clickToEdit')}
                     >
                       {linkedTask.title}
                     </h3>
                   )
                 ) : (
                   <h3 className="text-sm font-semibold text-muted-foreground">
-                    Detail anotace
+                    {t('title')}
                   </h3>
                 )}
               </div>
@@ -251,7 +253,7 @@ export function AnnotationDetailDialog({
               <div className="border-t px-4 py-2">
                 <div className="flex items-center gap-1.5 mb-1">
                   <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="text-xs font-medium text-muted-foreground">Checklist</span>
+                  <span className="text-xs font-medium text-muted-foreground">{t('checklist')}</span>
                 </div>
                 <TaskChecklist taskId={linkedTask.id} />
               </div>
@@ -262,7 +264,7 @@ export function AnnotationDetailDialog({
           {!isMobile && (
             <div className="w-80 shrink-0 border-l overflow-auto">
               <div className="flex items-center justify-between border-b px-4 py-3">
-                <h4 className="text-sm font-semibold">Atributy úkolu</h4>
+                <h4 className="text-sm font-semibold">{t('taskAttributes')}</h4>
               </div>
               <AnnotationTaskAttributes
                 annotationId={annotationId}
