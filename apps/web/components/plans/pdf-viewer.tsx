@@ -95,7 +95,13 @@ interface PdfViewerProps {
 }
 
 export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurrent = true }: PdfViewerProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasARef = useRef<HTMLCanvasElement>(null);
+  const canvasBRef = useRef<HTMLCanvasElement>(null);
+  const frontBufferRef = useRef<'A' | 'B'>('A');
+
+  function getBackCanvas() {
+    return frontBufferRef.current === 'A' ? canvasBRef.current : canvasARef.current;
+  }
   const containerRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -385,12 +391,14 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   // Navigate to a specific page
   const goToPage = useCallback(async (pageNum: number) => {
     if (!pdfDocRef.current || pageNum < 1 || pageNum > totalPages) return;
-    // Zero canvas dimensions to release old bitmap GPU memory before loading new page
-    const canvas = canvasRef.current;
-    if (canvas) {
-      canvas.width = 0;
-      canvas.height = 0;
-    }
+    // Zero both canvas dimensions to release old bitmap GPU memory before loading new page
+    const a = canvasARef.current;
+    const b = canvasBRef.current;
+    if (a) { a.width = 0; a.height = 0; }
+    if (b) { b.width = 0; b.height = 0; }
+    frontBufferRef.current = 'A';
+    if (a) a.style.zIndex = '1';
+    if (b) b.style.zIndex = '0';
     const page = await pdfDocRef.current.getPage(pageNum);
     pageRef.current = page;
     setCurrentPage(pageNum);
@@ -412,8 +420,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   async function doRender(page: any, s: number, r: number, tile: TileRect) {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const backCanvas = getBackCanvas();
+    if (!backCanvas) return;
 
     // Cancel any in-progress render
     if (renderTaskRef.current) {
@@ -431,15 +439,16 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     const canvasW = Math.ceil(tile.width * dpr);
     const canvasH = Math.ceil(tile.height * dpr);
 
-    canvas.width = canvasW;
-    canvas.height = canvasH;
-    canvas.style.width = `${tile.width}px`;
-    canvas.style.height = `${tile.height}px`;
-    canvas.style.position = 'absolute';
-    canvas.style.left = `${tile.x}px`;
-    canvas.style.top = `${tile.y}px`;
+    // Set dimensions on BACK canvas only — front canvas keeps displaying old content
+    backCanvas.width = canvasW;
+    backCanvas.height = canvasH;
+    backCanvas.style.width = `${tile.width}px`;
+    backCanvas.style.height = `${tile.height}px`;
+    backCanvas.style.position = 'absolute';
+    backCanvas.style.left = `${tile.x}px`;
+    backCanvas.style.top = `${tile.y}px`;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = backCanvas.getContext('2d');
     if (!ctx) return;
 
     // Viewport at full scale×DPR with offset so tile origin maps to canvas (0,0).
@@ -464,6 +473,14 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       return;
     } finally {
       renderTaskRef.current = null;
+    }
+
+    // SWAP: bring back canvas to front, push old front to back
+    const frontCanvas = frontBufferRef.current === 'A' ? canvasARef.current : canvasBRef.current;
+    if (backCanvas && frontCanvas) {
+      backCanvas.style.zIndex = '1';
+      frontCanvas.style.zIndex = '0';
+      frontBufferRef.current = frontBufferRef.current === 'A' ? 'B' : 'A';
     }
 
     // Store rendered tile for scroll hysteresis
@@ -569,12 +586,11 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         pdfDocRef.current = null;
       }
       pageRef.current = null;
-      // Zero canvas dimensions to release GPU bitmap memory
-      const canvas = canvasRef.current;
-      if (canvas) {
-        canvas.width = 0;
-        canvas.height = 0;
-      }
+      // Zero both canvas dimensions to release GPU bitmap memory
+      const a = canvasARef.current;
+      const b = canvasBRef.current;
+      if (a) { a.width = 0; a.height = 0; }
+      if (b) { b.width = 0; b.height = 0; }
       // Clear scroll render timer
       if (scrollRenderTimerRef.current) clearTimeout(scrollRenderTimerRef.current);
     };
@@ -1015,7 +1031,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
               willChange: 'transform',
             } : undefined}
           >
-            <canvas ref={canvasRef} className="block" />
+            <canvas ref={canvasARef} className="block" style={{ position: 'absolute', zIndex: 1 }} />
+            <canvas ref={canvasBRef} className="block" style={{ position: 'absolute', zIndex: 0 }} />
           </div>
           {showPins && pageSize.width > 0 && sheetId && (() => {
             const effectiveScale = Math.min(scale, MAX_KONVA_DIM / Math.max(pageSize.width, pageSize.height));
