@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, MessageSquare, Camera, CheckSquare, Send, Upload, Pencil, Trash2, Check } from 'lucide-react';
+import { X, MessageSquare, Camera, CheckSquare, Send, Upload, Pencil, Trash2, Check, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar } from '@/components/ui/avatar';
@@ -12,6 +12,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/lib/hooks/use-is-mobile';
 import { compressImage } from '@/lib/compress-image';
+import { AnnotationPlanPreview } from '@/components/photos/annotation-plan-preview';
 
 type Tab = 'chat' | 'photos' | 'task';
 
@@ -41,6 +42,17 @@ interface LinkedTask {
   assignee_id: string | null;
 }
 
+interface PlanPreviewData {
+  annotationType: string;
+  annotationData: Record<string, unknown>;
+  sheetId: string;
+  sheetName: string;
+  thumbnailUrl: string | null;
+  sheetWidth: number | null;
+  sheetHeight: number | null;
+  planSetName: string | null;
+}
+
 interface AnnotationDetailPanelProps {
   annotationId: string;
   projectId: string;
@@ -66,6 +78,8 @@ export function AnnotationDetailPanel({
   const [editBody, setEditBody] = useState('');
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
   const [editPhotoCaption, setEditPhotoCaption] = useState('');
+  const [expandedPhotoId, setExpandedPhotoId] = useState<string | null>(null);
+  const [planPreviewData, setPlanPreviewData] = useState<PlanPreviewData | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -185,6 +199,37 @@ export function AnnotationDetailPanel({
         .limit(1)
         .maybeSingle();
       if (taskData) setLinkedTask(taskData);
+
+      // Load plan preview data (annotation + sheet info)
+      const { data: annData } = await supabase
+        .from('annotations')
+        .select(`
+          type, data,
+          sheet_versions!inner (
+            thumbnail_url, width, height,
+            sheets!inner ( id, name, plan_sets ( name ) )
+          )
+        `)
+        .eq('id', annotationId)
+        .maybeSingle();
+      if (annData) {
+        const sv = annData.sheet_versions as unknown as {
+          thumbnail_url: string | null;
+          width: number | null;
+          height: number | null;
+          sheets: { id: string; name: string; plan_sets: { name: string } | null };
+        };
+        setPlanPreviewData({
+          annotationType: annData.type as string,
+          annotationData: (annData.data ?? {}) as Record<string, unknown>,
+          sheetId: sv.sheets.id,
+          sheetName: sv.sheets.name,
+          thumbnailUrl: sv.thumbnail_url,
+          sheetWidth: sv.width,
+          sheetHeight: sv.height,
+          planSetName: sv.sheets.plan_sets?.name ?? null,
+        });
+      }
     }
 
     load();
@@ -229,6 +274,11 @@ export function AnnotationDetailPanel({
       bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [comments.length, activeTab]);
+
+  // Reset expanded photo when annotation changes
+  useEffect(() => {
+    setExpandedPhotoId(null);
+  }, [annotationId]);
 
   const handleSendComment = useCallback(async (e: React.FormEvent) => {
     e.preventDefault();
@@ -528,86 +578,140 @@ export function AnnotationDetailPanel({
         {/* Photos Tab */}
         {activeTab === 'photos' && (
           <div className="p-3">
-            <div className="mb-3 flex gap-2">
-              <input
-                type="file"
-                accept="image/*"
-                capture="environment"
-                multiple
-                className="hidden"
-                id="annotation-photo-camera"
-                onChange={(e) => { if (e.target.files) handlePhotoUpload(e.target.files); e.target.value = ''; }}
-              />
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                className="hidden"
-                id="annotation-photo-gallery"
-                onChange={(e) => { if (e.target.files) handlePhotoUpload(e.target.files); e.target.value = ''; }}
-              />
-              <Button
-                size="sm"
-                className="flex-1"
-                onClick={() => document.getElementById('annotation-photo-camera')?.click()}
-                disabled={uploading}
-              >
-                <Camera className="mr-1 h-4 w-4" />
-                Vyfotit
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                className="flex-1"
-                onClick={() => document.getElementById('annotation-photo-gallery')?.click()}
-                disabled={uploading}
-              >
-                <Upload className="mr-1 h-4 w-4" />
-                Z galerie
-              </Button>
-            </div>
+            {expandedPhotoId ? (
+              // --- Expanded photo view ---
+              (() => {
+                const photo = photos.find(p => p.id === expandedPhotoId);
+                if (!photo) return null;
+                return (
+                  <div className="space-y-3">
+                    <button
+                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => setExpandedPhotoId(null)}
+                    >
+                      <ArrowLeft className="h-3.5 w-3.5" />
+                      Zpět na fotky
+                    </button>
 
-            {photos.length === 0 ? (
-              <p className="text-center text-sm text-muted-foreground">Žádné fotky</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-2">
-                {photos.map((photo) => (
-                  <div key={photo.id} className="overflow-hidden rounded-md border">
-                    <img
-                      src={photo.thumbnail_url || photo.file_url}
-                      alt={photo.caption || 'Fotka'}
-                      className="aspect-square w-full object-cover"
-                    />
-                    <div className="p-1">
-                      {editingPhotoId === photo.id ? (
-                        <div className="flex gap-1">
-                          <Input
-                            value={editPhotoCaption}
-                            onChange={(e) => setEditPhotoCaption(e.target.value)}
-                            className="h-6 flex-1 text-xs"
-                            placeholder="Popis..."
-                            autoFocus
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') handleSavePhotoCaption(photo.id);
-                              if (e.key === 'Escape') setEditingPhotoId(null);
-                            }}
-                          />
-                          <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleSavePhotoCaption(photo.id)}>
-                            <Check className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      ) : (
-                        <button
-                          className="w-full truncate text-left text-xs text-muted-foreground hover:text-foreground"
-                          onClick={() => { setEditingPhotoId(photo.id); setEditPhotoCaption(photo.caption || ''); }}
-                        >
-                          {photo.caption || 'Přidat popis...'}
-                        </button>
-                      )}
+                    <div className="overflow-hidden rounded-md border">
+                      <img
+                        src={photo.file_url}
+                        alt={photo.caption || 'Fotka'}
+                        className="w-full object-contain"
+                      />
                     </div>
+
+                    {photo.caption && (
+                      <p className="text-sm text-muted-foreground">{photo.caption}</p>
+                    )}
+
+                    {planPreviewData && (
+                      <AnnotationPlanPreview
+                        projectId={projectId}
+                        sheetId={planPreviewData.sheetId}
+                        sheetName={planPreviewData.sheetName}
+                        annotationId={annotationId}
+                        annotationType={planPreviewData.annotationType}
+                        annotationData={planPreviewData.annotationData}
+                        thumbnailUrl={planPreviewData.thumbnailUrl}
+                        sheetWidth={planPreviewData.sheetWidth}
+                        sheetHeight={planPreviewData.sheetHeight}
+                        planSetName={planPreviewData.planSetName}
+                      />
+                    )}
                   </div>
-                ))}
-              </div>
+                );
+              })()
+            ) : (
+              // --- Grid view ---
+              <>
+                <div className="mb-3 flex gap-2">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    multiple
+                    className="hidden"
+                    id="annotation-photo-camera"
+                    onChange={(e) => { if (e.target.files) handlePhotoUpload(e.target.files); e.target.value = ''; }}
+                  />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    id="annotation-photo-gallery"
+                    onChange={(e) => { if (e.target.files) handlePhotoUpload(e.target.files); e.target.value = ''; }}
+                  />
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => document.getElementById('annotation-photo-camera')?.click()}
+                    disabled={uploading}
+                  >
+                    <Camera className="mr-1 h-4 w-4" />
+                    Vyfotit
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => document.getElementById('annotation-photo-gallery')?.click()}
+                    disabled={uploading}
+                  >
+                    <Upload className="mr-1 h-4 w-4" />
+                    Z galerie
+                  </Button>
+                </div>
+
+                {photos.length === 0 ? (
+                  <p className="text-center text-sm text-muted-foreground">Žádné fotky</p>
+                ) : (
+                  <div className="grid grid-cols-2 gap-2">
+                    {photos.map((photo) => (
+                      <div key={photo.id} className="overflow-hidden rounded-md border">
+                        <button
+                          className="w-full"
+                          onClick={() => setExpandedPhotoId(photo.id)}
+                        >
+                          <img
+                            src={photo.thumbnail_url || photo.file_url}
+                            alt={photo.caption || 'Fotka'}
+                            className="aspect-square w-full object-cover"
+                          />
+                        </button>
+                        <div className="p-1">
+                          {editingPhotoId === photo.id ? (
+                            <div className="flex gap-1">
+                              <Input
+                                value={editPhotoCaption}
+                                onChange={(e) => setEditPhotoCaption(e.target.value)}
+                                className="h-6 flex-1 text-xs"
+                                placeholder="Popis..."
+                                autoFocus
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSavePhotoCaption(photo.id);
+                                  if (e.key === 'Escape') setEditingPhotoId(null);
+                                }}
+                              />
+                              <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => handleSavePhotoCaption(photo.id)}>
+                                <Check className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <button
+                              className="w-full truncate text-left text-xs text-muted-foreground hover:text-foreground"
+                              onClick={(e) => { e.stopPropagation(); setEditingPhotoId(photo.id); setEditPhotoCaption(photo.caption || ''); }}
+                            >
+                              {photo.caption || 'Přidat popis...'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         )}

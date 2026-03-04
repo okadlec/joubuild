@@ -173,6 +173,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     x: number; y: number;
     scrollLeft: number; scrollTop: number;
     active: boolean;  // true after exceeding 3px threshold
+    pointerId: number;
   } | null>(null);
 
   // Device detection and canvas limits
@@ -734,9 +735,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         scrollLeft: container.scrollLeft,
         scrollTop: container.scrollTop,
         active: false,
+        pointerId: e.pointerId,
       };
-
-      container.setPointerCapture(e.pointerId);
     }
 
     function handlePointerMove(e: PointerEvent) {
@@ -752,6 +752,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         ds.active = true;
         isDraggingRef.current = true;
         container.style.cursor = 'grabbing';
+        try { container.setPointerCapture(ds.pointerId); } catch { /* lost */ }
       }
 
       container.scrollLeft = ds.scrollLeft - dx;
@@ -760,10 +761,12 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
 
     function handlePointerUp(e: PointerEvent) {
       if (!dragStartRef.current || !container) return;
-      try {
-        container.releasePointerCapture(e.pointerId);
-      } catch {
-        // pointer capture may have been lost
+      if (dragStartRef.current.active) {
+        try {
+          container.releasePointerCapture(e.pointerId);
+        } catch {
+          // pointer capture may have been lost
+        }
       }
 
       const wasDragging = isDraggingRef.current;
