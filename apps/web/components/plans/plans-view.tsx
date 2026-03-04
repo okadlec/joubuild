@@ -386,8 +386,8 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
   // Version comparison view
   if (compareVersions) {
     return (
-      <div className="h-full">
-        <div className="mb-4 flex items-center gap-2">
+      <div className="flex h-full flex-col">
+        <div className="mb-4 flex shrink-0 items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => setCompareVersions(null)}>
             ← Zpět
           </Button>
@@ -395,12 +395,14 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
             Porovnání verzí - {selectedSheet?.name}
           </h2>
         </div>
+        <div className="min-h-0 flex-1">
         <VersionCompare
           oldFileUrl={compareVersions.old.file_url}
           newFileUrl={compareVersions.new.file_url}
           oldLabel={`v${compareVersions.old.version_number}`}
           newLabel={`v${compareVersions.new.version_number}`}
         />
+        </div>
       </div>
     );
   }
@@ -413,8 +415,8 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
     const versionsSorted = [...selectedSheet.sheet_versions].sort((a, b) => b.version_number - a.version_number);
 
     return (
-      <div className="h-full">
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+      <div className="flex h-full flex-col">
+        <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => { setSelectedSheet(null); setShowVersions(false); setViewingVersion(null); }}>
             ← <span className="hidden sm:inline">Zpět</span>
           </Button>
@@ -460,7 +462,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
 
         {/* Versions panel */}
         {showVersions && (
-          <div className="mb-4 rounded-lg border bg-background p-4">
+          <div className="mb-4 shrink-0 rounded-lg border bg-background p-4">
             <h3 className="mb-3 text-sm font-semibold">Historie verzí</h3>
             <div className="space-y-2">
               {versionsSorted.map((v, index) => (
@@ -506,7 +508,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
         )}
 
         {displayedVersion && (
-          <div className="relative">
+          <div className="relative min-h-0 flex-1">
             {!displayedVersion.is_current && (
               <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                 <div className="rotate-[-30deg] rounded-lg border-4 border-red-500/30 px-8 py-4 text-4xl font-bold text-red-500/30">

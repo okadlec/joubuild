@@ -1086,7 +1086,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     <div className={
       isFullscreen
         ? 'fixed inset-0 z-[60] flex gap-0 bg-background'
-        : 'flex h-[calc(100dvh-180px)] lg:h-[calc(100vh-200px)] gap-0'
+        : 'flex h-full gap-0'
     }>
     <div className="flex flex-1 flex-col gap-2 overflow-hidden">
       {/* Top toolbar - zoom, rotate, calibration */}

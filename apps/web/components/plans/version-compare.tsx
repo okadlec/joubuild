@@ -179,7 +179,7 @@ export function VersionCompare({ oldFileUrl, newFileUrl, oldLabel, newLabel }: V
   }, [totalPages, totalPagesOld, totalPagesNew]);
 
   return (
-    <div className="flex h-[calc(100vh-200px)] flex-col gap-2">
+    <div className="flex h-full flex-col gap-2">
       {/* Toolbar */}
       <div className="flex items-center gap-2 rounded-lg border bg-background p-2">
         <Button
