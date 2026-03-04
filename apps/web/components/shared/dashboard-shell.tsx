@@ -29,7 +29,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
   }, []);
 
   return (
-    <div className="flex h-dvh overflow-hidden pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="flex h-dvh overflow-hidden bg-background pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       {/* Mobile overlay — only when sidebar is open and NOT in project context (bottom nav replaces it) */}
       {sidebarOpen && (
         <div
