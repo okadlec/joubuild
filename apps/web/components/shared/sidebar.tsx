@@ -10,6 +10,7 @@ import {
   ClipboardList,
   BarChart2,
   FileText,
+  BookOpen,
   Settings,
   Building2,
   FolderOpen,
@@ -55,7 +56,8 @@ export function Sidebar({ organizations = [], currentOrgId, onOrgChange, onNavig
         { href: `/project/${projectId}/forms`, label: 'Formuláře', icon: ClipboardList },
         { href: `/project/${projectId}/timesheets`, label: 'Výkazy', icon: Clock },
         { href: `/project/${projectId}/reports`, label: 'Reporty', icon: BarChart2 },
-        { href: `/project/${projectId}/documents`, label: 'Dokumenty', icon: FileText },
+        { href: `/project/${projectId}/files`, label: 'Soubory', icon: FileText },
+        { href: `/project/${projectId}/specifications`, label: 'Specifikace', icon: BookOpen },
         { href: `/project/${projectId}/settings`, label: 'Nastavení', icon: Settings },
       ]
     : [];

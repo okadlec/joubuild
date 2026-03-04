@@ -11,11 +11,19 @@ export default async function PhotosPage({ params }: { params: Promise<{ id: str
       *,
       annotation:annotations!annotation_id (
         id,
+        type,
+        data,
         sheet_version:sheet_versions!sheet_version_id (
           id,
+          thumbnail_url,
+          width,
+          height,
           sheet:sheets!sheet_id (
             id,
-            name
+            name,
+            plan_set:plan_sets!plan_set_id (
+              name
+            )
           )
         )
       )
@@ -29,13 +37,20 @@ export default async function PhotosPage({ params }: { params: Promise<{ id: str
     const annotation = p.annotation as Record<string, unknown> | null;
     const sheetVersion = annotation?.sheet_version as Record<string, unknown> | null;
     const sheet = sheetVersion?.sheet as Record<string, unknown> | null;
+    const planSet = sheet?.plan_set as Record<string, unknown> | null;
     const { annotation: _a, ...rest } = p;
     return {
       ...rest,
       annotation_id: (annotation?.id as string) ?? p.annotation_id ?? null,
+      annotation_type: (annotation?.type as string) ?? null,
+      annotation_data: (annotation?.data as Record<string, unknown>) ?? null,
       sheet_version_id: (sheetVersion?.id as string) ?? null,
+      sheet_version_thumbnail_url: (sheetVersion?.thumbnail_url as string) ?? null,
+      sheet_version_width: (sheetVersion?.width as number) ?? null,
+      sheet_version_height: (sheetVersion?.height as number) ?? null,
       sheet_id: (sheet?.id as string) ?? null,
       sheet_name: (sheet?.name as string) ?? null,
+      plan_set_name: (planSet?.name as string) ?? null,
     };
   });
 

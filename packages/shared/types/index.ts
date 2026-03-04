@@ -325,9 +325,71 @@ export interface Document {
   file_url: string;
   file_size: number | null;
   mime_type: string | null;
+  tags: string[] | null;
   uploaded_by: string | null;
   created_at: string;
   updated_at: string;
+}
+
+// --- Folders ---
+
+export interface Folder {
+  id: string;
+  project_id: string;
+  parent_id: string | null;
+  name: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// --- Specifications ---
+
+export interface Specification {
+  id: string;
+  project_id: string;
+  name: string;
+  description: string | null;
+  file_url: string;
+  file_size: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// --- Permissions ---
+
+export type PermissionModule =
+  | 'files'
+  | 'specifications'
+  | 'plans'
+  | 'tasks'
+  | 'photos'
+  | 'forms'
+  | 'timesheets'
+  | 'reports';
+
+export type PermissionAction = 'can_view' | 'can_create' | 'can_edit' | 'can_delete';
+
+export interface ProjectMemberPermission {
+  id: string;
+  project_id: string;
+  user_id: string;
+  module: PermissionModule;
+  can_view: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+}
+
+export interface FolderPermission {
+  id: string;
+  project_id: string;
+  user_id: string;
+  folder_id: string;
+  can_view: boolean;
+  can_create: boolean;
+  can_delete: boolean;
 }
 
 // --- Reports ---

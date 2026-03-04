@@ -99,7 +99,38 @@ export const STORAGE_BUCKETS = {
   DOCUMENTS: 'documents',
   EXPORTS: 'exports',
   AVATARS: 'avatars',
+  SPECIFICATIONS: 'specifications',
 } as const;
+
+// Permission modules
+export const PERMISSION_MODULES = [
+  'files',
+  'specifications',
+  'plans',
+  'tasks',
+  'photos',
+  'forms',
+  'timesheets',
+  'reports',
+] as const;
+
+export const PERMISSION_MODULE_LABELS: Record<string, string> = {
+  files: 'Soubory',
+  specifications: 'Specifikace',
+  plans: 'Výkresy',
+  tasks: 'Úkoly',
+  photos: 'Fotky',
+  forms: 'Formuláře',
+  timesheets: 'Výkazy',
+  reports: 'Reporty',
+};
+
+export const PERMISSION_ACTION_LABELS: Record<string, string> = {
+  can_view: 'Zobrazit',
+  can_create: 'Vytvořit',
+  can_edit: 'Upravit',
+  can_delete: 'Smazat',
+};
 
 // Default category colors
 export const DEFAULT_CATEGORY_COLORS = [

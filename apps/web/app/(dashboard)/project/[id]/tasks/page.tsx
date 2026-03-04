@@ -5,7 +5,7 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
   const { id } = await params;
   const supabase = await createClient();
 
-  const [{ data: tasks }, { data: categories }, { data: members }] = await Promise.all([
+  const [{ data: tasks }, { data: categories }, { data: members }, { data: tags }] = await Promise.all([
     supabase
       .from('tasks')
       .select('*')
@@ -18,6 +18,10 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
       .order('sort_order'),
     supabase
       .from('project_members')
+      .select('*')
+      .eq('project_id', id),
+    supabase
+      .from('tags')
       .select('*')
       .eq('project_id', id),
   ]);
@@ -51,6 +55,7 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
       initialTasks={tasks || []}
       categories={categories || []}
       members={enrichedMembers}
+      tags={tags || []}
     />
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Plus, Upload, FileText, ChevronRight, GitCompare, History, Trash2, MoreVertical, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -75,12 +76,14 @@ interface PlansViewProps {
 }
 
 export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
+  const searchParams = useSearchParams();
   const [planSets, setPlanSets] = useState(initialPlanSets);
   const [selectedSheet, setSelectedSheet] = useState<Sheet | null>(null);
   const [showUpload, setShowUpload] = useState(false);
   const [showNewSet, setShowNewSet] = useState(false);
   const [newSetName, setNewSetName] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [initialAnnotationId, setInitialAnnotationId] = useState<string | null>(null);
 
   // Version management
   const [showVersions, setShowVersions] = useState(false);
@@ -89,6 +92,24 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
     old: SheetVersion;
     new: SheetVersion;
   } | null>(null);
+
+  // Deep-link: auto-select sheet from URL search params (?sheet=...&annotation=...)
+  useEffect(() => {
+    const sheetParam = searchParams.get('sheet');
+    const annotationParam = searchParams.get('annotation');
+    if (!sheetParam) return;
+
+    for (const ps of initialPlanSets) {
+      const sheet = ps.sheets.find(s => s.id === sheetParam);
+      if (sheet) {
+        setSelectedSheet(sheet);
+        if (annotationParam) {
+          setInitialAnnotationId(annotationParam);
+        }
+        break;
+      }
+    }
+  }, [searchParams, initialPlanSets]);
 
   const handleCreateSet = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -388,6 +409,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
               sheetId={selectedSheet.id}
               projectId={projectId}
               isCurrent={currentVersion.is_current}
+              initialAnnotationId={initialAnnotationId ?? undefined}
             />
           </div>
         )}

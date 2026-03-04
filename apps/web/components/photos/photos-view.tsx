@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { Upload, Camera, X, Download, Search, Filter, Pencil, Trash2, Check, Plus, MapPin, MessageSquare, Send, ChevronDown, ChevronUp } from 'lucide-react';
+import { Upload, Camera, X, Download, Search, Filter, Pencil, Trash2, Check, MapPin, MessageSquare, Send, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -13,6 +13,8 @@ import { Avatar } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { Photo360Viewer } from './photo-360-viewer';
+import { AnnotationPlanPreview } from './annotation-plan-preview';
+import { TagPicker } from '@/components/shared/tag-picker';
 import { compressImage } from '@/lib/compress-image';
 
 interface Photo {
@@ -26,9 +28,15 @@ interface Photo {
   created_at: string;
   markup_data: Record<string, unknown> | null;
   annotation_id?: string | null;
+  annotation_type?: string | null;
+  annotation_data?: Record<string, unknown> | null;
   sheet_version_id?: string | null;
+  sheet_version_thumbnail_url?: string | null;
+  sheet_version_width?: number | null;
+  sheet_version_height?: number | null;
   sheet_id?: string | null;
   sheet_name?: string | null;
+  plan_set_name?: string | null;
 }
 
 export function PhotosView({ projectId, initialPhotos }: { projectId: string; initialPhotos: Photo[] }) {
@@ -41,7 +49,6 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
   const [editingPhoto, setEditingPhoto] = useState(false);
   const [editCaption, setEditCaption] = useState('');
   const [editTags, setEditTags] = useState<string[]>([]);
-  const [newTag, setNewTag] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
 
   // Photo comments state
@@ -272,7 +279,6 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     if (!selectedPhoto) return;
     setEditCaption(selectedPhoto.caption || '');
     setEditTags(selectedPhoto.tags || []);
-    setNewTag('');
     setEditingPhoto(true);
   }, [selectedPhoto]);
 
@@ -301,18 +307,6 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
     setSavingEdit(false);
     toast.success('Fotka aktualizována');
   }, [selectedPhoto, editCaption, editTags]);
-
-  const handleAddTag = useCallback(() => {
-    const tag = newTag.trim();
-    if (tag && !editTags.includes(tag)) {
-      setEditTags(prev => [...prev, tag]);
-    }
-    setNewTag('');
-  }, [newTag, editTags]);
-
-  const handleRemoveTag = useCallback((tag: string) => {
-    setEditTags(prev => prev.filter(t => t !== tag));
-  }, []);
 
   const activeFilterCount = [searchQuery, dateFrom, dateTo, tagFilter].filter(Boolean).length;
 
@@ -505,28 +499,12 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                   </div>
                   <div>
                     <label className="mb-1 block text-xs font-medium">Tagy</label>
-                    <div className="mb-2 flex flex-wrap gap-1">
-                      {editTags.map(tag => (
-                        <Badge key={tag} variant="secondary" className="gap-1">
-                          {tag}
-                          <button onClick={() => handleRemoveTag(tag)} className="ml-0.5 hover:text-destructive">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    <div className="flex gap-1">
-                      <Input
-                        value={newTag}
-                        onChange={(e) => setNewTag(e.target.value)}
-                        placeholder="Nový tag..."
-                        className="h-8 flex-1"
-                        onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleAddTag(); } }}
-                      />
-                      <Button variant="outline" size="sm" className="h-8" onClick={handleAddTag} disabled={!newTag.trim()}>
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    <TagPicker
+                      tags={editTags}
+                      onChange={setEditTags}
+                      suggestions={allTags}
+                      placeholder="Nový tag..."
+                    />
                   </div>
                   <div className="flex justify-end gap-2">
                     <Button variant="outline" size="sm" onClick={() => setEditingPhoto(false)}>Zrušit</Button>
@@ -538,7 +516,21 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {selectedPhoto.sheet_name && (
+                  {selectedPhoto.sheet_name && selectedPhoto.sheet_id && selectedPhoto.annotation_id && selectedPhoto.annotation_type && selectedPhoto.annotation_data ? (
+                    <AnnotationPlanPreview
+                      projectId={projectId}
+                      sheetId={selectedPhoto.sheet_id}
+                      sheetName={selectedPhoto.sheet_name}
+                      annotationId={selectedPhoto.annotation_id}
+                      annotationType={selectedPhoto.annotation_type}
+                      annotationData={selectedPhoto.annotation_data}
+                      thumbnailUrl={selectedPhoto.sheet_version_thumbnail_url ?? null}
+                      sheetWidth={selectedPhoto.sheet_version_width ?? null}
+                      sheetHeight={selectedPhoto.sheet_version_height ?? null}
+                      planSetName={selectedPhoto.plan_set_name}
+                      onNavigate={() => setSelectedPhoto(null)}
+                    />
+                  ) : selectedPhoto.sheet_name && (
                     <div className="flex items-center gap-2">
                       <MapPin className="h-4 w-4 text-blue-500" />
                       <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{selectedPhoto.sheet_name}</span>

@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { PlansView } from '@/components/plans/plans-view';
 
@@ -17,5 +18,9 @@ export default async function PlansPage({ params }: { params: Promise<{ id: stri
     .eq('project_id', id)
     .order('sort_order');
 
-  return <PlansView projectId={id} initialPlanSets={planSets || []} />;
+  return (
+    <Suspense>
+      <PlansView projectId={id} initialPlanSets={planSets || []} />
+    </Suspense>
+  );
 }

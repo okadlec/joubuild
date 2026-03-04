@@ -17,7 +17,9 @@ import { PROJECT_ROLE_LABELS, PROJECT_STATUS_LABELS, PROJECT_STATUSES, type Task
 import { toast } from 'sonner';
 import { CategoryManager } from '@/components/tasks/category-manager';
 import { ProjectRolePermissionsInfo } from '@/components/shared/role-permissions-info';
+import { PermissionMatrix } from '@/components/settings/permission-matrix';
 import { inviteMember } from './actions';
+import type { ProjectMemberPermission, FolderPermission } from '@joubuild/shared';
 
 interface Project {
   id: string;
@@ -35,7 +37,27 @@ interface Member {
   email?: string | null;
 }
 
-export function ProjectSettings({ project, members, initialCategories = [] }: { project: Project; members: Member[]; initialCategories?: TaskCategory[] }) {
+interface FolderInfo {
+  id: string;
+  name: string;
+  parent_id: string | null;
+}
+
+export function ProjectSettings({
+  project,
+  members,
+  initialCategories = [],
+  initialPermissions = [],
+  initialFolderPermissions = [],
+  folders = [],
+}: {
+  project: Project;
+  members: Member[];
+  initialCategories?: TaskCategory[];
+  initialPermissions?: ProjectMemberPermission[];
+  initialFolderPermissions?: FolderPermission[];
+  folders?: FolderInfo[];
+}) {
   const router = useRouter();
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description || '');
@@ -193,6 +215,14 @@ export function ProjectSettings({ project, members, initialCategories = [] }: { 
         projectId={project.id}
         categories={taskCategories}
         onCategoriesChange={setTaskCategories}
+      />
+
+      <PermissionMatrix
+        projectId={project.id}
+        members={members}
+        initialPermissions={initialPermissions}
+        initialFolderPermissions={initialFolderPermissions}
+        folders={folders}
       />
 
       <Card className="border-destructive">

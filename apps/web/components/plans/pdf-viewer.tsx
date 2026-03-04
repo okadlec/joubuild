@@ -92,9 +92,10 @@ interface PdfViewerProps {
   sheetId?: string;
   projectId?: string;
   isCurrent?: boolean;
+  initialAnnotationId?: string;
 }
 
-export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurrent = true }: PdfViewerProps) {
+export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurrent = true, initialAnnotationId }: PdfViewerProps) {
   const canvasARef = useRef<HTMLCanvasElement>(null);
   const canvasBRef = useRef<HTMLCanvasElement>(null);
   const frontBufferRef = useRef<'A' | 'B'>('A');
@@ -159,6 +160,20 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   const cssPageSizeRef = useRef({ width: 0, height: 0 });
   const renderedTileRef = useRef<TileRect | null>(null);
   const scrollRenderTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Wheel-to-zoom: cursor-anchored zoom target
+  const zoomTargetRef = useRef<{
+    pageX: number; pageY: number;  // unscaled page coordinate under cursor
+    viewX: number; viewY: number;  // cursor position in container viewport
+  } | null>(null);
+
+  // Click-and-drag pan state
+  const isDraggingRef = useRef(false);
+  const dragStartRef = useRef<{
+    x: number; y: number;
+    scrollLeft: number; scrollTop: number;
+    active: boolean;  // true after exceeding 3px threshold
+  } | null>(null);
 
   // Device detection and canvas limits
   const isMobileDevice = typeof navigator !== 'undefined'
@@ -310,6 +325,15 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         );
       }
       annotationsLoadedRef.current = true;
+
+      // Auto-select annotation from deep-link
+      if (initialAnnotationId && data) {
+        const match = data.find((a: { id: string }) => a.id === initialAnnotationId);
+        if (match) {
+          setSelectedId(match.id);
+          setDetailAnnotationId(match.id);
+        }
+      }
 
       // Load calibration
       const { data: cal } = await supabase
@@ -532,12 +556,21 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     setCssPageSize({ width: cssW, height: cssH });
     cssPageSizeRef.current = { width: cssW, height: cssH };
 
-    // Restore scroll center after resize (reading offsetLeft forces reflow with new size)
+    // Restore scroll after resize
     if (container && spacer && renderedTileRef.current) {
-      const newCx = centerFracX * cssW + spacer.offsetLeft;
-      const newCy = centerFracY * cssH + spacer.offsetTop;
-      container.scrollLeft = newCx - container.clientWidth / 2;
-      container.scrollTop = newCy - container.clientHeight / 2;
+      const zt = zoomTargetRef.current;
+      if (zt) {
+        // Cursor-anchored: keep the page point under the cursor fixed in viewport
+        container.scrollLeft = zt.pageX * sc + spacer.offsetLeft - zt.viewX;
+        container.scrollTop = zt.pageY * sc + spacer.offsetTop - zt.viewY;
+        zoomTargetRef.current = null;
+      } else {
+        // Center-fraction fallback (zoom buttons, pinch zoom)
+        const newCx = centerFracX * cssW + spacer.offsetLeft;
+        const newCy = centerFracY * cssH + spacer.offsetTop;
+        container.scrollLeft = newCx - container.clientWidth / 2;
+        container.scrollTop = newCy - container.clientHeight / 2;
+      }
     }
 
     // Compute tile from current scroll position
@@ -625,6 +658,141 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       }
     };
   }, [scale, rotation]);
+
+  // Wheel-to-zoom: two-finger trackpad scroll → zoom toward cursor
+  // Uses a scaleRef to avoid re-registering the handler on every scale change
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    function handleWheel(e: WheelEvent) {
+      e.preventDefault();
+
+      const curScale = scaleRef.current;
+      // Smooth proportional zoom factor
+      const delta = e.deltaY || e.deltaX;
+      const factor = Math.pow(0.998, delta);
+      const newScale = Math.min(MAX_ZOOM, Math.max(0.1, curScale * factor));
+      if (newScale === curScale) return;
+
+      const spacer = spacerRef.current;
+      if (!spacer || !container) return;
+
+      // Unscaled page coordinate under cursor
+      const rect = spacer.getBoundingClientRect();
+      const pageX = (e.clientX - rect.left) / curScale;
+      const pageY = (e.clientY - rect.top) / curScale;
+
+      // Cursor position relative to container viewport
+      const containerRect = container.getBoundingClientRect();
+      const viewX = e.clientX - containerRect.left;
+      const viewY = e.clientY - containerRect.top;
+
+      zoomTargetRef.current = { pageX, pageY, viewX, viewY };
+
+      // Reset CSS zoom preview (same as zoom buttons)
+      resetPreview();
+      setZoomPreview(1);
+      setZoomOrigin(null);
+      if (canvasWrapperRef.current) {
+        canvasWrapperRef.current.style.transform = '';
+        canvasWrapperRef.current.style.transformOrigin = '';
+        canvasWrapperRef.current.style.willChange = '';
+      }
+
+      setScale(newScale);
+    }
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, [resetPreview]);
+
+  // Click-and-drag pan (select tool only, mouse/pen only — touch keeps native scroll)
+  const activeToolRef = useRef(activeTool);
+  activeToolRef.current = activeTool;
+  const isCalibratingRef = useRef(isCalibrating);
+  isCalibratingRef.current = isCalibrating;
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    function handlePointerDown(e: PointerEvent) {
+      // Only left button, non-touch, select tool, not calibrating
+      if (e.button !== 0) return;
+      if (e.pointerType === 'touch') return;
+      if (activeToolRef.current !== 'select') return;
+      if (isCalibratingRef.current) return;
+      if (!container) return;
+
+      dragStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        scrollLeft: container.scrollLeft,
+        scrollTop: container.scrollTop,
+        active: false,
+      };
+
+      container.setPointerCapture(e.pointerId);
+    }
+
+    function handlePointerMove(e: PointerEvent) {
+      const ds = dragStartRef.current;
+      if (!ds || !container) return;
+
+      const dx = e.clientX - ds.x;
+      const dy = e.clientY - ds.y;
+
+      // 3px dead zone to avoid interfering with annotation clicks
+      if (!ds.active) {
+        if (Math.abs(dx) < 3 && Math.abs(dy) < 3) return;
+        ds.active = true;
+        isDraggingRef.current = true;
+        container.style.cursor = 'grabbing';
+      }
+
+      container.scrollLeft = ds.scrollLeft - dx;
+      container.scrollTop = ds.scrollTop - dy;
+    }
+
+    function handlePointerUp(e: PointerEvent) {
+      if (!dragStartRef.current || !container) return;
+      try {
+        container.releasePointerCapture(e.pointerId);
+      } catch {
+        // pointer capture may have been lost
+      }
+
+      const wasDragging = isDraggingRef.current;
+      dragStartRef.current = null;
+      isDraggingRef.current = false;
+      container.style.cursor = '';
+
+      // If we were actively dragging, prevent the click from reaching annotations
+      if (wasDragging) {
+        function blockClick(ev: MouseEvent) {
+          ev.stopPropagation();
+          ev.preventDefault();
+        }
+        container.addEventListener('click', blockClick, { capture: true, once: true });
+      }
+    }
+
+    container.addEventListener('pointerdown', handlePointerDown);
+    container.addEventListener('pointermove', handlePointerMove);
+    container.addEventListener('pointerup', handlePointerUp);
+    container.addEventListener('pointercancel', handlePointerUp);
+
+    return () => {
+      container.removeEventListener('pointerdown', handlePointerDown);
+      container.removeEventListener('pointermove', handlePointerMove);
+      container.removeEventListener('pointerup', handlePointerUp);
+      container.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, []);
 
   // ResizeObserver for fullscreen toggle and orientation changes
   useEffect(() => {
@@ -993,7 +1161,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         onClick={isCalibrating ? handleCalibrationClick : undefined}
         onTouchEnd={isCalibrating ? handleCalibrationClick : undefined}
         style={{
-          cursor: isCalibrating ? 'crosshair' : undefined,
+          cursor: isCalibrating ? 'crosshair' : (activeTool === 'select' ? 'grab' : undefined),
           touchAction: activeTool !== 'select' ? 'none' : undefined,
         }}
       >

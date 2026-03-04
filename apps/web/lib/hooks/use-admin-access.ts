@@ -5,6 +5,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 
 export function useAdminAccess() {
   const [hasAccess, setHasAccess] = useState(false);
+  const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,11 +29,13 @@ export function useAdminAccess() {
           .maybeSingle(),
       ]);
 
-      setHasAccess(profile?.is_superadmin === true || membership !== null);
+      const superadmin = profile?.is_superadmin === true;
+      setIsSuperadmin(superadmin);
+      setHasAccess(superadmin || membership !== null);
       setLoading(false);
     }
     check();
   }, []);
 
-  return { hasAccess, loading };
+  return { hasAccess, isSuperadmin, loading };
 }

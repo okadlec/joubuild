@@ -10,10 +10,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select } from '@/components/ui/select';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { TASK_STATUSES, TASK_STATUS_LABELS, TASK_PRIORITIES, TASK_PRIORITY_LABELS } from '@joubuild/shared';
-import type { Task, TaskCategory, ProjectMember } from '@joubuild/shared';
+import type { Task, TaskCategory, ProjectMember, Tag } from '@joubuild/shared';
 import { toast } from 'sonner';
 import { TaskComments } from './task-comments';
 import { TaskChecklist } from './task-checklist';
+import { TagPicker } from '@/components/shared/tag-picker';
 
 interface TaskDialogProps {
   open: boolean;
@@ -25,6 +26,7 @@ interface TaskDialogProps {
   onDeleted: (id: string) => void;
   categories?: TaskCategory[];
   members?: (ProjectMember & { full_name?: string | null; email?: string })[];
+  tags?: Tag[];
   initialPinX?: number;
   initialPinY?: number;
   initialSheetId?: string;
@@ -40,6 +42,7 @@ export function TaskDialog({
   onDeleted,
   categories = [],
   members = [],
+  tags: projectTags = [],
   initialPinX,
   initialPinY,
   initialSheetId,
@@ -56,6 +59,7 @@ export function TaskDialog({
   const [actualCost, setActualCost] = useState('');
   const [categoryId, setCategoryId] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
+  const [taskTags, setTaskTags] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -72,6 +76,19 @@ export function TaskDialog({
       setActualCost(task.actual_cost?.toString() || '0');
       setCategoryId(task.category_id || '');
       setAssigneeId(task.assignee_id || '');
+
+      // Load task tags
+      const supabase = getSupabaseClient();
+      supabase
+        .from('task_tags')
+        .select('tag:tags!tag_id(name)')
+        .eq('task_id', task.id)
+        .then(({ data }) => {
+          if (data) {
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            setTaskTags(data.map((row: any) => (row.tag as { name: string }).name));
+          }
+        });
     } else {
       setTitle('');
       setDescription('');
@@ -85,6 +102,7 @@ export function TaskDialog({
       setActualCost('');
       setCategoryId('');
       setAssigneeId('');
+      setTaskTags([]);
     }
   }, [task]);
 
@@ -108,6 +126,8 @@ export function TaskDialog({
       assignee_id: assigneeId || null,
     };
 
+    let taskId: string;
+
     if (task) {
       const { data, error } = await supabase
         .from('tasks')
@@ -121,6 +141,7 @@ export function TaskDialog({
         setLoading(false);
         return;
       }
+      taskId = data.id;
       onUpdated(data as Task);
       toast.success('Úkol aktualizován');
     } else {
@@ -141,8 +162,38 @@ export function TaskDialog({
         setLoading(false);
         return;
       }
+      taskId = data.id;
       onCreated(data as Task);
       toast.success('Úkol vytvořen');
+    }
+
+    // Sync task tags
+    if (taskTags.length > 0 || task) {
+      // Ensure tags exist in the tags table (find-or-create)
+      const tagIds: string[] = [];
+      for (const tagName of taskTags) {
+        const existing = projectTags.find(t => t.name === tagName);
+        if (existing) {
+          tagIds.push(existing.id);
+        } else {
+          const { data: newTag } = await supabase
+            .from('tags')
+            .insert({ project_id: projectId, name: tagName })
+            .select()
+            .single();
+          if (newTag) tagIds.push(newTag.id);
+        }
+      }
+
+      // Remove old tag associations
+      await supabase.from('task_tags').delete().eq('task_id', taskId);
+
+      // Insert new associations
+      if (tagIds.length > 0) {
+        await supabase.from('task_tags').insert(
+          tagIds.map(tagId => ({ task_id: taskId, tag_id: tagId }))
+        );
+      }
     }
 
     setLoading(false);
@@ -229,6 +280,16 @@ export function TaskDialog({
               </Select>
             </div>
           )}
+        </div>
+
+        <div className="space-y-2">
+          <Label>Tagy</Label>
+          <TagPicker
+            tags={taskTags}
+            onChange={setTaskTags}
+            suggestions={projectTags.map(t => t.name)}
+            placeholder="Přidat tag..."
+          />
         </div>
 
         <div className="grid grid-cols-2 gap-4">

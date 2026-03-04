@@ -10,16 +10,17 @@ import { TaskDialog } from './task-dialog';
 import { TaskFiltersBar, EMPTY_FILTERS, type TaskFilters } from './task-filters';
 import { GanttChart } from './gantt-chart';
 import { CalendarView } from './calendar-view';
-import type { Task, TaskCategory, ProjectMember } from '@joubuild/shared';
+import type { Task, TaskCategory, ProjectMember, Tag } from '@joubuild/shared';
 
 interface TasksViewProps {
   projectId: string;
   initialTasks: Task[];
   categories?: TaskCategory[];
   members?: (ProjectMember & { full_name?: string | null; email?: string })[];
+  tags?: Tag[];
 }
 
-export function TasksView({ projectId, initialTasks, categories = [], members = [] }: TasksViewProps) {
+export function TasksView({ projectId, initialTasks, categories = [], members = [], tags = [] }: TasksViewProps) {
   const [tasks, setTasks] = useState(initialTasks);
   const [showCreate, setShowCreate] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -141,6 +142,7 @@ export function TasksView({ projectId, initialTasks, categories = [], members = 
         onDeleted={handleTaskDeleted}
         categories={categories}
         members={members}
+        tags={tags}
       />
     </div>
   );

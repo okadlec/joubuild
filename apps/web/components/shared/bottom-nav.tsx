@@ -7,6 +7,7 @@ import {
   CheckSquare,
   Camera,
   FileText,
+  BookOpen,
   MoreHorizontal,
   ClipboardList,
   Clock,
@@ -34,10 +35,11 @@ export function BottomNav({ hidden }: BottomNavProps) {
     { href: `/project/${projectId}/plans`, label: 'Výkresy', icon: Map },
     { href: `/project/${projectId}/tasks`, label: 'Úkoly', icon: CheckSquare },
     { href: `/project/${projectId}/photos`, label: 'Fotky', icon: Camera },
-    { href: `/project/${projectId}/documents`, label: 'Dokumenty', icon: FileText },
+    { href: `/project/${projectId}/files`, label: 'Soubory', icon: FileText },
   ];
 
   const moreItems = [
+    { href: `/project/${projectId}/specifications`, label: 'Specifikace', icon: BookOpen },
     { href: `/project/${projectId}/forms`, label: 'Formuláře', icon: ClipboardList },
     { href: `/project/${projectId}/timesheets`, label: 'Výkazy', icon: Clock },
     { href: `/project/${projectId}/reports`, label: 'Reporty', icon: BarChart2 },

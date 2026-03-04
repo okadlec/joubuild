@@ -1,0 +1,61 @@
+import { redirect, notFound } from 'next/navigation';
+import { createClient } from '@/lib/supabase/server';
+import { getCurrentAdminContext } from '@/lib/supabase/admin';
+import { OrgDetail } from './org-detail';
+import type { OrgRole } from '@joubuild/shared';
+
+export default async function OrgDetailPage({
+  params,
+}: {
+  params: Promise<{ orgId: string }>;
+}) {
+  const ctx = await getCurrentAdminContext();
+  if (!ctx?.isSuperadmin) redirect('/admin');
+
+  const { orgId } = await params;
+  const supabase = await createClient();
+
+  const [
+    { data: org },
+    { data: memberships },
+    { data: projects },
+    { data: storageData },
+  ] = await Promise.all([
+    supabase
+      .from('organizations')
+      .select('id, name, slug, plan')
+      .eq('id', orgId)
+      .single(),
+    supabase
+      .from('organization_members')
+      .select('user_id, role, profiles(email, full_name)')
+      .eq('organization_id', orgId)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('projects')
+      .select('id, name, status, created_at')
+      .eq('organization_id', orgId)
+      .order('created_at', { ascending: false }),
+    supabase.rpc('get_org_storage_stats', { org_id: orgId }),
+  ]);
+
+  if (!org) notFound();
+
+  const members = (memberships ?? []).map((m: any) => ({
+    user_id: m.user_id,
+    email: m.profiles?.email ?? null,
+    full_name: m.profiles?.full_name ?? null,
+    role: m.role as OrgRole,
+  }));
+
+  const storage = storageData ?? { photos: 0, documents: 0, sheets: 0, total: 0 };
+
+  return (
+    <OrgDetail
+      org={org}
+      members={members}
+      projects={projects ?? []}
+      storage={storage}
+    />
+  );
+}
