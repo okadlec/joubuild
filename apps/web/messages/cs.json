@@ -416,7 +416,8 @@
       "title": "Úložiště",
       "photos": "Fotky",
       "documents": "Dokumenty",
-      "plans": "Plány"
+      "plans": "Plány",
+      "remaining": "Zbývá"
     },
     "usersList": {
       "title": "Uživatelé",

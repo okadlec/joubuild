@@ -22,6 +22,7 @@ interface SuperadminOverviewProps {
     dbSize: number;
   };
   storage: StorageStats;
+  dbLimit?: number;
 }
 
 interface OrgAdminOverviewProps {
@@ -45,6 +46,12 @@ export function AdminOverview(props: AdminOverviewProps) {
   ];
 
   const maxStorage = Math.max(props.storage.total, 1);
+
+  // DB limit for superadmin (default 500 MB for Supabase free tier)
+  const dbLimit = props.kind === 'superadmin' ? (props.dbLimit ?? 500 * 1024 * 1024) : 0;
+  const dbSize = props.kind === 'superadmin' ? props.stats.dbSize : 0;
+  const dbUsedPct = dbLimit > 0 ? Math.min((dbSize / dbLimit) * 100, 100) : 0;
+  const dbRemaining = Math.max(dbLimit - dbSize, 0);
 
   return (
     <div className="space-y-6">
@@ -86,6 +93,31 @@ export function AdminOverview(props: AdminOverviewProps) {
               <Progress value={(item.value / maxStorage) * 100} />
             </div>
           ))}
+
+          {/* Database usage with remaining space (superadmin only) */}
+          {props.kind === 'superadmin' && (
+            <>
+              <div className="my-3 h-px bg-border" />
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <Database className="h-4 w-4 text-muted-foreground" />
+                    {t('stats.database')}
+                  </span>
+                  <span className="font-medium">
+                    {formatBytes(dbSize)} / {formatBytes(dbLimit)}
+                  </span>
+                </div>
+                <Progress
+                  value={dbUsedPct}
+                  className={dbUsedPct > 80 ? '[&>div]:bg-red-500' : dbUsedPct > 60 ? '[&>div]:bg-yellow-500' : ''}
+                />
+                <p className="text-xs text-muted-foreground">
+                  {t('storage.remaining')}: {formatBytes(dbRemaining)}
+                </p>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

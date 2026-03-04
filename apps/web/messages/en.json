@@ -416,7 +416,8 @@
       "title": "Storage",
       "photos": "Photos",
       "documents": "Documents",
-      "plans": "Plans"
+      "plans": "Plans",
+      "remaining": "Remaining"
     },
     "usersList": {
       "title": "Users",
