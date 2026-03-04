@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { revalidatePath } from 'next/cache';
 
 export async function inviteMember(projectId: string, email: string, role: string) {
   const supabase = await createClient();
@@ -64,5 +65,61 @@ export async function inviteMember(projectId: string, email: string, role: strin
     return { error: error.message };
   }
 
+  return { success: true };
+}
+
+export async function searchUsers(projectId: string, query: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { data: [] };
+  }
+
+  // Get existing member user_ids to exclude them
+  const { data: existingMembers } = await supabase
+    .from('project_members')
+    .select('user_id')
+    .eq('project_id', projectId);
+
+  const excludeIds = (existingMembers || []).map(m => m.user_id);
+
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const trimmed = query.trim();
+  let queryBuilder = serviceClient
+    .from('profiles')
+    .select('id, email, full_name')
+    .limit(10);
+
+  if (trimmed) {
+    queryBuilder = queryBuilder.or(`email.ilike.%${trimmed}%,full_name.ilike.%${trimmed}%`);
+  }
+
+  const { data: profiles } = await queryBuilder;
+
+  const filtered = (profiles || []).filter(p => !excludeIds.includes(p.id));
+
+  return { data: filtered };
+}
+
+export async function deleteProject(projectId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Nejste přihlášen' };
+  }
+
+  const { error } = await supabase.from('projects').delete().eq('id', projectId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath('/projects');
   return { success: true };
 }

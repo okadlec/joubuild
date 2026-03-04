@@ -1,9 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { Save, UserPlus, Trash2 } from 'lucide-react';
+import { Save, UserPlus, Trash2, Upload, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -19,7 +19,8 @@ import { toast } from 'sonner';
 import { CategoryManager } from '@/components/tasks/category-manager';
 import { ProjectRolePermissionsInfo } from '@/components/shared/role-permissions-info';
 import { PermissionMatrix } from '@/components/settings/permission-matrix';
-import { inviteMember } from './actions';
+import { inviteMember, deleteProject, searchUsers } from './actions';
+import { compressImage } from '@/lib/compress-image';
 import type { ProjectMemberPermission, FolderPermission } from '@joubuild/shared';
 
 interface Project {
@@ -28,6 +29,7 @@ interface Project {
   description: string | null;
   address: string | null;
   status: string;
+  cover_image_url: string | null;
 }
 
 interface Member {
@@ -69,11 +71,30 @@ export function ProjectSettings({
   const [address, setAddress] = useState(project.address || '');
   const [status, setStatus] = useState(project.status);
   const [saving, setSaving] = useState(false);
+  const [coverImageUrl, setCoverImageUrl] = useState(project.cover_image_url);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [taskCategories, setTaskCategories] = useState<TaskCategory[]>(initialCategories);
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('member');
   const [inviting, setInviting] = useState(false);
+  const [userQuery, setUserQuery] = useState('');
+  const [userResults, setUserResults] = useState<{ id: string; email: string; full_name: string | null }[]>([]);
+  const [showUserResults, setShowUserResults] = useState(false);
+  const [searchingUsers, setSearchingUsers] = useState(false);
+  const searchTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (resultsRef.current && !resultsRef.current.contains(e.target as Node)) {
+        setShowUserResults(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -103,16 +124,91 @@ export function ProjectSettings({
   async function handleDelete() {
     if (!confirm('Opravdu chcete smazat tento projekt? Tato akce je nevratná.')) return;
 
+    const result = await deleteProject(project.id);
+
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+
+    toast.success('Projekt smazán');
+    router.push('/projects');
+  }
+
+  async function handleCoverUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingCover(true);
+    try {
+      const compressed = await compressImage(file, 1200, 0.8);
+      const supabase = getSupabaseClient();
+      const path = `${project.id}/cover-${Date.now()}.jpg`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('photos')
+        .upload(path, compressed, { contentType: 'image/jpeg', upsert: true });
+
+      if (uploadError) {
+        toast.error(uploadError.message);
+        return;
+      }
+
+      const { data: { publicUrl } } = supabase.storage.from('photos').getPublicUrl(path);
+
+      const { error: updateError } = await supabase
+        .from('projects')
+        .update({ cover_image_url: publicUrl })
+        .eq('id', project.id);
+
+      if (updateError) {
+        toast.error(updateError.message);
+        return;
+      }
+
+      setCoverImageUrl(publicUrl);
+      router.refresh();
+    } finally {
+      setUploadingCover(false);
+      if (coverInputRef.current) coverInputRef.current.value = '';
+    }
+  }
+
+  async function handleCoverRemove() {
     const supabase = getSupabaseClient();
-    const { error } = await supabase.from('projects').delete().eq('id', project.id);
+    const { error } = await supabase
+      .from('projects')
+      .update({ cover_image_url: null })
+      .eq('id', project.id);
 
     if (error) {
       toast.error(error.message);
       return;
     }
 
-    toast.success('Projekt smazán');
-    router.push('/projects');
+    setCoverImageUrl(null);
+    router.refresh();
+  }
+
+  const doSearch = useCallback(async (q: string) => {
+    setSearchingUsers(true);
+    const result = await searchUsers(project.id, q);
+    setUserResults(result.data);
+    setShowUserResults(true);
+    setSearchingUsers(false);
+  }, [project.id]);
+
+  function handleUserQueryChange(value: string) {
+    setUserQuery(value);
+    setNewMemberEmail(value);
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    searchTimeoutRef.current = setTimeout(() => doSearch(value), 300);
+  }
+
+  function handleSelectUser(user: { id: string; email: string; full_name: string | null }) {
+    setNewMemberEmail(user.email);
+    setUserQuery(user.full_name ? `${user.full_name} (${user.email})` : user.email);
+    setShowUserResults(false);
   }
 
   async function handleInvite() {
@@ -131,6 +227,8 @@ export function ProjectSettings({
       setShowAddMember(false);
       setNewMemberEmail('');
       setNewMemberRole('member');
+      setUserQuery('');
+      setUserResults([]);
       router.refresh();
     }
     setInviting(false);
@@ -147,7 +245,49 @@ export function ProjectSettings({
         <CardHeader>
           <CardTitle>Obecné</CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Obrázek projektu</Label>
+            <div className="flex items-center gap-4">
+              <div className="h-24 w-40 overflow-hidden rounded-lg border bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                {coverImageUrl ? (
+                  <img src={coverImageUrl} alt={name} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-sm font-medium text-primary/60 text-center px-2">{name}</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleCoverUpload}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadingCover}
+                  onClick={() => coverInputRef.current?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {uploadingCover ? 'Nahrávání...' : 'Nahrát obrázek'}
+                </Button>
+                {coverImageUrl && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCoverRemove}
+                  >
+                    <X className="mr-2 h-4 w-4" />
+                    Odebrat
+                  </Button>
+                )}
+              </div>
+            </div>
+          </div>
           <form onSubmit={handleSave} className="space-y-4">
             <div className="space-y-2">
               <Label>{t('projectName')}</Label>
@@ -242,19 +382,49 @@ export function ProjectSettings({
         </CardContent>
       </Card>
 
-      <Dialog open={showAddMember} onClose={() => setShowAddMember(false)}>
+      <Dialog open={showAddMember} onClose={() => { setShowAddMember(false); setUserQuery(''); setUserResults([]); setShowUserResults(false); }}>
         <DialogHeader>
           <DialogTitle>{t('inviteMember')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Email</Label>
-            <Input
-              type="email"
-              value={newMemberEmail}
-              onChange={(e) => setNewMemberEmail(e.target.value)}
-              placeholder="email@example.com"
-            />
+            <Label>Uživatel</Label>
+            <div className="relative">
+              <Input
+                value={userQuery}
+                onChange={(e) => handleUserQueryChange(e.target.value)}
+                onFocus={() => { if (userResults.length > 0) setShowUserResults(true); else doSearch(userQuery); }}
+                placeholder="Hledat jméno nebo email..."
+                autoComplete="off"
+              />
+              {showUserResults && (
+                <div
+                  ref={resultsRef}
+                  className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-background shadow-md"
+                >
+                  {searchingUsers ? (
+                    <div className="p-3 text-sm text-muted-foreground">Hledání...</div>
+                  ) : userResults.length === 0 ? (
+                    <div className="p-3 text-sm text-muted-foreground">Žádní uživatelé nenalezeni</div>
+                  ) : (
+                    userResults.map((u) => (
+                      <button
+                        key={u.id}
+                        type="button"
+                        className="flex w-full items-center gap-3 px-3 py-2 text-left hover:bg-accent"
+                        onClick={() => handleSelectUser(u)}
+                      >
+                        <Avatar name={u.full_name || u.email} size="sm" />
+                        <div className="min-w-0">
+                          {u.full_name && <p className="text-sm font-medium truncate">{u.full_name}</p>}
+                          <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Role</Label>
@@ -265,7 +435,7 @@ export function ProjectSettings({
             </Select>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowAddMember(false)}>Zrušit</Button>
+            <Button variant="outline" onClick={() => { setShowAddMember(false); setUserQuery(''); setUserResults([]); setShowUserResults(false); }}>Zrušit</Button>
             <Button onClick={handleInvite} disabled={inviting}>
               {inviting ? 'Přidávání...' : 'Pozvat'}
             </Button>

@@ -90,13 +90,15 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
           {projects.map((project) => (
             <Link key={project.id} href={`/project/${project.id}/plans`}>
               <Card className="cursor-pointer transition-shadow hover:shadow-md">
-                <div className="h-32 rounded-t-lg bg-gradient-to-br from-primary/20 to-primary/5">
-                  {project.cover_image_url && (
+                <div className="h-32 rounded-t-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                  {project.cover_image_url ? (
                     <img
                       src={project.cover_image_url}
                       alt={project.name}
                       className="h-full w-full rounded-t-lg object-cover"
                     />
+                  ) : (
+                    <span className="text-lg font-semibold text-primary/40">{project.name}</span>
                   )}
                 </div>
                 <CardContent className="p-4">
