@@ -73,6 +73,15 @@ export function AnnotationPlanPreview({
 
   const center = getAnnotationCenter(annotationType, annotationData);
 
+  console.log('[AnnotationPlanPreview] render:', {
+    annotationType,
+    annotationData,
+    thumbnailUrl,
+    sheetWidth,
+    sheetHeight,
+    center,
+  });
+
   let pinLeftPct = 50;
   let pinTopPct = 50;
   if (center && sheetWidth && sheetHeight) {
