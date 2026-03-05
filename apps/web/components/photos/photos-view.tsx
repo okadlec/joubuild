@@ -555,7 +555,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
               {/* Right sidebar: annotation preview + metadata + comments */}
               {!editingPhoto && (
                 <div className="space-y-4 lg:w-[360px] lg:shrink-0 lg:border-l lg:overflow-y-auto lg:p-4">
-                  {console.log('[PhotoDetail] selectedPhoto annotation fields:', {
+                  {(() => { console.log('[PhotoDetail] selectedPhoto annotation fields:', {
                     sheet_id: selectedPhoto.sheet_id,
                     annotation_id: selectedPhoto.annotation_id,
                     annotation_type: selectedPhoto.annotation_type,
@@ -563,7 +563,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                     thumbnail_url: selectedPhoto.sheet_version_thumbnail_url,
                     sheet_width: selectedPhoto.sheet_version_width,
                     sheet_height: selectedPhoto.sheet_version_height,
-                  })}
+                  }); return null; })()}
                   {selectedPhoto.sheet_id && selectedPhoto.annotation_id && selectedPhoto.annotation_type && selectedPhoto.annotation_data ? (
                     <AnnotationPlanPreview
                       projectId={projectId}
