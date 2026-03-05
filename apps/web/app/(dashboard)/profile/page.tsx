@@ -1,14 +1,16 @@
 import { createClient } from '@/lib/supabase/server';
+import { getTranslations } from 'next-intl/server';
 import { ProfileSettings } from './profile-settings';
 
 export default async function ProfilePage() {
+  const t = await getTranslations('profile');
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-        <p className="mb-2 text-lg font-medium">Nepřihlášen</p>
+        <p className="mb-2 text-lg font-medium">{t('notLoggedIn')}</p>
       </div>
     );
   }
@@ -23,7 +25,7 @@ export default async function ProfilePage() {
   if (!profile) {
     return (
       <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
-        <p className="mb-2 text-lg font-medium">Profil nenalezen</p>
+        <p className="mb-2 text-lg font-medium">{t('profileNotFound')}</p>
       </div>
     );
   }

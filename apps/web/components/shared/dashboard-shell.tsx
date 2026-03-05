@@ -13,9 +13,10 @@ interface DashboardShellProps {
     full_name?: string | null;
     avatar_url?: string | null;
   };
+  projects?: { id: string; name: string }[];
 }
 
-export function DashboardShell({ children, user }: DashboardShellProps) {
+export function DashboardShell({ children, user, projects }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
   const isInProject = /\/project\/[^/]+/.test(pathname);
@@ -47,7 +48,7 @@ export function DashboardShell({ children, user }: DashboardShellProps) {
           lg:translate-x-0
         `}
       >
-        <Sidebar onNavigate={handleClose} />
+        <Sidebar onNavigate={handleClose} projects={projects} />
       </div>
 
       <div className="flex flex-1 flex-col overflow-hidden">

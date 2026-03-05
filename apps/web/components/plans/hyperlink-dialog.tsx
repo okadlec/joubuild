@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -29,6 +30,8 @@ export function HyperlinkDialog({
   onCreated,
   onDeleted,
 }: HyperlinkDialogProps) {
+  const t = useTranslations('plans.hyperlinks');
+  const tCommon = useTranslations('common');
   const [targetType, setTargetType] = useState<'sheet' | 'document' | 'url'>(hyperlink?.target_type || 'url');
   const [targetUrl, setTargetUrl] = useState(hyperlink?.target_url || '');
   const [label, setLabel] = useState(hyperlink?.label || '');
@@ -59,7 +62,7 @@ export function HyperlinkDialog({
         .update(payload)
         .eq('id', hyperlink.id);
       if (error) toast.error(error.message);
-      else { toast.success('Hyperlink aktualizován'); onClose(); }
+      else { toast.success(t('updated')); onClose(); }
     } else {
       const { data, error } = await supabase
         .from('hyperlinks')
@@ -68,7 +71,7 @@ export function HyperlinkDialog({
         .single();
       if (error) toast.error(error.message);
       else {
-        toast.success('Hyperlink vytvořen');
+        toast.success(t('created'));
         onCreated?.(data as Hyperlink);
         onClose();
       }
@@ -82,7 +85,7 @@ export function HyperlinkDialog({
     const { error } = await supabase.from('hyperlinks').delete().eq('id', hyperlink.id);
     if (error) toast.error(error.message);
     else {
-      toast.success('Hyperlink smazán');
+      toast.success(t('deleted'));
       onDeleted?.(hyperlink.id);
       onClose();
     }
@@ -91,15 +94,15 @@ export function HyperlinkDialog({
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogHeader>
-        <DialogTitle>{hyperlink ? 'Upravit hyperlink' : 'Nový hyperlink'}</DialogTitle>
+        <DialogTitle>{hyperlink ? t('editTitle') : t('createTitle')}</DialogTitle>
       </DialogHeader>
       <form onSubmit={handleSave} className="space-y-4">
         <div className="space-y-2">
-          <Label>Typ cíle</Label>
+          <Label>{t('targetType')}</Label>
           <Select value={targetType} onChange={(e) => setTargetType(e.target.value as 'sheet' | 'document' | 'url')}>
-            <option value="url">URL adresa</option>
-            <option value="sheet">Výkres</option>
-            <option value="document">Dokument</option>
+            <option value="url">{t('targetUrl')}</option>
+            <option value="sheet">{t('targetSheet')}</option>
+            <option value="document">{t('targetDocument')}</option>
           </Select>
         </div>
 
@@ -117,24 +120,24 @@ export function HyperlinkDialog({
         )}
 
         <div className="space-y-2">
-          <Label>Popisek</Label>
+          <Label>{t('label')}</Label>
           <Input
             value={label}
             onChange={(e) => setLabel(e.target.value)}
-            placeholder="Popis hyperlinku"
+            placeholder={t('labelPlaceholder')}
           />
         </div>
 
         <div className="flex justify-between">
           {hyperlink && (
             <Button type="button" variant="destructive" size="sm" onClick={handleDelete}>
-              Smazat
+              {tCommon('delete')}
             </Button>
           )}
           <div className="ml-auto flex gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>Zrušit</Button>
+            <Button type="button" variant="outline" onClick={onClose}>{tCommon('cancel')}</Button>
             <Button type="submit" disabled={saving}>
-              {saving ? 'Ukládání...' : 'Uložit'}
+              {saving ? tCommon('saving') : tCommon('save')}
             </Button>
           </div>
         </div>

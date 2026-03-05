@@ -8,7 +8,6 @@ import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu';
 import { OfflineIndicator } from './offline-indicator';
 import { NotificationsPanel } from './notifications-panel';
-import { LanguageSwitcher } from './language-switcher';
 
 interface HeaderProps {
   user: {
@@ -46,7 +45,6 @@ export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProp
       </div>
 
       <div className="flex items-center gap-3">
-        <LanguageSwitcher />
         <OfflineIndicator />
         <NotificationsPanel />
 

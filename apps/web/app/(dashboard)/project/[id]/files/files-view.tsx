@@ -100,7 +100,7 @@ export function FilesView({
     async (files: FileList) => {
       if (!canCreate) return;
       if (currentFolderId && !canCreateInFolder(currentFolderId)) {
-        toast.error('Nemáte oprávnění nahrávat do této složky');
+        toast.error(t('noUploadPermission'));
         return;
       }
 
@@ -119,7 +119,7 @@ export function FilesView({
           .upload(fileName, file);
 
         if (uploadError) {
-          toast.error(`Chyba: ${file.name}`);
+          toast.error(t('uploadErrorFile', { name: file.name }));
           continue;
         }
 
@@ -182,11 +182,11 @@ export function FilesView({
 
     setNewFolderName('');
     setShowNewFolder(false);
-    toast.success('Složka vytvořena');
+    toast.success(t('folderCreated'));
   }
 
   async function handleDeleteDocument(id: string) {
-    if (!confirm('Opravdu chcete smazat tento soubor?')) return;
+    if (!confirm(t('deleteFileConfirm'))) return;
 
     const supabase = getSupabaseClient();
     const { error } = await supabase.from('documents').delete().eq('id', id);
@@ -195,11 +195,11 @@ export function FilesView({
       return;
     }
     setDocuments(prev => prev.filter(d => d.id !== id));
-    toast.success('Soubor smazán');
+    toast.success(t('fileDeleted'));
   }
 
   async function handleDeleteFolder(id: string) {
-    if (!confirm('Opravdu chcete smazat tuto složku? Podsložky budou také smazány, soubory budou přesunuty do kořene.')) return;
+    if (!confirm(t('deleteFolderConfirm'))) return;
 
     const supabase = getSupabaseClient();
     const { error } = await supabase.from('folders').delete().eq('id', id);
@@ -219,7 +219,7 @@ export function FilesView({
     setDocuments(prev =>
       prev.map(d => (idsToRemove.has(d.folder_id || '') ? { ...d, folder_id: null } : d))
     );
-    toast.success('Složka smazána');
+    toast.success(t('folderDeleted'));
   }
 
   function handleDragOver(e: React.DragEvent) {
@@ -273,7 +273,7 @@ export function FilesView({
         <div>
           <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">
-            {visibleDocuments.length} souborů, {visibleFolders.length} složek
+            {t('fileCount', { files: visibleDocuments.length, folders: visibleFolders.length })}
           </p>
         </div>
         {canCreate && (
@@ -307,7 +307,7 @@ export function FilesView({
           className="flex items-center gap-1 rounded px-2 py-1 text-muted-foreground hover:bg-accent hover:text-foreground"
         >
           <Home className="h-3.5 w-3.5" />
-          Kořen
+          {t('root')}
         </button>
         {breadcrumbs.map(folder => (
           <div key={folder.id} className="flex items-center">
@@ -325,21 +325,21 @@ export function FilesView({
       {/* Drop zone indicator */}
       {dragOver && (
         <div className="mb-4 rounded-lg border-2 border-dashed border-primary bg-primary/5 p-8 text-center text-primary">
-          Přetáhněte soubory sem pro nahrání
+          {t('dropFilesHere')}
         </div>
       )}
 
       {visibleFolders.length === 0 && visibleDocuments.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
           <FolderOpen className="mb-4 h-12 w-12 text-muted-foreground" />
-          <p className="mb-2 text-lg font-medium">Prázdná složka</p>
+          <p className="mb-2 text-lg font-medium">{t('emptyFolder')}</p>
           <p className="mb-4 text-sm text-muted-foreground">
-            Nahrajte soubory nebo vytvořte podsložku
+            {t('emptyFolderHint')}
           </p>
           {canCreate && (
             <Button onClick={() => document.getElementById('file-upload')?.click()}>
               <Upload className="mr-2 h-4 w-4" />
-              Nahrát
+              {tCommon('upload')}
             </Button>
           )}
         </div>
@@ -413,7 +413,7 @@ export function FilesView({
                         variant="ghost"
                         size="icon"
                         onClick={() => setEditingTagsDocId(editingTagsDocId === doc.id ? null : doc.id)}
-                        title="Tagy"
+                        title={t('tags')}
                       >
                         <Tag className="h-4 w-4" />
                       </Button>
@@ -423,7 +423,7 @@ export function FilesView({
                         variant="outline"
                         size="icon"
                         onClick={() => setViewingDoc(doc)}
-                        title="Zobrazit PDF"
+                        title={t('viewPdf')}
                       >
                         <Eye className="h-4 w-4" />
                       </Button>
@@ -450,7 +450,7 @@ export function FilesView({
                       tags={doc.tags || []}
                       onChange={(newTags) => handleUpdateDocTags(doc.id, newTags)}
                       suggestions={allDocTags}
-                      placeholder="Přidat tag..."
+                      placeholder={t('addTagPlaceholder')}
                     />
                   </div>
                 )}
@@ -477,7 +477,7 @@ export function FilesView({
         </DialogHeader>
         <div className="space-y-4">
           <Input
-            placeholder="Název složky"
+            placeholder={t('folderNamePlaceholder')}
             value={newFolderName}
             onChange={e => setNewFolderName(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleCreateFolder()}
@@ -485,10 +485,10 @@ export function FilesView({
           />
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => setShowNewFolder(false)}>
-              Zrušit
+              {tCommon('cancel')}
             </Button>
             <Button onClick={handleCreateFolder} disabled={!newFolderName.trim()}>
-              Vytvořit
+              {tCommon('create')}
             </Button>
           </div>
         </div>

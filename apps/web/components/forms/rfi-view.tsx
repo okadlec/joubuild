@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Plus, MessageSquare, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,6 +40,8 @@ interface RfiViewProps {
 }
 
 export function RfiView({ projectId, rfis, onRfisChange }: RfiViewProps) {
+  const t = useTranslations('forms');
+  const tCommon = useTranslations('common');
   const [showCreate, setShowCreate] = useState(false);
   const [selectedRfi, setSelectedRfi] = useState<Rfi | null>(null);
   const [subject, setSubject] = useState('');
@@ -77,7 +80,7 @@ export function RfiView({ projectId, rfis, onRfisChange }: RfiViewProps) {
     setSubject('');
     setQuestion('');
     setDueDate('');
-    toast.success('RFI vytvořen');
+    toast.success(t('rfi.created'));
   }
 
   async function handleAnswer() {
@@ -101,24 +104,24 @@ export function RfiView({ projectId, rfis, onRfisChange }: RfiViewProps) {
     onRfisChange(rfis.map(r => r.id === selectedRfi.id ? { ...r, answer: answer.trim(), status: 'answered' as const, answered_at: new Date().toISOString() } : r));
     setSelectedRfi(null);
     setAnswer('');
-    toast.success('Odpověď uložena');
+    toast.success(t('rfi.answerSaved'));
   }
 
   return (
     <div>
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-lg font-semibold">RFI ({rfis.length})</h3>
+        <h3 className="text-lg font-semibold">{t('rfi.title', { count: rfis.length })}</h3>
         <Button size="sm" onClick={() => setShowCreate(true)}>
           <Plus className="mr-1 h-3.5 w-3.5" />
-          Nový RFI
+          {t('rfi.newRfi')}
         </Button>
       </div>
 
       {rfis.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
           <MessageSquare className="mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="mb-1 font-medium">Žádné RFI</p>
-          <p className="text-sm text-muted-foreground">Vytvořte žádost o informace</p>
+          <p className="mb-1 font-medium">{t('rfi.noRfis')}</p>
+          <p className="text-sm text-muted-foreground">{t('rfi.noRfisHint')}</p>
         </div>
       ) : (
         <div className="space-y-2">
@@ -135,7 +138,7 @@ export function RfiView({ projectId, rfis, onRfisChange }: RfiViewProps) {
                     </div>
                     <p className="text-sm text-muted-foreground truncate">{rfi.question}</p>
                   </div>
-                  <Badge variant={STATUS_VARIANTS[rfi.status]}>{STATUS_LABELS[rfi.status]}</Badge>
+                  <Badge variant={STATUS_VARIANTS[rfi.status]}>{t(`rfi.statuses.${rfi.status}`)}</Badge>
                   {rfi.due_date && (
                     <span className="text-xs text-muted-foreground">{formatDate(rfi.due_date)}</span>
                   )}
@@ -149,24 +152,24 @@ export function RfiView({ projectId, rfis, onRfisChange }: RfiViewProps) {
       {/* Create dialog */}
       <Dialog open={showCreate} onClose={() => setShowCreate(false)}>
         <DialogHeader>
-          <DialogTitle>Nový RFI</DialogTitle>
+          <DialogTitle>{t('rfi.newRfi')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleCreate} className="space-y-4">
           <div className="space-y-2">
-            <Label>Předmět *</Label>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Předmět dotazu" required />
+            <Label>{t('rfi.subject')}</Label>
+            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder={t('rfi.subjectPlaceholder')} required />
           </div>
           <div className="space-y-2">
-            <Label>Dotaz *</Label>
-            <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Popište dotaz..." required />
+            <Label>{t('rfi.question')}</Label>
+            <Textarea value={question} onChange={(e) => setQuestion(e.target.value)} placeholder={t('rfi.questionPlaceholder')} required />
           </div>
           <div className="space-y-2">
-            <Label>Termín odpovědi</Label>
+            <Label>{t('rfi.answerDeadline')}</Label>
             <Input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Zrušit</Button>
-            <Button type="submit">Vytvořit</Button>
+            <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>{tCommon('cancel')}</Button>
+            <Button type="submit">{tCommon('create')}</Button>
           </div>
         </form>
       </Dialog>
@@ -180,23 +183,23 @@ export function RfiView({ projectId, rfis, onRfisChange }: RfiViewProps) {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label className="text-xs text-muted-foreground">Dotaz</Label>
+                <Label className="text-xs text-muted-foreground">{t('rfi.questionLabel')}</Label>
                 <p className="mt-1 text-sm">{selectedRfi.question}</p>
               </div>
               <div className="space-y-2">
-                <Label>Odpověď</Label>
+                <Label>{t('rfi.answerLabel')}</Label>
                 <Textarea
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
-                  placeholder="Napište odpověď..."
+                  placeholder={t('rfi.answerPlaceholder')}
                   disabled={selectedRfi.status === 'closed'}
                 />
               </div>
               <div className="flex justify-end gap-2">
-                <Button variant="outline" onClick={() => setSelectedRfi(null)}>Zavřít</Button>
+                <Button variant="outline" onClick={() => setSelectedRfi(null)}>{tCommon('close')}</Button>
                 {selectedRfi.status !== 'closed' && (
                   <Button onClick={handleAnswer} disabled={!answer.trim()}>
-                    Odpovědět
+                    {t('rfi.answerButton')}
                   </Button>
                 )}
               </div>

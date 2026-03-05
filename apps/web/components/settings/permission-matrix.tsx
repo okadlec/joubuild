@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -45,6 +46,8 @@ export function PermissionMatrix({
   initialFolderPermissions: FolderPermission[];
   folders: Folder[];
 }) {
+  const t = useTranslations('permissions');
+  const tCommon = useTranslations('common');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [permissions, setPermissions] = useState<ProjectMemberPermission[]>(initialPermissions);
   const [folderPerms, setFolderPerms] = useState<FolderPermission[]>(initialFolderPermissions);
@@ -188,19 +191,19 @@ export function PermissionMatrix({
       }
     }
 
-    toast.success('Oprávnění uložena');
+    toast.success(t('permissionsSaved'));
     setSaving(false);
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Oprávnění</CardTitle>
+        <CardTitle>{t('title')}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* User selection */}
         <div className="space-y-2">
-          <p className="text-sm font-medium">Vyberte uživatele</p>
+          <p className="text-sm font-medium">{t('selectUser')}</p>
           <div className="space-y-1">
             {members.map(member => (
               <button
@@ -236,13 +239,13 @@ export function PermissionMatrix({
             {/* Module permissions matrix */}
             <div className="mt-4 space-y-2">
               <p className="text-sm font-medium">
-                Oprávnění modulů — {selectedMember.full_name || selectedMember.email}
+                {t('modulePermissions', { name: selectedMember.full_name || selectedMember.email || '' })}
               </p>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b">
-                      <th className="py-2 pr-4 text-left font-medium">Modul</th>
+                      <th className="py-2 pr-4 text-left font-medium">{t('moduleColumn')}</th>
                       {ACTIONS.map(a => (
                         <th key={a} className="px-3 py-2 text-center font-medium">
                           {PERMISSION_ACTION_LABELS[a]}
@@ -274,18 +277,18 @@ export function PermissionMatrix({
             {/* Folder permissions */}
             {folders.length > 0 && (
               <div className="mt-4 space-y-2">
-                <p className="text-sm font-medium">Oprávnění složek</p>
+                <p className="text-sm font-medium">{t('folderPermissions')}</p>
                 <p className="text-xs text-muted-foreground">
-                  Bez přepsání platí oprávnění modulu Soubory. Zaškrtnutím omezíte přístup.
+                  {t('folderPermissionsHint')}
                 </p>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b">
-                        <th className="py-2 pr-4 text-left font-medium">Složka</th>
-                        <th className="px-3 py-2 text-center font-medium">Zobrazit</th>
-                        <th className="px-3 py-2 text-center font-medium">Vytvořit</th>
-                        <th className="px-3 py-2 text-center font-medium">Smazat</th>
+                        <th className="py-2 pr-4 text-left font-medium">{t('folderColumn')}</th>
+                        <th className="px-3 py-2 text-center font-medium">{t('viewColumn')}</th>
+                        <th className="px-3 py-2 text-center font-medium">{t('createColumn')}</th>
+                        <th className="px-3 py-2 text-center font-medium">{t('deleteColumn')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -313,7 +316,7 @@ export function PermissionMatrix({
             <div className="flex justify-end">
               <Button onClick={handleSave} disabled={saving}>
                 <Save className="mr-2 h-4 w-4" />
-                {saving ? 'Ukládání...' : 'Uložit oprávnění'}
+                {saving ? tCommon('saving') : t('savePermissions')}
               </Button>
             </div>
           </>

@@ -1,6 +1,7 @@
 'use client';
 
 import { X } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Select } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
@@ -38,6 +39,7 @@ interface TaskFiltersBarProps {
 }
 
 export function TaskFiltersBar({ filters, onChange, categories = [], members = [] }: TaskFiltersBarProps) {
+  const t = useTranslations('tasks.filters');
   const activeCount = Object.values(filters).filter(v => v !== '').length;
 
   function update(partial: Partial<TaskFilters>) {
@@ -48,7 +50,7 @@ export function TaskFiltersBar({ filters, onChange, categories = [], members = [
     <div className="space-y-3 rounded-lg border bg-background p-3">
       <div className="flex flex-wrap items-center gap-2">
         <Input
-          placeholder="Hledat úkoly..."
+          placeholder={t('searchPlaceholder')}
           value={filters.search}
           onChange={(e) => update({ search: e.target.value })}
           className="h-8 w-48"
@@ -59,7 +61,7 @@ export function TaskFiltersBar({ filters, onChange, categories = [], members = [
           onChange={(e) => update({ status: e.target.value })}
           className="h-8 w-auto"
         >
-          <option value="">Všechny statusy</option>
+          <option value="">{t('allStatuses')}</option>
           {TASK_STATUSES.map((s) => (
             <option key={s} value={s}>{TASK_STATUS_LABELS[s]}</option>
           ))}
@@ -70,7 +72,7 @@ export function TaskFiltersBar({ filters, onChange, categories = [], members = [
           onChange={(e) => update({ priority: e.target.value })}
           className="h-8 w-auto"
         >
-          <option value="">Všechny priority</option>
+          <option value="">{t('allPriorities')}</option>
           {TASK_PRIORITIES.map((p) => (
             <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>
           ))}
@@ -82,7 +84,7 @@ export function TaskFiltersBar({ filters, onChange, categories = [], members = [
             onChange={(e) => update({ categoryId: e.target.value })}
             className="h-8 w-auto"
           >
-            <option value="">Všechny kategorie</option>
+            <option value="">{t('allCategories')}</option>
             {categories.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
@@ -95,7 +97,7 @@ export function TaskFiltersBar({ filters, onChange, categories = [], members = [
             onChange={(e) => update({ assigneeId: e.target.value })}
             className="h-8 w-auto"
           >
-            <option value="">Všichni přiřazení</option>
+            <option value="">{t('allAssignees')}</option>
             {members.map((m) => (
               <option key={m.user_id} value={m.user_id}>
                 {m.full_name || m.email || m.user_id.slice(0, 8)}
@@ -106,7 +108,7 @@ export function TaskFiltersBar({ filters, onChange, categories = [], members = [
 
         {activeCount > 0 && (
           <>
-            <Badge variant="secondary">{activeCount} filtrů</Badge>
+            <Badge variant="secondary">{t('activeFilters', { count: activeCount })}</Badge>
             <Button
               variant="ghost"
               size="sm"
@@ -114,7 +116,7 @@ export function TaskFiltersBar({ filters, onChange, categories = [], members = [
               onClick={() => onChange(EMPTY_FILTERS)}
             >
               <X className="mr-1 h-3.5 w-3.5" />
-              Zrušit filtry
+              {t('clearFilters')}
             </Button>
           </>
         )}

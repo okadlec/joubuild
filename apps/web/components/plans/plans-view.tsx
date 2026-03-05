@@ -46,6 +46,7 @@ interface PlanSet {
 
 function OfflineDownloadButton({ sheetId, name, fileUrl }: { sheetId: string; name: string; fileUrl: string }) {
   const { isOffline, downloading, download, remove } = useOfflinePdf(sheetId, name, fileUrl);
+  const t = useTranslations('plans');
 
   return (
     <button
@@ -54,17 +55,17 @@ function OfflineDownloadButton({ sheetId, name, fileUrl }: { sheetId: string; na
         e.stopPropagation();
         if (isOffline) {
           await remove();
-          toast.success('Offline kopie odstraněna');
+          toast.success(t('offlineRemoved'));
         } else {
           try {
             await download();
-            toast.success('Staženo pro offline');
+            toast.success(t('downloadedOffline'));
           } catch {
-            toast.error('Chyba při stahování');
+            toast.error(t('downloadError'));
           }
         }
       }}
-      title={isOffline ? 'Dostupné offline' : 'Stáhnout pro offline'}
+      title={isOffline ? t('availableOffline') : t('downloadForOffline')}
     >
       {downloading ? (
         <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -148,11 +149,11 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
     setPlanSets([...planSets, { ...data, sheets: [] }]);
     setShowNewSet(false);
     setNewSetName('');
-    toast.success('Sada výkresů vytvořena');
+    toast.success(t('planSetCreated'));
   };
 
   const handleDeleteSet = useCallback(async (planSetId: string) => {
-    if (!confirm('Smazat celou sadu včetně všech výkresů?')) return;
+    if (!confirm(t('deleteSetConfirm'))) return;
     const supabase = getSupabaseClient();
     const { error } = await supabase.from('plan_sets').delete().eq('id', planSetId);
     if (error) {
@@ -160,11 +161,11 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       return;
     }
     setPlanSets(prev => prev.filter(ps => ps.id !== planSetId));
-    toast.success('Sada smazána');
+    toast.success(t('planSetDeleted'));
   }, []);
 
   const handleDeleteSheet = useCallback(async (sheetId: string, planSetId: string) => {
-    if (!confirm('Smazat tento výkres?')) return;
+    if (!confirm(t('deleteSheetSimpleConfirm'))) return;
     const supabase = getSupabaseClient();
     const { error } = await supabase.from('sheets').delete().eq('id', sheetId);
     if (error) {
@@ -177,7 +178,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       }
       return ps;
     }));
-    toast.success('Výkres smazán');
+    toast.success(t('sheetDeleted'));
   }, []);
 
   const handleUploadPdf = useCallback(async (file: File, planSetId: string) => {
@@ -190,7 +191,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       .upload(fileName, file);
 
     if (uploadError) {
-      toast.error('Chyba při nahrávání: ' + uploadError.message);
+      toast.error(t('uploadError') + ': ' + uploadError.message);
       setUploading(false);
       return;
     }
@@ -209,7 +210,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       .single();
 
     if (sheetError || !sheet) {
-      toast.error('Chyba při vytváření listu');
+      toast.error(t('sheetCreateError'));
       setUploading(false);
       return;
     }
@@ -227,7 +228,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       .single();
 
     if (versionError) {
-      toast.error('Chyba při vytváření verze');
+      toast.error(t('versionCreateError'));
       setUploading(false);
       return;
     }
@@ -249,7 +250,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
 
     setUploading(false);
     setShowUpload(false);
-    toast.success('Výkres nahrán');
+    toast.success(t('sheetUploaded'));
 
     // Generate thumbnail in background (non-blocking)
     generatePdfThumbnail(file).then(async (result) => {
@@ -292,7 +293,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       .upload(fileName, file);
 
     if (uploadError) {
-      toast.error('Chyba při nahrávání');
+      toast.error(t('uploadError'));
       setUploading(false);
       return;
     }
@@ -321,7 +322,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       .single();
 
     if (versionError || !version) {
-      toast.error('Chyba při vytváření verze');
+      toast.error(t('versionCreateError'));
       setUploading(false);
       return;
     }
@@ -346,7 +347,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
 
     setShowNewVersion(false);
     setUploading(false);
-    toast.success(`Verze ${newVersionNumber} nahrána`);
+    toast.success(t('versionUploaded', { number: newVersionNumber }));
 
     // Generate thumbnail in background (non-blocking)
     generatePdfThumbnail(file).then(async (result) => {
@@ -389,10 +390,10 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       <div className="flex h-full flex-col">
         <div className="mb-4 flex shrink-0 items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => setCompareVersions(null)}>
-            ← Zpět
+            ← {tCommon('back')}
           </Button>
           <h2 className="min-w-0 truncate text-lg font-semibold">
-            Porovnání verzí - {selectedSheet?.name}
+            {t('compareVersionsTitle', { name: selectedSheet?.name || '' })}
           </h2>
         </div>
         <div className="min-h-0 flex-1">
@@ -418,7 +419,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       <div className="flex h-full flex-col">
         <div className="mb-4 flex shrink-0 flex-wrap items-center gap-2">
           <Button variant="ghost" size="sm" onClick={() => { setSelectedSheet(null); setShowVersions(false); setViewingVersion(null); }}>
-            ← <span className="hidden sm:inline">Zpět</span>
+            ← <span className="hidden sm:inline">{tCommon('back')}</span>
           </Button>
           <h2 className="min-w-0 truncate text-lg font-semibold">{selectedSheet.name}</h2>
           <Badge variant="outline">v{displayedVersion?.version_number ?? 1}</Badge>
@@ -426,11 +427,11 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" onClick={() => setShowVersions(!showVersions)}>
               <History className="sm:mr-1 h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Verze ({selectedSheet.sheet_versions.length})</span>
+              <span className="hidden sm:inline">{t('versions')} ({selectedSheet.sheet_versions.length})</span>
             </Button>
             <Button variant="outline" size="sm" onClick={() => setShowNewVersion(true)}>
               <Upload className="sm:mr-1 h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Nová revize</span>
+              <span className="hidden sm:inline">{t('newRevision')}</span>
             </Button>
             {currentVersion && (
               <Button
@@ -447,7 +448,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                 }}
               >
                 <GitCompare className="sm:mr-1 h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Porovnat</span>
+                <span className="hidden sm:inline">{t('compare')}</span>
               </Button>
             )}
             {currentVersion && (
@@ -463,7 +464,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
         {/* Versions panel */}
         {showVersions && (
           <div className="mb-4 shrink-0 rounded-lg border bg-background p-4">
-            <h3 className="mb-3 text-sm font-semibold">Historie verzí</h3>
+            <h3 className="mb-3 text-sm font-semibold">{t('versionHistory')}</h3>
             <div className="space-y-2">
               {versionsSorted.map((v, index) => (
                 <div
@@ -478,7 +479,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                     <Badge variant={v.is_current ? 'default' : 'outline'}>
                       v{v.version_number}
                     </Badge>
-                    {v.is_current && <span className="text-xs text-green-600">aktuální</span>}
+                    {v.is_current && <span className="text-xs text-green-600">{t('current')}</span>}
                     <span className="text-xs text-muted-foreground">
                       {new Date(v.created_at).toLocaleDateString('cs-CZ')}
                     </span>
@@ -497,7 +498,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                         }}
                       >
                         <GitCompare className="mr-1 h-3.5 w-3.5" />
-                        Porovnat
+                        {t('compare')}
                       </Button>
                     )}
                   </div>
@@ -512,7 +513,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
             {!displayedVersion.is_current && (
               <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                 <div className="rotate-[-30deg] rounded-lg border-4 border-red-500/30 px-8 py-4 text-4xl font-bold text-red-500/30">
-                  NEAKTUÁLNÍ
+                  {t('outdated')}
                 </div>
               </div>
             )}
@@ -540,12 +541,11 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
         {/* New Version Upload Dialog */}
         <Dialog open={showNewVersion} onClose={() => setShowNewVersion(false)}>
           <DialogHeader>
-            <DialogTitle>Nová revize výkresu</DialogTitle>
+            <DialogTitle>{t('newRevisionTitle')}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Nahrajte novou verzi výkresu &quot;{selectedSheet.name}&quot;.
-              Stávající verze bude zachována v historii.
+              {t('newRevisionDesc', { name: selectedSheet.name })}
             </p>
             <input
               type="file"
@@ -563,7 +563,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
               disabled={uploading}
             >
               <Upload className="mr-2 h-4 w-4" />
-              {uploading ? 'Nahrávání...' : 'Vybrat PDF soubor'}
+              {uploading ? t('uploading') : t('selectPdf')}
             </Button>
           </div>
         </Dialog>
@@ -617,7 +617,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                 </Button>
               </div>
               {planSet.sheets.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Žádné listy v této sadě</p>
+                <p className="text-sm text-muted-foreground">{t('noSheetsInSet')}</p>
               ) : (
                 <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                   {planSet.sheets.map((sheet) => {
@@ -694,7 +694,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
             <Input
               value={newSetName}
               onChange={(e) => setNewSetName(e.target.value)}
-              placeholder="Architektura, Elektro, ZTI..."
+              placeholder={t('planSetNamePlaceholder')}
               required
             />
           </div>
@@ -712,7 +712,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Vyberte sadu</Label>
+            <Label>{t('selectSet')}</Label>
             {planSets.map((ps) => (
               <label key={ps.id} className="flex items-center gap-2">
                 <input
@@ -737,7 +737,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
               </label>
             ))}
           </div>
-          {uploading && <p className="text-sm text-muted-foreground">Nahrávání...</p>}
+          {uploading && <p className="text-sm text-muted-foreground">{t('uploading')}</p>}
         </div>
       </Dialog>
     </div>

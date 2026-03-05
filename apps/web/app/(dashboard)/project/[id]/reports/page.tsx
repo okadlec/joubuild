@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { BarChart2, Download, FileText, Plus, Calendar, Loader2, Archive } from 'lucide-react';
+import { useTranslations } from 'next-intl';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -14,14 +15,16 @@ import { use } from 'react';
 
 export default function ReportsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const t = useTranslations('reports');
+  const tCommon = useTranslations('common');
   const [generating, setGenerating] = useState<string | null>(null);
   const [showSchedule, setShowSchedule] = useState(false);
 
   const reportTypes = [
-    { id: 'tasks', label: 'Report úkolů', description: 'Export všech úkolů s filtry', icon: FileText },
-    { id: 'daily', label: 'Denní report', description: 'Stavební deník za zvolené období', icon: Calendar },
-    { id: 'photos', label: 'Fotodokumentace', description: 'Export fotek ze stavby', icon: BarChart2 },
-    { id: 'as_built', label: 'As-Built export', description: 'ZIP archiv aktuálních výkresů', icon: Archive },
+    { id: 'tasks', label: t('taskReport'), description: t('taskReportDesc'), icon: FileText },
+    { id: 'daily', label: t('dailyReport'), description: t('dailyReportDesc'), icon: Calendar },
+    { id: 'photos', label: t('photoReport'), description: t('photoReportDesc'), icon: BarChart2 },
+    { id: 'as_built', label: t('asBuiltExport'), description: t('asBuiltExportDesc'), icon: Archive },
   ];
 
   async function generateReport(type: string) {
@@ -38,7 +41,7 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
           .order('sort_order');
 
         if (!tasks || tasks.length === 0) {
-          toast.info('Žádné úkoly k exportu');
+          toast.info(t('noTasksToExport'));
           setGenerating(null);
           return;
         }
@@ -62,7 +65,7 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
         a.download = `ukoly-report-${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.success('Report vygenerován');
+        toast.success(t('reportGenerated'));
 
       } else if (type === 'daily') {
         const { data: submissions } = await supabase
@@ -73,7 +76,7 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
           .limit(30);
 
         if (!submissions || submissions.length === 0) {
-          toast.info('Žádné záznamy deníku');
+          toast.info(t('noDiaryEntries'));
           setGenerating(null);
           return;
         }
@@ -95,7 +98,7 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
         a.download = `denik-report-${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.success('Report vygenerován');
+        toast.success(t('reportGenerated'));
 
       } else if (type === 'photos') {
         const { data: photos } = await supabase
@@ -105,7 +108,7 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
           .order('created_at', { ascending: false });
 
         if (!photos || photos.length === 0) {
-          toast.info('Žádné fotky k exportu');
+          toast.info(t('noPhotosToExport'));
           setGenerating(null);
           return;
         }
@@ -127,7 +130,7 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
         a.download = `fotky-report-${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.success('Report vygenerován');
+        toast.success(t('reportGenerated'));
 
       } else if (type === 'as_built') {
         // Fetch all current sheet versions
@@ -137,7 +140,7 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
           .eq('project_id', id);
 
         if (!sheets || sheets.length === 0) {
-          toast.info('Žádné výkresy k exportu');
+          toast.info(t('noSheetsToExport'));
           setGenerating(null);
           return;
         }
@@ -157,11 +160,11 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
         a.download = `as-built-manifest-${new Date().toISOString().slice(0, 10)}.csv`;
         a.click();
         URL.revokeObjectURL(url);
-        toast.success('As-Built manifest vygenerován (CSV s odkazy na aktuální výkresy)');
+        toast.success(t('asBuiltGenerated'));
       }
     } catch (err) {
       console.error(err);
-      toast.error('Chyba při generování reportu');
+      toast.error(t('reportError'));
     }
 
     setGenerating(null);
@@ -171,8 +174,8 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Reporty</h1>
-          <p className="text-sm text-muted-foreground">Generování a export reportů</p>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
       </div>
 
@@ -202,7 +205,7 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
                 ) : (
                   <Download className="mr-2 h-4 w-4" />
                 )}
-                {generating === report.id ? 'Generování...' : 'Generovat'}
+                {generating === report.id ? t('generating') : t('generate')}
               </Button>
             </CardContent>
           </Card>
@@ -210,47 +213,47 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
       </div>
 
       <div className="mt-8">
-        <h2 className="mb-4 text-lg font-semibold">Plánované reporty</h2>
+        <h2 className="mb-4 text-lg font-semibold">{t('scheduledReports')}</h2>
         <div className="flex flex-col items-center justify-center rounded-lg border border-dashed py-12">
           <Calendar className="mb-3 h-10 w-10 text-muted-foreground" />
-          <p className="mb-1 font-medium">Žádné plánované reporty</p>
-          <p className="mb-4 text-sm text-muted-foreground">Nastavte automatické generování reportů</p>
+          <p className="mb-1 font-medium">{t('noScheduledReports')}</p>
+          <p className="mb-4 text-sm text-muted-foreground">{t('scheduleHint')}</p>
           <Button variant="outline" onClick={() => setShowSchedule(true)}>
             <Plus className="mr-2 h-4 w-4" />
-            Naplánovat report
+            {t('scheduleReport')}
           </Button>
         </div>
       </div>
 
       <Dialog open={showSchedule} onClose={() => setShowSchedule(false)}>
         <DialogHeader>
-          <DialogTitle>Naplánovat report</DialogTitle>
+          <DialogTitle>{t('scheduleReport')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Typ reportu</Label>
+            <Label>{t('reportType')}</Label>
             <Select defaultValue="tasks">
-              <option value="tasks">Report úkolů</option>
-              <option value="daily">Denní report</option>
-              <option value="photos">Fotodokumentace</option>
+              <option value="tasks">{t('taskReport')}</option>
+              <option value="daily">{t('dailyReport')}</option>
+              <option value="photos">{t('photoReport')}</option>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Frekvence</Label>
+            <Label>{t('frequency')}</Label>
             <Select defaultValue="weekly">
-              <option value="daily">Denně</option>
-              <option value="weekly">Týdně</option>
-              <option value="monthly">Měsíčně</option>
+              <option value="daily">{t('daily')}</option>
+              <option value="weekly">{t('weekly')}</option>
+              <option value="monthly">{t('monthly')}</option>
             </Select>
           </div>
           <div className="space-y-2">
-            <Label>Email příjemce</Label>
+            <Label>{t('recipientEmail')}</Label>
             <Input type="email" placeholder="email@example.com" />
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowSchedule(false)}>Zrušit</Button>
-            <Button onClick={() => { toast.success('Plán reportu uložen'); setShowSchedule(false); }}>
-              Uložit
+            <Button variant="outline" onClick={() => setShowSchedule(false)}>{tCommon('cancel')}</Button>
+            <Button onClick={() => { toast.success(t('scheduleSaved')); setShowSchedule(false); }}>
+              {tCommon('save')}
             </Button>
           </div>
         </div>

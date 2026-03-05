@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Save, Upload, KeyRound } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { Save, Upload, KeyRound, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar } from '@/components/ui/avatar';
+import { LanguageSwitcher } from '@/components/shared/language-switcher';
 import { updateProfile, changePassword, uploadAvatar } from './actions';
 import { toast } from 'sonner';
 
@@ -25,6 +27,8 @@ interface ProfileSettingsProps {
 
 export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsProps) {
   const router = useRouter();
+  const t = useTranslations('profile');
+  const tCommon = useTranslations('common');
   const [fullName, setFullName] = useState(profile.full_name || '');
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
   const [saving, setSaving] = useState(false);
@@ -40,7 +44,7 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success('Profil uložen');
+      toast.success(t('profileSaved'));
       router.refresh();
     }
     setSaving(false);
@@ -55,7 +59,7 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
       toast.error(result.error);
     } else if (result.data) {
       setAvatarUrl(result.data.avatar_url);
-      toast.success('Avatar nahrán');
+      toast.success(t('avatarUploaded'));
       router.refresh();
     }
     setUploadingAvatar(false);
@@ -64,11 +68,11 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault();
     if (newPassword.length < 6) {
-      toast.error('Heslo musí mít alespoň 6 znaků');
+      toast.error(t('passwordMinLength'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('Hesla se neshodují');
+      toast.error(t('passwordMismatch'));
       return;
     }
     setChangingPassword(true);
@@ -76,7 +80,7 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success('Heslo změněno');
+      toast.success(t('passwordChanged'));
       setNewPassword('');
       setConfirmPassword('');
     }
@@ -86,14 +90,14 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
   return (
     <div className="max-w-2xl space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Profil</h1>
-        <p className="text-sm text-muted-foreground">Osobní nastavení účtu</p>
+        <h1 className="text-2xl font-bold">{t('title')}</h1>
+        <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
 
       {/* Profile info */}
       <Card>
         <CardHeader>
-          <CardTitle>Osobní údaje</CardTitle>
+          <CardTitle>{t('personalInfo')}</CardTitle>
         </CardHeader>
         <CardContent>
           {/* Avatar */}
@@ -118,27 +122,27 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
                 disabled={uploadingAvatar}
               >
                 <Upload className="mr-2 h-4 w-4" />
-                {uploadingAvatar ? 'Nahrávání...' : 'Změnit avatar'}
+                {uploadingAvatar ? t('uploadingAvatar') : t('changeAvatar')}
               </Button>
             </div>
           </div>
 
           <form onSubmit={handleSave} className="space-y-4">
             <div className="space-y-2">
-              <Label>Email</Label>
+              <Label>{tCommon('email')}</Label>
               <Input value={profile.email || ''} disabled />
             </div>
             <div className="space-y-2">
-              <Label>Jméno</Label>
+              <Label>{t('name')}</Label>
               <Input
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                placeholder="Vaše jméno"
+                placeholder={t('namePlaceholder')}
               />
             </div>
             {orgName && (
               <div className="space-y-2">
-                <Label>Organizace</Label>
+                <Label>{t('organization')}</Label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm">{orgName}</span>
                   {orgRole && <Badge variant="secondary">{orgRole}</Badge>}
@@ -147,7 +151,7 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
             )}
             <Button type="submit" disabled={saving}>
               <Save className="mr-2 h-4 w-4" />
-              {saving ? 'Ukládání...' : 'Uložit'}
+              {saving ? tCommon('saving') : tCommon('save')}
             </Button>
           </form>
         </CardContent>
@@ -156,33 +160,43 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
       {/* Change password */}
       <Card>
         <CardHeader>
-          <CardTitle>Změna hesla</CardTitle>
+          <CardTitle>{t('changePassword')}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleChangePassword} className="space-y-4">
             <div className="space-y-2">
-              <Label>Nové heslo</Label>
+              <Label>{t('newPassword')}</Label>
               <Input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="Nové heslo"
+                placeholder={t('newPasswordPlaceholder')}
               />
             </div>
             <div className="space-y-2">
-              <Label>Potvrzení hesla</Label>
+              <Label>{t('confirmPassword')}</Label>
               <Input
                 type="password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="Zopakujte nové heslo"
+                placeholder={t('confirmPasswordPlaceholder')}
               />
             </div>
             <Button type="submit" disabled={changingPassword}>
               <KeyRound className="mr-2 h-4 w-4" />
-              {changingPassword ? 'Měním...' : 'Změnit heslo'}
+              {changingPassword ? t('changingPassword') : t('changePasswordButton')}
             </Button>
           </form>
+        </CardContent>
+      </Card>
+      {/* Language */}
+      <Card>
+        <CardHeader>
+          <CardTitle>{t('language')}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="mb-3 text-sm text-muted-foreground">{t('languageDescription')}</p>
+          <LanguageSwitcher />
         </CardContent>
       </Card>
     </div>

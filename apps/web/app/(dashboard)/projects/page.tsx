@@ -1,7 +1,9 @@
 import { createClient } from '@/lib/supabase/server';
+import { getTranslations } from 'next-intl/server';
 import { ProjectsList } from './projects-list';
 
 export default async function ProjectsPage() {
+  const t = await getTranslations('projects');
   const supabase = await createClient();
 
   const { data: projects } = await supabase
@@ -13,8 +15,8 @@ export default async function ProjectsPage() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Projekty</h1>
-          <p className="text-sm text-muted-foreground">Správa stavebních projektů</p>
+          <h1 className="text-2xl font-bold">{t('title')}</h1>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
       </div>
       <ProjectsList initialProjects={projects || []} />

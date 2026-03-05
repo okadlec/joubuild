@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { Ruler } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -24,6 +25,8 @@ export function CalibrationDialog({
   isSettingPoints,
   onStartCalibration,
 }: CalibrationDialogProps) {
+  const t = useTranslations('plans.calibration');
+  const tCommon = useTranslations('common');
   const [distance, setDistance] = useState('');
   const [unit, setUnit] = useState<'m' | 'cm' | 'mm'>('m');
 
@@ -51,20 +54,20 @@ export function CalibrationDialog({
   return (
     <Dialog open={open} onClose={onClose}>
       <DialogHeader>
-        <DialogTitle>Kalibrace měřítka</DialogTitle>
+        <DialogTitle>{t('title')}</DialogTitle>
         <DialogDescription>
-          Nastavte měřítko výkresu pro přesné měření vzdáleností a ploch.
+          {t('description')}
         </DialogDescription>
       </DialogHeader>
 
       {!isSettingPoints && !calibrationPoints && (
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Klikněte na dva body na výkresu, jejichž skutečnou vzdálenost znáte (např. kótu).
+            {t('instructions')}
           </p>
           <Button onClick={onStartCalibration} className="w-full">
             <Ruler className="mr-2 h-4 w-4" />
-            Vybrat dva body
+            {t('selectTwoPoints')}
           </Button>
         </div>
       )}
@@ -74,9 +77,9 @@ export function CalibrationDialog({
           <div className="flex items-center gap-3 rounded-lg border bg-muted/50 p-4">
             <Ruler className="h-8 w-8 text-muted-foreground" />
             <div>
-              <p className="font-medium">Vyberte dva body na výkresu</p>
+              <p className="font-medium">{t('selectPointsTitle')}</p>
               <p className="text-sm text-muted-foreground">
-                Klikněte na první bod, pak na druhý bod.
+                {t('selectPointsDesc')}
               </p>
             </div>
           </div>
@@ -86,10 +89,10 @@ export function CalibrationDialog({
       {calibrationPoints && !isSettingPoints && (
         <form onSubmit={handleSubmit} className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Vzdálenost v pixelech: <strong>{Math.round(pixelDistance)} px</strong>
+            {t('pixelDistance')}: <strong>{Math.round(pixelDistance)} px</strong>
           </p>
           <div className="space-y-2">
-            <Label>Skutečná vzdálenost</Label>
+            <Label>{t('realDistance')}</Label>
             <div className="flex gap-2">
               <Input
                 type="number"
@@ -97,7 +100,7 @@ export function CalibrationDialog({
                 min="0.001"
                 value={distance}
                 onChange={(e) => setDistance(e.target.value)}
-                placeholder="Např. 5.0"
+                placeholder={t('placeholder')}
                 required
                 className="flex-1"
               />
@@ -114,12 +117,12 @@ export function CalibrationDialog({
           </div>
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => { onClose(); }}>
-              Zrušit
+              {tCommon('cancel')}
             </Button>
             <Button type="button" variant="outline" onClick={onStartCalibration}>
-              Znovu
+              {t('retry')}
             </Button>
-            <Button type="submit">Kalibrovat</Button>
+            <Button type="submit">{t('calibrateButton')}</Button>
           </div>
         </form>
       )}

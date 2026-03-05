@@ -107,7 +107,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
     setTemplates(prev => [data, ...prev]);
     setShowCreate(false);
     setTemplateName('');
-    toast.success('Šablona vytvořena');
+    toast.success(t('templateCreated'));
   }
 
   async function handleCreateSubmission(templateId: string) {
@@ -159,7 +159,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
       prev.map(s => s.id === submissionId ? { ...s, status: newStatus } : s)
     );
     setSelectedSubmission(null);
-    toast.success(newStatus === 'approved' ? 'Formulář schválen' : 'Formulář zamítnut');
+    toast.success(newStatus === 'approved' ? t('formApproved') : t('formRejected'));
   }
 
   type FormFieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'checkbox' | 'photo';
@@ -180,11 +180,11 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{t('title')}</h1>
-          <p className="text-sm text-muted-foreground">Stavební deníky, inspekce a formuláře</p>
+          <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
         <Button onClick={() => setShowCreate(true)}>
           <Plus className="mr-2 h-4 w-4" />
-          Nová šablona
+          {t('newTemplate')}
         </Button>
       </div>
 
@@ -192,7 +192,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
         <TabsList>
           <TabsTrigger value="submissions">
             <FileCheck className="mr-1 h-4 w-4" />
-            Formuláře
+            {t('forms')}
           </TabsTrigger>
           <TabsTrigger value="templates">
             <ClipboardList className="mr-1 h-4 w-4" />
@@ -208,8 +208,8 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
           {submissions.length === 0 ? (
             <div className="mt-4 flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
               <FileCheck className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="mb-2 text-lg font-medium">Žádné formuláře</p>
-              <p className="text-sm text-muted-foreground">Vytvořte šablonu a vyplňte první formulář</p>
+              <p className="mb-2 text-lg font-medium">{t('noSubmissions')}</p>
+              <p className="text-sm text-muted-foreground">{t('noSubmissionsHint')}</p>
             </div>
           ) : (
             <div className="mt-4 space-y-3">
@@ -232,7 +232,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
                       </div>
                     </div>
                     <Badge variant={STATUS_VARIANTS[sub.status]}>
-                      {STATUS_LABELS[sub.status]}
+                      {t(`statusLabels.${sub.status}`)}
                     </Badge>
                   </CardContent>
                 </Card>
@@ -245,10 +245,10 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
           {templates.length === 0 ? (
             <div className="mt-4 flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
               <ClipboardList className="mb-4 h-12 w-12 text-muted-foreground" />
-              <p className="mb-2 text-lg font-medium">Žádné šablony</p>
+              <p className="mb-2 text-lg font-medium">{t('noTemplates')}</p>
               <Button onClick={() => setShowCreate(true)}>
                 <Plus className="mr-2 h-4 w-4" />
-                Vytvořit šablonu
+                {t('createTemplate')}
               </Button>
             </div>
           ) : (
@@ -268,7 +268,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
                       className="flex-1"
                       onClick={() => setEditingTemplate(tmpl)}
                     >
-                      Upravit šablonu
+                      {t('editTemplate')}
                     </Button>
                     <Button
                       variant="outline"
@@ -277,7 +277,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
                       onClick={() => handleCreateSubmission(tmpl.id)}
                     >
                       <Send className="mr-2 h-4 w-4" />
-                      Vyplnit
+                      {t('fill')}
                     </Button>
                   </CardContent>
                 </Card>
@@ -295,30 +295,30 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
       {/* Create template dialog */}
       <Dialog open={showCreate} onClose={() => setShowCreate(false)}>
         <DialogHeader>
-          <DialogTitle>Nová šablona formuláře</DialogTitle>
+          <DialogTitle>{t('newFormTemplate')}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleCreateTemplate} className="space-y-4">
           <div className="space-y-2">
-            <Label>Název</Label>
+            <Label>{t('templateNameLabel')}</Label>
             <Input
               value={templateName}
               onChange={(e) => setTemplateName(e.target.value)}
-              placeholder="Stavební deník"
+              placeholder={t('templateNamePlaceholder')}
               required
             />
           </div>
           <div className="space-y-2">
-            <Label>Typ</Label>
+            <Label>{t('typeLabel')}</Label>
             <Select value={templateType} onChange={(e) => setTemplateType(e.target.value)}>
-              <option value="daily_report">Stavební deník</option>
-              <option value="inspection">Inspekce</option>
-              <option value="rfi">RFI</option>
-              <option value="custom">Vlastní</option>
+              <option value="daily_report">{t('formTypes.daily_report')}</option>
+              <option value="inspection">{t('formTypes.inspection')}</option>
+              <option value="rfi">{t('formTypes.rfi')}</option>
+              <option value="custom">{t('formTypes.custom')}</option>
             </Select>
           </div>
           <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>Zrušit</Button>
-            <Button type="submit">Vytvořit</Button>
+            <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>{tCommon('cancel')}</Button>
+            <Button type="submit">{tCommon('create')}</Button>
           </div>
         </form>
       </Dialog>
@@ -360,7 +360,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
                   onClick={() => handleApproveReject(selectedSubmission.id, 'approved')}
                 >
                   <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
-                  Schválit
+                  {t('approve')}
                 </Button>
                 <Button
                   variant="outline"
@@ -368,7 +368,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
                   onClick={() => handleApproveReject(selectedSubmission.id, 'rejected')}
                 >
                   <XCircle className="mr-2 h-4 w-4 text-red-600" />
-                  Zamítnout
+                  {t('reject')}
                 </Button>
               </div>
             )}
@@ -385,7 +385,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
         {editingTemplate && (
           <>
             <DialogHeader>
-              <DialogTitle>Upravit: {editingTemplate.name}</DialogTitle>
+              <DialogTitle>{t('editTemplateTitle', { name: editingTemplate.name })}</DialogTitle>
             </DialogHeader>
             <FormBuilder
               templateId={editingTemplate.id}

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   LayoutDashboard,
@@ -34,10 +34,12 @@ interface SidebarProps {
   currentOrgId?: string;
   onOrgChange?: (orgId: string) => void;
   onNavigate?: () => void;
+  projects?: { id: string; name: string }[];
 }
 
-export function Sidebar({ organizations = [], currentOrgId, onOrgChange, onNavigate }: SidebarProps) {
+export function Sidebar({ organizations = [], currentOrgId, onOrgChange, onNavigate, projects = [] }: SidebarProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const t = useTranslations('sidebar');
   const projectMatch = pathname.match(/\/project\/([^/]+)/);
   const projectId = projectMatch ? projectMatch[1] : undefined;
@@ -123,9 +125,29 @@ export function Sidebar({ organizations = [], currentOrgId, onOrgChange, onNavig
         {projectNav.length > 0 && (
           <>
             <div className="my-3 border-t" />
-            {!collapsed && (
+            {!collapsed && projects.length > 1 ? (
+              <div className="mb-1 px-2">
+                <select
+                  value={projectId || ''}
+                  onChange={(e) => {
+                    const newProjectId = e.target.value;
+                    if (newProjectId && newProjectId !== projectId) {
+                      // Navigate to the same sub-page of the new project
+                      const subPage = pathname.replace(/\/project\/[^/]+/, '').replace(/^\//, '') || 'plans';
+                      router.push(`/project/${newProjectId}/${subPage}`);
+                      onNavigate?.();
+                    }
+                  }}
+                  className="w-full rounded-md border bg-background px-2 py-1 text-xs font-semibold uppercase text-muted-foreground"
+                >
+                  {projects.map((p) => (
+                    <option key={p.id} value={p.id}>{p.name}</option>
+                  ))}
+                </select>
+              </div>
+            ) : !collapsed && (
               <p className="mb-1 px-3 text-xs font-semibold uppercase text-muted-foreground">
-                {t('projectSection')}
+                {projects.find(p => p.id === projectId)?.name || t('projectSection')}
               </p>
             )}
             {projectNav.map((item) => {

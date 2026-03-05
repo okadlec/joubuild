@@ -14,6 +14,12 @@ export default async function DashboardLayout({
     redirect('/login');
   }
 
+  // Load projects for sidebar selector
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('id, name')
+    .order('name');
+
   return (
     <DashboardShell
       user={{
@@ -21,6 +27,7 @@ export default async function DashboardLayout({
         full_name: user.user_metadata?.full_name,
         avatar_url: user.user_metadata?.avatar_url,
       }}
+      projects={projects || []}
     >
       {children}
     </DashboardShell>

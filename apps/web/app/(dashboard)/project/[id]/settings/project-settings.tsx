@@ -122,7 +122,7 @@ export function ProjectSettings({
   }
 
   async function handleDelete() {
-    if (!confirm('Opravdu chcete smazat tento projekt? Tato akce je nevratná.')) return;
+    if (!confirm(t('deleteProjectConfirm'))) return;
 
     const result = await deleteProject(project.id);
 
@@ -131,7 +131,7 @@ export function ProjectSettings({
       return;
     }
 
-    toast.success('Projekt smazán');
+    toast.success(t('projectDeleted'));
     router.push('/projects');
   }
 
@@ -219,7 +219,7 @@ export function ProjectSettings({
 
   async function handleInvite() {
     if (!newMemberEmail.trim()) {
-      toast.error('Zadejte email');
+      toast.error(t('enterEmail'));
       return;
     }
 
@@ -244,16 +244,16 @@ export function ProjectSettings({
     <div className="max-w-2xl space-y-6">
       <div>
         <h1 className="text-2xl font-bold">{t('title')}</h1>
-        <p className="text-sm text-muted-foreground">Úprava detailů a správa členů projektu</p>
+        <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Obecné</CardTitle>
+          <CardTitle>{t('generalSection')}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Obrázek projektu</Label>
+            <Label>{t('coverImage')}</Label>
             <div className="flex items-center gap-4">
               <div className="h-24 w-40 overflow-hidden rounded-lg border bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                 {coverImageUrl ? (
@@ -278,7 +278,7 @@ export function ProjectSettings({
                   onClick={() => coverInputRef.current?.click()}
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  {uploadingCover ? 'Nahrávání...' : 'Nahrát obrázek'}
+                  {uploadingCover ? t('uploadingCover') : t('uploadCover')}
                 </Button>
                 {coverImageUrl && (
                   <Button
@@ -288,7 +288,7 @@ export function ProjectSettings({
                     onClick={handleCoverRemove}
                   >
                     <X className="mr-2 h-4 w-4" />
-                    Odebrat
+                    {t('removeCover')}
                   </Button>
                 )}
               </div>
@@ -300,15 +300,15 @@ export function ProjectSettings({
               <Input value={name} onChange={(e) => setName(e.target.value)} required />
             </div>
             <div className="space-y-2">
-              <Label>Popis</Label>
+              <Label>{t('descriptionLabel')}</Label>
               <Textarea value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Adresa</Label>
+              <Label>{t('addressLabel')}</Label>
               <Input value={address} onChange={(e) => setAddress(e.target.value)} />
             </div>
             <div className="space-y-2">
-              <Label>Status</Label>
+              <Label>{t('statusLabel')}</Label>
               <Select value={status} onChange={(e) => setStatus(e.target.value)}>
                 {PROJECT_STATUSES.map((s) => (
                   <option key={s} value={s}>{tProjects(`statuses.${s}`)}</option>
@@ -328,12 +328,12 @@ export function ProjectSettings({
           <CardTitle>{t('members')}</CardTitle>
           <Button size="sm" variant="outline" onClick={() => setShowAddMember(true)}>
             <UserPlus className="mr-2 h-4 w-4" />
-            Přidat
+            {t('addMember')}
           </Button>
         </CardHeader>
         <CardContent>
           {members.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Žádní členové</p>
+            <p className="text-sm text-muted-foreground">{t('noMembers')}</p>
           ) : (
             <div className="space-y-2">
               {members.map((member) => (
@@ -378,12 +378,12 @@ export function ProjectSettings({
 
       <Card className="border-destructive">
         <CardHeader>
-          <CardTitle className="text-destructive">Nebezpečná zóna</CardTitle>
+          <CardTitle className="text-destructive">{t('dangerZone')}</CardTitle>
         </CardHeader>
         <CardContent>
           <Button variant="destructive" onClick={handleDelete}>
             <Trash2 className="mr-2 h-4 w-4" />
-            Smazat projekt
+            {t('deleteProject')}
           </Button>
         </CardContent>
       </Card>
@@ -394,13 +394,13 @@ export function ProjectSettings({
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
-            <Label>Uživatel</Label>
+            <Label>{t('userLabel')}</Label>
             <div className="relative">
               <Input
                 value={userQuery}
                 onChange={(e) => handleUserQueryChange(e.target.value)}
                 onFocus={() => { if (userResults.length > 0) setShowUserResults(true); else doSearch(userQuery); }}
-                placeholder="Filtrovat uživatele..."
+                placeholder={t('filterUsers')}
                 autoComplete="off"
               />
               {showUserResults && (
@@ -409,9 +409,9 @@ export function ProjectSettings({
                   className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-md border bg-background shadow-md"
                 >
                   {searchingUsers ? (
-                    <div className="p-3 text-sm text-muted-foreground">Hledání...</div>
+                    <div className="p-3 text-sm text-muted-foreground">{t('searching')}</div>
                   ) : userResults.length === 0 ? (
-                    <div className="p-3 text-sm text-muted-foreground">Žádní uživatelé nenalezeni</div>
+                    <div className="p-3 text-sm text-muted-foreground">{t('noUsersFound')}</div>
                   ) : (
                     userResults.map((u) => (
                       <button
@@ -433,17 +433,17 @@ export function ProjectSettings({
             </div>
           </div>
           <div className="space-y-2">
-            <Label>Role</Label>
+            <Label>{t('roleLabel')}</Label>
             <Select value={newMemberRole} onChange={(e) => setNewMemberRole(e.target.value)}>
-              <option value="admin">Administrátor</option>
-              <option value="member">Člen</option>
-              <option value="follower">Sledující</option>
+              <option value="admin">{tRoles('administrator')}</option>
+              <option value="member">{tRoles('member')}</option>
+              <option value="follower">{tRoles('follower')}</option>
             </Select>
           </div>
           <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => { setShowAddMember(false); setUserQuery(''); setUserResults([]); setShowUserResults(false); }}>Zrušit</Button>
+            <Button variant="outline" onClick={() => { setShowAddMember(false); setUserQuery(''); setUserResults([]); setShowUserResults(false); }}>{tCommon('cancel')}</Button>
             <Button onClick={handleInvite} disabled={inviting}>
-              {inviting ? 'Přidávání...' : 'Pozvat'}
+              {inviting ? t('adding') : t('invite')}
             </Button>
           </div>
         </div>

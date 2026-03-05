@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslations } from 'next-intl';
 import { Camera, Upload, ArrowLeft, Check, Pencil } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +24,7 @@ interface AnnotationPhotosPanelProps {
 }
 
 export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPhotosPanelProps) {
+  const t = useTranslations('plans.annotationPhotos');
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [uploading, setUploading] = useState(false);
   const [editingPhotoId, setEditingPhotoId] = useState<string | null>(null);
@@ -63,7 +65,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
         .upload(fileName, compressed, { contentType: 'image/jpeg' });
 
       if (uploadError) {
-        toast.error(`Chyba při nahrávání ${file.name}: ${uploadError.message}`);
+        toast.error(t('uploadError', { name: file.name, error: uploadError.message }));
         continue;
       }
 
@@ -82,7 +84,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
         .single();
 
       if (error) {
-        toast.error(`Chyba při ukládání ${file.name}: ${error.message}`);
+        toast.error(t('saveError', { name: file.name, error: error.message }));
       } else if (data) {
         setPhotos(prev => [data, ...prev]);
         successCount++;
@@ -91,7 +93,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
 
     setUploading(false);
     if (successCount > 0) {
-      toast.success(`${successCount} ${successCount === 1 ? 'fotka nahrána' : 'fotek nahráno'}`);
+      toast.success(t('photosUploaded', { count: successCount }));
     }
   }, [projectId, annotationId]);
 
@@ -121,7 +123,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
           onClick={() => setExpandedPhotoId(null)}
         >
           <ArrowLeft className="h-3.5 w-3.5" />
-          Zpět na fotky
+          {t('backToPhotos')}
         </button>
         <div className="overflow-hidden rounded-md border">
           <img
@@ -164,7 +166,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
           disabled={uploading}
         >
           <Camera className="mr-1 h-4 w-4" />
-          Vyfotit
+          {t('takePhoto')}
         </Button>
         <Button
           size="sm"
@@ -174,12 +176,12 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
           disabled={uploading}
         >
           <Upload className="mr-1 h-4 w-4" />
-          Z galerie
+          {t('fromGallery')}
         </Button>
       </div>
 
       {photos.length === 0 ? (
-        <p className="text-center text-sm text-muted-foreground">Žádné fotky</p>
+        <p className="text-center text-sm text-muted-foreground">{t('noPhotos')}</p>
       ) : (
         <div className="grid grid-cols-2 gap-2">
           {photos.map((photo) => (
@@ -201,7 +203,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
                       value={editPhotoCaption}
                       onChange={(e) => setEditPhotoCaption(e.target.value)}
                       className="h-6 flex-1 text-xs"
-                      placeholder="Popis..."
+                      placeholder={t('captionPlaceholder')}
                       autoFocus
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') handleSavePhotoCaption(photo.id);
@@ -217,7 +219,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
                     className="w-full truncate text-left text-xs text-muted-foreground hover:text-foreground"
                     onClick={(e) => { e.stopPropagation(); setEditingPhotoId(photo.id); setEditPhotoCaption(photo.caption || ''); }}
                   >
-                    {photo.caption || 'Přidat popis...'}
+                    {photo.caption || t('addCaption')}
                   </button>
                 )}
               </div>

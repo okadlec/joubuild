@@ -242,7 +242,7 @@ export function TaskDialog({
       return;
     }
     onDeleted(task.id);
-    toast.success('Úkol smazán');
+    toast.success(t('taskDeleted'));
   }
 
   return (
@@ -252,7 +252,7 @@ export function TaskDialog({
       </DialogHeader>
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label>Název *</Label>
+          <Label>{t('titleRequired')}</Label>
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -266,7 +266,7 @@ export function TaskDialog({
           <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="Popis úkolu..."
+            placeholder={t('descriptionPlaceholder')}
           />
         </div>
 
@@ -294,7 +294,7 @@ export function TaskDialog({
             <div className="space-y-2">
               <Label>{t('category')}</Label>
               <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                <option value="">— Bez kategorie —</option>
+                <option value="">{t('noCategoryOption')}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -303,9 +303,9 @@ export function TaskDialog({
           )}
           {members.length > 0 && (
             <div className="space-y-2">
-              <Label>Přiřazeno</Label>
+              <Label>{t('assignee')}</Label>
               <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
-                <option value="">— Nepřiřazeno —</option>
+                <option value="">{t('unassignedOption')}</option>
                 {members.map((m) => (
                   <option key={m.user_id} value={m.user_id}>
                     {m.full_name || m.email || m.user_id.slice(0, 8)}
@@ -317,18 +317,18 @@ export function TaskDialog({
         </div>
 
         <div className="space-y-2">
-          <Label>Tagy</Label>
+          <Label>{t('tagsLabel')}</Label>
           <TagPicker
             tags={taskTags}
             onChange={setTaskTags}
             suggestions={projectTags.map(t => t.name)}
-            placeholder="Přidat tag..."
+            placeholder={t('addTag')}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Začátek</Label>
+            <Label>{t('startDate')}</Label>
             <Input
               type="date"
               value={startDate}
@@ -347,7 +347,7 @@ export function TaskDialog({
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label>Odhadované hodiny</Label>
+            <Label>{t('estimatedHours')}</Label>
             <Input
               type="number"
               step="0.5"
@@ -357,7 +357,7 @@ export function TaskDialog({
             />
           </div>
           <div className="space-y-2">
-            <Label>Odhadované náklady (Kč)</Label>
+            <Label>{t('estimatedCost')}</Label>
             <Input
               type="number"
               step="100"
@@ -371,7 +371,7 @@ export function TaskDialog({
         {task && (
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label>Skutečné hodiny</Label>
+              <Label>{t('actualHours')}</Label>
               <Input
                 type="number"
                 step="0.5"
@@ -381,7 +381,7 @@ export function TaskDialog({
               />
             </div>
             <div className="space-y-2">
-              <Label>Skutečné náklady (Kč)</Label>
+              <Label>{t('actualCost')}</Label>
               <Input
                 type="number"
                 step="100"
@@ -410,7 +410,7 @@ export function TaskDialog({
             {task && (
               <Button type="button" variant="destructive" size="sm" onClick={handleDelete}>
                 <Trash2 className="mr-2 h-4 w-4" />
-                Smazat
+                {tCommon('delete')}
               </Button>
             )}
             {task?.annotation_id && linkedSheetId && (
@@ -423,7 +423,7 @@ export function TaskDialog({
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={onClose}>{tCommon('cancel')}</Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Ukládání...' : task ? t('updateTask') : t('createTask')}
+              {loading ? tCommon('saving') : task ? t('updateTask') : t('createTask')}
             </Button>
           </div>
         </div>

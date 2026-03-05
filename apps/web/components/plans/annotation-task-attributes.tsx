@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { CheckSquare, Plus, ChevronDown, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -59,6 +60,9 @@ export function AnnotationTaskAttributes({
   onTaskUpdated,
   onTaskDeleted,
 }: AnnotationTaskAttributesProps) {
+  const t = useTranslations('plans.annotationTasks');
+  const tTasks = useTranslations('tasks');
+  const tCommon = useTranslations('common');
   const [categories, setCategories] = useState<TaskCategory[]>([]);
   const [members, setMembers] = useState<MemberInfo[]>([]);
   const [projectTags, setProjectTags] = useState<Tag[]>([]);
@@ -226,12 +230,12 @@ export function AnnotationTaskAttributes({
     setNewTaskTitle('');
     setCreating(false);
     setShowCreateForm(false);
-    toast.success('Úkol vytvořen');
+    toast.success(tTasks('taskCreated'));
   }, [projectId, annotationId, newTaskTitle, onTaskCreated]);
 
   const handleDeleteTask = useCallback(async () => {
     if (!selectedTask) return;
-    if (!confirm('Opravdu chcete smazat tento úkol?')) return;
+    if (!confirm(tTasks('deleteTaskConfirm'))) return;
     const supabase = getSupabaseClient();
     const { error } = await supabase.from('tasks').delete().eq('id', selectedTask.id);
     if (error) {
@@ -239,7 +243,7 @@ export function AnnotationTaskAttributes({
       return;
     }
     onTaskDeleted(selectedTask.id);
-    toast.success('Úkol smazán');
+    toast.success(tTasks('taskDeleted'));
   }, [selectedTask, onTaskDeleted]);
 
   const handleTagsChange = useCallback(async (newTags: string[]) => {
@@ -279,7 +283,7 @@ export function AnnotationTaskAttributes({
       <div className="space-y-4 p-4">
         {planPreviewData && (
           <div className="mb-4">
-            <Label className="mb-1.5 text-xs text-muted-foreground">Plán</Label>
+            <Label className="mb-1.5 text-xs text-muted-foreground">{t('plan')}</Label>
             <AnnotationPlanPreview
               projectId={projectId}
               sheetId={planPreviewData.sheetId}
@@ -297,18 +301,18 @@ export function AnnotationTaskAttributes({
 
         <div className="rounded-lg border border-dashed p-4 text-center">
           <CheckSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-          <p className="mb-3 text-sm text-muted-foreground">Žádný propojený úkol</p>
+          <p className="mb-3 text-sm text-muted-foreground">{t('noLinkedTask')}</p>
           <div className="flex gap-2">
             <Input
               value={newTaskTitle}
               onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder="Název úkolu..."
+              placeholder={t('taskNamePlaceholder')}
               className="flex-1"
               onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTask(); }}
             />
             <Button size="sm" onClick={handleCreateTask} disabled={creating || !newTaskTitle.trim()}>
               <Plus className="mr-1 h-4 w-4" />
-              Vytvořit
+              {tCommon('create')}
             </Button>
           </div>
         </div>
@@ -350,7 +354,7 @@ export function AnnotationTaskAttributes({
               <Input
                 value={newTaskTitle}
                 onChange={(e) => setNewTaskTitle(e.target.value)}
-                placeholder="Název úkolu..."
+                placeholder={t('taskNamePlaceholder')}
                 className="h-7 flex-1 text-sm"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') handleCreateTask();
@@ -360,7 +364,7 @@ export function AnnotationTaskAttributes({
               />
               <Button size="sm" className="h-7 text-xs" onClick={handleCreateTask} disabled={creating || !newTaskTitle.trim()}>
                 <Plus className="mr-1 h-3 w-3" />
-                Vytvořit
+                {tCommon('create')}
               </Button>
             </div>
           ) : (
@@ -369,7 +373,7 @@ export function AnnotationTaskAttributes({
               className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
               <Plus className="h-3 w-3" />
-              Přidat úkol
+              {t('addTask')}
             </button>
           )}
         </div>
@@ -380,7 +384,7 @@ export function AnnotationTaskAttributes({
         <div className="space-y-3 p-4">
           {/* Status */}
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Status</Label>
+            <Label className="text-xs text-muted-foreground">{t('status')}</Label>
             <div className="flex gap-1.5 flex-wrap">
               {TASK_STATUSES.map((s) => (
                 <button
@@ -401,7 +405,7 @@ export function AnnotationTaskAttributes({
 
           {/* Priority */}
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Priorita</Label>
+            <Label className="text-xs text-muted-foreground">{t('priority')}</Label>
             <Select
               value={selectedTask.priority}
               onChange={(e) => autoSaveField('priority', e.target.value)}
@@ -416,13 +420,13 @@ export function AnnotationTaskAttributes({
           {/* Category */}
           {categories.length > 0 && (
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Kategorie</Label>
+              <Label className="text-xs text-muted-foreground">{t('category')}</Label>
               <Select
                 value={selectedTask.category_id || ''}
                 onChange={(e) => autoSaveField('category_id', e.target.value || null)}
                 className="h-8 text-sm"
               >
-                <option value="">— Bez kategorie —</option>
+                <option value="">{t('noCategoryOption')}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
                 ))}
@@ -432,13 +436,13 @@ export function AnnotationTaskAttributes({
 
           {/* Assignee */}
           <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Zodpovědná osoba</Label>
+            <Label className="text-xs text-muted-foreground">{t('assignee')}</Label>
             <Select
               value={selectedTask.assignee_id || ''}
               onChange={(e) => autoSaveField('assignee_id', e.target.value || null)}
               className="h-8 text-sm"
             >
-              <option value="">— Nepřiřazeno —</option>
+              <option value="">{t('unassignedOption')}</option>
               {members.map((m) => (
                 <option key={m.user_id} value={m.user_id}>
                   {m.full_name || m.email}
@@ -450,7 +454,7 @@ export function AnnotationTaskAttributes({
           {/* Plan preview */}
           {planPreviewData && (
             <div className="space-y-1">
-              <Label className="text-xs text-muted-foreground">Plán</Label>
+              <Label className="text-xs text-muted-foreground">{t('plan')}</Label>
               <AnnotationPlanPreview
                 projectId={projectId}
                 sheetId={planPreviewData.sheetId}
@@ -473,7 +477,7 @@ export function AnnotationTaskAttributes({
             className="flex w-full items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             {showAdvanced ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            Rozšířené nastavení
+            {t('advancedSettings')}
           </button>
 
           {showAdvanced && (
@@ -481,7 +485,7 @@ export function AnnotationTaskAttributes({
               {/* Dates */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Začátek</Label>
+                  <Label className="text-xs text-muted-foreground">{tTasks('startDate')}</Label>
                   <Input
                     type="date"
                     value={selectedTask.start_date || ''}
@@ -490,7 +494,7 @@ export function AnnotationTaskAttributes({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Termín</Label>
+                  <Label className="text-xs text-muted-foreground">{tTasks('dueDate')}</Label>
                   <Input
                     type="date"
                     value={selectedTask.due_date || ''}
@@ -503,7 +507,7 @@ export function AnnotationTaskAttributes({
               {/* Hours & Costs */}
               <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Odhad hodin</Label>
+                  <Label className="text-xs text-muted-foreground">{tTasks('estimatedHours')}</Label>
                   <Input
                     type="number"
                     step="0.5"
@@ -514,7 +518,7 @@ export function AnnotationTaskAttributes({
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">Odhad nákladů</Label>
+                  <Label className="text-xs text-muted-foreground">{tTasks('estimatedCost')}</Label>
                   <Input
                     type="number"
                     step="100"
@@ -528,12 +532,12 @@ export function AnnotationTaskAttributes({
 
               {/* Tags */}
               <div className="space-y-1">
-                <Label className="text-xs text-muted-foreground">Tagy</Label>
+                <Label className="text-xs text-muted-foreground">{tTasks('tagsLabel')}</Label>
                 <TagPicker
                   tags={taskTags}
                   onChange={handleTagsChange}
                   suggestions={projectTags.map(t => t.name)}
-                  placeholder="Přidat tag..."
+                  placeholder={tTasks('addTag')}
                 />
               </div>
 
@@ -545,7 +549,7 @@ export function AnnotationTaskAttributes({
                   className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                   onClick={handleDeleteTask}
                 >
-                  Smazat úkol
+                  {tTasks('deleteTask')}
                 </Button>
               </div>
             </>
