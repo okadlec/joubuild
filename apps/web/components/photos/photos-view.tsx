@@ -495,10 +495,10 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
       )}
 
       {/* Photo detail dialog */}
-      <Dialog open={!!selectedPhoto} onClose={() => { setSelectedPhoto(null); setEditingPhoto(false); }} className="max-w-4xl">
+      <Dialog open={!!selectedPhoto} onClose={() => { setSelectedPhoto(null); setEditingPhoto(false); }} className="max-w-4xl lg:max-w-7xl lg:overflow-hidden lg:p-0 lg:max-h-[85vh]">
         {selectedPhoto && (
           <>
-            <DialogHeader>
+            <DialogHeader className="lg:px-6 lg:pt-6 lg:pb-2">
               <div className="flex items-center gap-2">
                 <DialogTitle className="flex-1">{selectedPhoto.caption || t('photo')}</DialogTitle>
                 {!editingPhoto && (
@@ -509,46 +509,52 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                 )}
               </div>
             </DialogHeader>
-            <div className="space-y-4">
-              {selectedPhoto.type === 'photo_360' ? (
-                <Photo360Viewer imageUrl={selectedPhoto.file_url} />
-              ) : (
-                <img
-                  src={selectedPhoto.file_url}
-                  alt={selectedPhoto.caption || ''}
-                  className="max-h-[60vh] w-full rounded object-contain"
-                />
-              )}
+            <div className="space-y-4 lg:space-y-0 lg:flex lg:flex-row lg:flex-1 lg:min-h-0">
+              {/* Left column: photo + edit form */}
+              <div className="lg:flex-1 lg:min-w-0 lg:overflow-y-auto lg:p-6 lg:pt-2">
+                {selectedPhoto.type === 'photo_360' ? (
+                  <Photo360Viewer imageUrl={selectedPhoto.file_url} />
+                ) : (
+                  <img
+                    src={selectedPhoto.file_url}
+                    alt={selectedPhoto.caption || ''}
+                    className="max-h-[60vh] lg:max-h-[75vh] w-full rounded object-contain"
+                  />
+                )}
 
-              {editingPhoto ? (
-                <div className="space-y-3 rounded-lg border bg-muted/50 p-3">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium">{t('captionLabel')}</label>
-                    <Input
-                      value={editCaption}
-                      onChange={(e) => setEditCaption(e.target.value)}
-                      placeholder={t('captionPlaceholder')}
-                    />
+                {editingPhoto && (
+                  <div className="mt-4 space-y-3 rounded-lg border bg-muted/50 p-3">
+                    <div>
+                      <label className="mb-1 block text-xs font-medium">{t('captionLabel')}</label>
+                      <Input
+                        value={editCaption}
+                        onChange={(e) => setEditCaption(e.target.value)}
+                        placeholder={t('captionPlaceholder')}
+                      />
+                    </div>
+                    <div>
+                      <label className="mb-1 block text-xs font-medium">{t('tagsLabel')}</label>
+                      <TagPicker
+                        tags={editTags}
+                        onChange={setEditTags}
+                        suggestions={allTags}
+                        placeholder={t('newTagPlaceholder')}
+                      />
+                    </div>
+                    <div className="flex justify-end gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setEditingPhoto(false)}>{tCommon('cancel')}</Button>
+                      <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
+                        <Check className="mr-1 h-3.5 w-3.5" />
+                        {savingEdit ? tCommon('saving') : tCommon('save')}
+                      </Button>
+                    </div>
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium">{t('tagsLabel')}</label>
-                    <TagPicker
-                      tags={editTags}
-                      onChange={setEditTags}
-                      suggestions={allTags}
-                      placeholder={t('newTagPlaceholder')}
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2">
-                    <Button variant="outline" size="sm" onClick={() => setEditingPhoto(false)}>{tCommon('cancel')}</Button>
-                    <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
-                      <Check className="mr-1 h-3.5 w-3.5" />
-                      {savingEdit ? tCommon('saving') : tCommon('save')}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div className="space-y-2">
+                )}
+              </div>
+
+              {/* Right sidebar: annotation preview + metadata + comments */}
+              {!editingPhoto && (
+                <div className="space-y-4 lg:w-[360px] lg:shrink-0 lg:border-l lg:overflow-y-auto lg:p-4">
                   {selectedPhoto.sheet_id && selectedPhoto.annotation_id && selectedPhoto.annotation_type && selectedPhoto.annotation_data ? (
                     <AnnotationPlanPreview
                       projectId={projectId}
@@ -587,7 +593,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                       <span className="text-sm font-medium text-blue-600 dark:text-blue-400">{selectedPhoto.sheet_name}</span>
                     </div>
                   ) : null}
-                  <div className="flex justify-between text-sm text-muted-foreground">
+                  <div className="space-y-2 text-sm text-muted-foreground lg:space-y-2">
                     <div className="flex items-center gap-2">
                       <span>{formatDate(selectedPhoto.created_at)}</span>
                       {selectedPhoto.tags && selectedPhoto.tags.map(t => (
@@ -607,65 +613,63 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                       </Button>
                     </div>
                   </div>
-                </div>
-              )}
 
-              {/* Comments section */}
-              {!editingPhoto && (
-                <div className="rounded-lg border">
-                  <button
-                    className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium hover:bg-muted/50"
-                    onClick={() => setShowComments(!showComments)}
-                  >
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4" />
-                      {t('comments')}
-                      {photoComments.length > 0 && (
-                        <Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
-                          {photoComments.length}
-                        </Badge>
-                      )}
-                    </div>
-                    {showComments ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </button>
-                  {showComments && (
-                    <div className="border-t">
-                      <div className="max-h-60 space-y-2 overflow-auto p-3">
-                        {photoComments.length === 0 && (
-                          <p className="text-center text-sm text-muted-foreground">{t('noComments')}</p>
+                  {/* Comments section */}
+                  <div className="rounded-lg border">
+                    <button
+                      className="flex w-full items-center justify-between px-3 py-2 text-sm font-medium hover:bg-muted/50"
+                      onClick={() => setShowComments(!showComments)}
+                    >
+                      <div className="flex items-center gap-2">
+                        <MessageSquare className="h-4 w-4" />
+                        {t('comments')}
+                        {photoComments.length > 0 && (
+                          <Badge variant="secondary" className="h-5 min-w-[20px] px-1.5 text-xs">
+                            {photoComments.length}
+                          </Badge>
                         )}
-                        {photoComments.map((comment) => {
-                          const displayName = comment.user_name || comment.user_email || comment.user_id?.slice(0, 8) || t('anonymousUser');
-                          return (
-                            <div key={comment.id} className="flex gap-2">
-                              <Avatar name={displayName} size="sm" />
-                              <div className="flex-1 rounded-lg bg-muted p-2">
-                                <div className="mb-0.5 flex items-center gap-2">
-                                  <span className="text-xs font-medium">{displayName}</span>
-                                  <span className="text-xs text-muted-foreground">
-                                    {formatRelativeTime(comment.created_at)}
-                                  </span>
-                                </div>
-                                <p className="text-sm">{comment.body}</p>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        <div ref={commentBottomRef} />
                       </div>
-                      <form onSubmit={handleSendPhotoComment} className="flex gap-2 border-t p-3">
-                        <Input
-                          value={commentBody}
-                          onChange={(e) => setCommentBody(e.target.value)}
-                          placeholder={t('commentPlaceholder')}
-                          className="flex-1"
-                        />
-                        <Button type="submit" size="icon" disabled={sendingComment || !commentBody.trim()}>
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      </form>
-                    </div>
-                  )}
+                      {showComments ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </button>
+                    {showComments && (
+                      <div className="border-t">
+                        <div className="max-h-60 space-y-2 overflow-auto p-3">
+                          {photoComments.length === 0 && (
+                            <p className="text-center text-sm text-muted-foreground">{t('noComments')}</p>
+                          )}
+                          {photoComments.map((comment) => {
+                            const displayName = comment.user_name || comment.user_email || comment.user_id?.slice(0, 8) || t('anonymousUser');
+                            return (
+                              <div key={comment.id} className="flex gap-2">
+                                <Avatar name={displayName} size="sm" />
+                                <div className="flex-1 rounded-lg bg-muted p-2">
+                                  <div className="mb-0.5 flex items-center gap-2">
+                                    <span className="text-xs font-medium">{displayName}</span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {formatRelativeTime(comment.created_at)}
+                                    </span>
+                                  </div>
+                                  <p className="text-sm">{comment.body}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          <div ref={commentBottomRef} />
+                        </div>
+                        <form onSubmit={handleSendPhotoComment} className="flex gap-2 border-t p-3">
+                          <Input
+                            value={commentBody}
+                            onChange={(e) => setCommentBody(e.target.value)}
+                            placeholder={t('commentPlaceholder')}
+                            className="flex-1"
+                          />
+                          <Button type="submit" size="icon" disabled={sendingComment || !commentBody.trim()}>
+                            <Send className="h-4 w-4" />
+                          </Button>
+                        </form>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
