@@ -1,7 +1,10 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { MapPin } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { getSupabaseClient } from '@/lib/supabase/client';
+import { generatePdfThumbnail } from '@/lib/generate-pdf-thumbnail';
 
 interface AnnotationPlanPreviewProps {
   projectId: string;
@@ -13,6 +16,7 @@ interface AnnotationPlanPreviewProps {
   thumbnailUrl: string | null;
   sheetWidth: number | null;
   sheetHeight: number | null;
+  sheetVersionId?: string | null;
   planSetName?: string | null;
   onNavigate?: () => void;
 }
@@ -66,27 +70,61 @@ export function AnnotationPlanPreview({
   thumbnailUrl,
   sheetWidth,
   sheetHeight,
+  sheetVersionId,
   planSetName,
   onNavigate,
 }: AnnotationPlanPreviewProps) {
   const router = useRouter();
+  const [resolvedThumbnail, setResolvedThumbnail] = useState(thumbnailUrl);
+  const [resolvedWidth, setResolvedWidth] = useState(sheetWidth);
+  const [resolvedHeight, setResolvedHeight] = useState(sheetHeight);
+
+  // On-demand thumbnail regeneration when thumbnail is missing
+  useEffect(() => {
+    if (thumbnailUrl || !sheetVersionId) return;
+
+    let cancelled = false;
+    (async () => {
+      const supabase = getSupabaseClient();
+      const { data: sv } = await supabase
+        .from('sheet_versions')
+        .select('file_url')
+        .eq('id', sheetVersionId)
+        .maybeSingle();
+      if (cancelled || !sv?.file_url) return;
+
+      const result = await generatePdfThumbnail(sv.file_url);
+      if (cancelled || !result) return;
+
+      const thumbPath = `${projectId}/${sheetVersionId}.jpg`;
+      const { error: uploadErr } = await supabase.storage
+        .from('thumbnails')
+        .upload(thumbPath, result.blob, { contentType: 'image/jpeg', upsert: true });
+      if (cancelled || uploadErr) return;
+
+      const { data: thumbUrl } = supabase.storage.from('thumbnails').getPublicUrl(thumbPath);
+      await supabase.from('sheet_versions').update({
+        thumbnail_url: thumbUrl.publicUrl,
+        width: result.width,
+        height: result.height,
+      }).eq('id', sheetVersionId);
+
+      if (!cancelled) {
+        setResolvedThumbnail(thumbUrl.publicUrl);
+        setResolvedWidth(result.width);
+        setResolvedHeight(result.height);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [thumbnailUrl, sheetVersionId, projectId]);
 
   const center = getAnnotationCenter(annotationType, annotationData);
 
-  console.log('[AnnotationPlanPreview] render:', {
-    annotationType,
-    annotationData,
-    thumbnailUrl,
-    sheetWidth,
-    sheetHeight,
-    center,
-  });
-
   let pinLeftPct = 50;
   let pinTopPct = 50;
-  if (center && sheetWidth && sheetHeight) {
-    pinLeftPct = Math.max(0, Math.min(100, (center.x / sheetWidth) * 100));
-    pinTopPct = Math.max(0, Math.min(100, (center.y / sheetHeight) * 100));
+  if (center && resolvedWidth && resolvedHeight) {
+    pinLeftPct = Math.max(0, Math.min(100, (center.x / resolvedWidth) * 100));
+    pinTopPct = Math.max(0, Math.min(100, (center.y / resolvedHeight) * 100));
   }
 
   const handleClick = () => {
@@ -100,9 +138,9 @@ export function AnnotationPlanPreview({
       className="group w-full rounded-lg border bg-muted/30 p-2 text-left transition-colors hover:bg-muted/60"
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden rounded-md bg-muted">
-        {thumbnailUrl ? (
+        {resolvedThumbnail ? (
           <img
-            src={thumbnailUrl}
+            src={resolvedThumbnail}
             alt={sheetName}
             className="h-full w-full object-contain"
           />

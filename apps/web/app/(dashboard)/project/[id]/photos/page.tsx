@@ -54,17 +54,5 @@ export default async function PhotosPage({ params }: { params: Promise<{ id: str
     };
   });
 
-  console.log('[Photos] enriched sample:', enrichedPhotos.slice(0, 2).map(p => ({
-    id: p.id,
-    annotation_id: p.annotation_id,
-    annotation_type: p.annotation_type,
-    annotation_data: p.annotation_data,
-    sheet_id: p.sheet_id,
-    sheet_name: p.sheet_name,
-    thumbnail_url: p.sheet_version_thumbnail_url,
-    sheet_width: p.sheet_version_width,
-    sheet_height: p.sheet_version_height,
-  })));
-
   return <PhotosView projectId={id} initialPhotos={enrichedPhotos} />;
 }
