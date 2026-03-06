@@ -69,8 +69,6 @@ export async function addMember(projectId: string, email: string, role: string) 
     return { error: error.message };
   }
 
-  console.log('[addMember] Insert successful for project:', projectId, 'user:', profile.id, 'role:', role);
-  console.log('[addMember] Calling revalidatePath for:', `/project/${projectId}/settings`);
   revalidatePath(`/project/${projectId}/settings`);
   return { success: true };
 }
