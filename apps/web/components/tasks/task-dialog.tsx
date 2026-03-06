@@ -308,7 +308,7 @@ export function TaskDialog({
                 <option value="">{t('unassignedOption')}</option>
                 {members.map((m) => (
                   <option key={m.user_id} value={m.user_id}>
-                    {m.full_name || m.email || m.user_id.slice(0, 8)}
+                    {m.full_name || m.email || m.user_id?.slice(0, 8) ?? '?'}
                   </option>
                 ))}
               </Select>

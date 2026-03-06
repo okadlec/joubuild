@@ -95,7 +95,7 @@ export function AnnotationTaskAttributes({
       setMembers(memberRows.map(m => ({
         user_id: m.user_id,
         full_name: pm[m.user_id]?.full_name ?? null,
-        email: pm[m.user_id]?.email ?? m.user_id.slice(0, 8),
+        email: pm[m.user_id]?.email ?? m.user_id?.slice(0, 8) ?? '?',
       })));
     }
     loadMembers();

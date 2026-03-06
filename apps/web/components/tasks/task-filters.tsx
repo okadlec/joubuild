@@ -100,7 +100,7 @@ export function TaskFiltersBar({ filters, onChange, categories = [], members = [
             <option value="">{t('allAssignees')}</option>
             {members.map((m) => (
               <option key={m.user_id} value={m.user_id}>
-                {m.full_name || m.email || m.user_id.slice(0, 8)}
+                {m.full_name || m.email || m.user_id?.slice(0, 8) ?? '?'}
               </option>
             ))}
           </Select>

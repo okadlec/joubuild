@@ -51,13 +51,15 @@ export default async function OrganizationPage() {
     : { data: [] as { id: string; email: string | null; full_name: string | null }[] };
   const profileMap = Object.fromEntries((profileRows || []).map(p => [p.id, p]));
 
-  const formattedMembers = (members || []).map(m => ({
-    id: m.id as string,
-    user_id: m.user_id as string,
-    role: m.role as string,
-    full_name: profileMap[m.user_id]?.full_name ?? null,
-    email: profileMap[m.user_id]?.email ?? null,
-  }));
+  const formattedMembers = (members || [])
+    .filter(m => m.user_id != null)
+    .map(m => ({
+      id: m.id as string,
+      user_id: m.user_id as string,
+      role: m.role as string,
+      full_name: profileMap[m.user_id]?.full_name ?? null,
+      email: profileMap[m.user_id]?.email ?? null,
+    }));
 
   const isAdmin = membership.role === 'owner' || membership.role === 'admin';
 

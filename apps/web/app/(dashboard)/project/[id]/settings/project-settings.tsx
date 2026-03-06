@@ -342,7 +342,7 @@ export function ProjectSettings({
                     <Avatar name={member.full_name || member.email || '?'} size="sm" />
                     <div>
                       <p className="text-sm font-medium">
-                        {member.full_name || member.email || member.user_id.slice(0, 8)}
+                        {member.full_name || member.email || member.user_id?.slice(0, 8) ?? '?'}
                       </p>
                       {member.full_name && member.email && (
                         <p className="text-xs text-muted-foreground">{member.email}</p>
