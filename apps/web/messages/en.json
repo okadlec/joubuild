@@ -81,7 +81,10 @@
   "header": {
     "profile": "Profile",
     "signOut": "Sign Out",
-    "user": "User"
+    "user": "User",
+    "themeLight": "Switch to dark mode",
+    "themeDark": "Switch to system mode",
+    "themeSystem": "Switch to light mode"
   },
   "notifications": {
     "title": "Notifications",

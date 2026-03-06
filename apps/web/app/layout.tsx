@@ -5,6 +5,7 @@ import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
 import { ServiceWorkerRegister } from '@/components/shared/sw-register';
 import { CapacitorInit } from '@/components/shared/capacitor-init';
+import { getTheme } from '@/lib/theme';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin', 'latin-ext'] });
@@ -40,9 +41,20 @@ export default async function RootLayout({
 }) {
   const locale = await getLocale();
   const messages = await getMessages();
+  const theme = await getTheme();
+
+  // Static script to detect system dark mode preference before first paint.
+  // Contains no user input — hardcoded string only.
+  const systemThemeScript =
+    '(function(){try{if(window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.classList.add("dark")}}catch(e){}})()';
 
   return (
-    <html lang={locale}>
+    <html lang={locale} className={theme === 'dark' ? 'dark' : ''} suppressHydrationWarning>
+      {theme === 'system' && (
+        <head>
+          <script dangerouslySetInnerHTML={{ __html: systemThemeScript }} />
+        </head>
+      )}
       <body className={inter.className}>
         <NextIntlClientProvider messages={messages}>
           {children}

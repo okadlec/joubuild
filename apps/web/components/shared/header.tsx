@@ -1,13 +1,17 @@
 'use client';
 
+import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { LogOut, User, Building2, Menu } from 'lucide-react';
+import { LogOut, User, Building2, Menu, Sun, Moon, Monitor } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu';
 import { OfflineIndicator } from './offline-indicator';
 import { NotificationsPanel } from './notifications-panel';
+
+type Theme = 'light' | 'dark' | 'system';
+const themeCycle: Theme[] = ['light', 'dark', 'system'];
 
 interface HeaderProps {
   user: {
@@ -19,10 +23,21 @@ interface HeaderProps {
   hideHamburgerInProject?: boolean;
 }
 
+function getThemeFromCookie(): Theme {
+  const match = document.cookie.match(/(?:^|; )theme=(\w+)/);
+  const val = match?.[1] as Theme | undefined;
+  return val && themeCycle.includes(val) ? val : 'light';
+}
+
 export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProps) {
   const router = useRouter();
   const t = useTranslations('header');
   const tSidebar = useTranslations('sidebar');
+  const [currentTheme, setCurrentTheme] = React.useState<Theme>('light');
+
+  React.useEffect(() => {
+    setCurrentTheme(getThemeFromCookie());
+  }, []);
 
   async function handleSignOut() {
     const supabase = getSupabaseClient();
@@ -47,6 +62,29 @@ export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProp
       <div className="flex items-center gap-3">
         <OfflineIndicator />
         <NotificationsPanel />
+
+        <button
+          onClick={async () => {
+            const next = themeCycle[(themeCycle.indexOf(currentTheme) + 1) % themeCycle.length];
+            await fetch('/api/theme', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ theme: next }),
+            });
+            setCurrentTheme(next);
+            router.refresh();
+          }}
+          className="rounded-md p-2 hover:bg-accent"
+          title={t(currentTheme === 'dark' ? 'themeDark' : currentTheme === 'system' ? 'themeSystem' : 'themeLight')}
+        >
+          {currentTheme === 'dark' ? (
+            <Sun className="h-5 w-5" />
+          ) : currentTheme === 'system' ? (
+            <Monitor className="h-5 w-5" />
+          ) : (
+            <Moon className="h-5 w-5" />
+          )}
+        </button>
 
         <DropdownMenu
           trigger={

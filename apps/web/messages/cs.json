@@ -81,7 +81,10 @@
   "header": {
     "profile": "Profil",
     "signOut": "Odhlásit se",
-    "user": "Uživatel"
+    "user": "Uživatel",
+    "themeLight": "Přepnout na tmavý režim",
+    "themeDark": "Přepnout na systémový režim",
+    "themeSystem": "Přepnout na světlý režim"
   },
   "notifications": {
     "title": "Notifikace",
