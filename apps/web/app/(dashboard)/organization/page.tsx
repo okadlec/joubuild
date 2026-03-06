@@ -45,7 +45,7 @@ export default async function OrganizationPage() {
     .eq('organization_id', org.id)
     .order('created_at');
 
-  const userIds = (members || []).map(m => m.user_id);
+  const userIds = (members || []).filter(m => m.user_id != null).map(m => m.user_id);
   const { data: profileRows } = userIds.length
     ? await supabase.from('profiles').select('id, email, full_name').in('id', userIds)
     : { data: [] as { id: string; email: string | null; full_name: string | null }[] };
