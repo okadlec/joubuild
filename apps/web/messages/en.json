@@ -755,6 +755,52 @@
     "scheduleSaved": "Report schedule saved",
     "asBuiltGenerated": "As-Built manifest generated (CSV with links to current plans)"
   },
+  "landing": {
+    "nav": {
+      "signIn": "Sign In",
+      "register": "Get Started"
+    },
+    "hero": {
+      "title": "Construction management under control",
+      "subtitle": "Plans, tasks, photos and forms — everything your construction site needs, in one place. Built for teams that build.",
+      "cta": "Start for free"
+    },
+    "features": {
+      "title": "Everything you need on site",
+      "plans": {
+        "title": "Plans & Drawings",
+        "description": "Upload, version and annotate construction plans. Always the latest revision at hand."
+      },
+      "tasks": {
+        "title": "Task Management",
+        "description": "Track issues, assign responsibility and monitor progress across all trades."
+      },
+      "photos": {
+        "title": "Photo Documentation",
+        "description": "Capture site conditions with geotagged photos linked directly to plans."
+      },
+      "forms": {
+        "title": "Forms & RFI",
+        "description": "Daily reports, inspections and requests for information — digitized and traceable."
+      },
+      "realtime": {
+        "title": "Real-time Collaboration",
+        "description": "Everyone sees the latest updates instantly. No more emailing spreadsheets."
+      },
+      "offline": {
+        "title": "Mobile & Offline",
+        "description": "Works on any device. Download plans for offline use and sync when you're back online."
+      }
+    },
+    "cta": {
+      "title": "Ready to build smarter?",
+      "subtitle": "Join teams already using JouBuild to deliver projects on time.",
+      "button": "Create free account"
+    },
+    "footer": {
+      "copyright": "\u00a9 2025 JouBuild. All rights reserved."
+    }
+  },
   "metadata": {
     "title": "JouBuild - Construction Management",
     "description": "Platform for managing plans, tasks and communication on construction sites"

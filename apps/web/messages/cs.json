@@ -795,6 +795,52 @@
     "scheduleSaved": "Plán reportu uložen",
     "asBuiltGenerated": "As-Built manifest vygenerován (CSV s odkazy na aktuální výkresy)"
   },
+  "landing": {
+    "nav": {
+      "signIn": "Přihlásit se",
+      "register": "Začít zdarma"
+    },
+    "hero": {
+      "title": "Správa staveb pod kontrolou",
+      "subtitle": "Výkresy, úkoly, fotky a formuláře — vše co vaše stavba potřebuje, na jednom místě. Vytvořeno pro týmy, které staví.",
+      "cta": "Začít zdarma"
+    },
+    "features": {
+      "title": "Vše co na stavbě potřebujete",
+      "plans": {
+        "title": "Výkresy a plány",
+        "description": "Nahrávejte, verzujte a anotujte stavební výkresy. Vždy aktuální revize po ruce."
+      },
+      "tasks": {
+        "title": "Správa úkolů",
+        "description": "Sledujte závady, přiřazujte zodpovědnost a monitorujte postup napříč všemi profesemi."
+      },
+      "photos": {
+        "title": "Fotodokumentace",
+        "description": "Zachyťte stav stavby geotagovanými fotkami propojenými přímo s výkresy."
+      },
+      "forms": {
+        "title": "Formuláře a RFI",
+        "description": "Stavební deníky, inspekce a žádosti o informace — digitalizované a dohledatelné."
+      },
+      "realtime": {
+        "title": "Spolupráce v reálném čase",
+        "description": "Všichni vidí nejnovější aktualizace okamžitě. Žádné posílání tabulek emailem."
+      },
+      "offline": {
+        "title": "Mobil a offline",
+        "description": "Funguje na jakémkoliv zařízení. Stáhněte výkresy pro offline a synchronizujte při návratu."
+      }
+    },
+    "cta": {
+      "title": "Připraveni stavět chytřeji?",
+      "subtitle": "Přidejte se k týmům, které už používají JouBuild pro dodání projektů včas.",
+      "button": "Vytvořit účet zdarma"
+    },
+    "footer": {
+      "copyright": "\u00a9 2025 JouBuild. Všechna práva vyhrazena."
+    }
+  },
   "metadata": {
     "title": "JouBuild - Správa staveb",
     "description": "Platforma pro správu výkresů, úkolů a komunikace na stavbách"
