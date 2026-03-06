@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { revalidatePath } from 'next/cache';
 import { getCurrentAdminContext } from '@/lib/supabase/admin';
 import type { OrgRole } from '@joubuild/shared';
 
@@ -56,6 +57,7 @@ export async function createUser(data: {
       });
   }
 
+  revalidatePath('/admin/users');
   return { data: { id: userId } };
 }
 

@@ -45,7 +45,7 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             <Loader2 className="h-4 w-4 animate-spin" />
           </span>
         )}
-        <span className={cn(loading && 'invisible')}>{children}</span>
+        <span className={cn('inline-flex items-center', loading && 'invisible')}>{children}</span>
       </button>
     );
   }

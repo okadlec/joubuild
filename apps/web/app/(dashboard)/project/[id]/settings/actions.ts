@@ -69,6 +69,7 @@ export async function addMember(projectId: string, email: string, role: string) 
     return { error: error.message };
   }
 
+  revalidatePath(`/project/${projectId}/settings`);
   return { success: true };
 }
 
