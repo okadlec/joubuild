@@ -15,6 +15,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
     supabase.from('folders').select('*').eq('project_id', id).order('name'),
   ]);
 
+  console.log('[SettingsPage] Fetched members for project:', id, 'count:', members?.length, 'ids:', members?.map(m => m.user_id));
+
   if (!project) {
     notFound();
   }

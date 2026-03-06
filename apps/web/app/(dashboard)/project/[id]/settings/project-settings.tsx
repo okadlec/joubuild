@@ -61,6 +61,7 @@ export function ProjectSettings({
   initialFolderPermissions?: FolderPermission[];
   folders?: FolderInfo[];
 }) {
+  console.log('[ProjectSettings] Rendered with members count:', members.length, 'ids:', members.map(m => m.user_id));
   const router = useRouter();
   const t = useTranslations('settings');
   const tCommon = useTranslations('common');
@@ -236,6 +237,7 @@ export function ProjectSettings({
       setUserQuery('');
       setUserResults([]);
       router.refresh();
+      console.log('[ProjectSettings] router.refresh() called after successful add');
     }
     setInviting(false);
   }
