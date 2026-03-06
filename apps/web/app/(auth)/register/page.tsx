@@ -87,7 +87,7 @@ export default function RegisterPage() {
           </div>
         </CardContent>
         <CardFooter className="flex-col space-y-3">
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" loading={loading}>
             {loading ? t('registering') : t('registerButton')}
           </Button>
           <p className="text-sm text-muted-foreground">

@@ -163,7 +163,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
           size="sm"
           className="flex-1"
           onClick={() => document.getElementById(`annotation-photo-camera-${annotationId}`)?.click()}
-          disabled={uploading}
+          loading={uploading}
         >
           <Camera className="mr-1 h-4 w-4" />
           {t('takePhoto')}
@@ -173,7 +173,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
           variant="outline"
           className="flex-1"
           onClick={() => document.getElementById(`annotation-photo-gallery-${annotationId}`)?.click()}
-          disabled={uploading}
+          loading={uploading}
         >
           <Upload className="mr-1 h-4 w-4" />
           {t('fromGallery')}

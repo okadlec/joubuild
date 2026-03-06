@@ -5,7 +5,7 @@ import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { getCurrentAdminContext } from '@/lib/supabase/admin';
 
-export async function inviteMember(projectId: string, email: string, role: string) {
+export async function addMember(projectId: string, email: string, role: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
 

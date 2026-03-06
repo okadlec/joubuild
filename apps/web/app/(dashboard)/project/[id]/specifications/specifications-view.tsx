@@ -123,7 +123,7 @@ export function SpecificationsView({
             />
             <Button
               onClick={() => document.getElementById('spec-upload')?.click()}
-              disabled={uploading}
+              loading={uploading}
             >
               <Upload className="mr-2 h-4 w-4" />
               {uploading ? 'Nahrávání...' : 'Nahrát PDF'}

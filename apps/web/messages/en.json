@@ -547,8 +547,8 @@
     "projectDescription": "Project Description",
     "projectStatus": "Project Status",
     "members": "Members",
-    "inviteMember": "Invite Member",
-    "memberInvited": "Member invited",
+    "addMember": "Add Member",
+    "memberAdded": "Member added",
     "memberRemoved": "Member removed",
     "removeMember": "Remove Member",
     "removeMemberConfirm": "Are you sure you want to remove this member?",
@@ -581,7 +581,7 @@
     "roleLabel": "Role",
     "enterEmail": "Enter email",
     "adding": "Adding...",
-    "invite": "Invite"
+    "add": "Add"
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -634,9 +634,9 @@
     "name": "Organization Name",
     "slug": "Slug",
     "members": "Members",
-    "inviteMember": "Invite Member",
-    "inviteByEmail": "Invite by email",
-    "memberInvited": "Member invited",
+    "addMember": "Add Member",
+    "addByEmail": "Add by email",
+    "memberAdded": "Member added",
     "memberRemoved": "Member removed",
     "noMembers": "No members",
     "settings": "Settings",

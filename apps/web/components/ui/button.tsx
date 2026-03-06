@@ -1,9 +1,11 @@
 import { forwardRef, type ButtonHTMLAttributes } from 'react';
+import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'destructive' | 'outline' | 'secondary' | 'ghost' | 'link';
   size?: 'default' | 'sm' | 'lg' | 'icon';
+  loading?: boolean;
 }
 
 const variantClasses: Record<string, string> = {
@@ -23,11 +25,11 @@ const sizeClasses: Record<string, string> = {
 };
 
 const Button = forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant = 'default', size = 'default', ...props }, ref) => {
+  ({ className, variant = 'default', size = 'default', loading, disabled, children, ...props }, ref) => {
     return (
       <button
         className={cn(
-          'inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors',
+          'relative inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2',
           'disabled:pointer-events-none disabled:opacity-50',
           variantClasses[variant],
@@ -35,8 +37,16 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           className
         )}
         ref={ref}
+        disabled={disabled || loading}
         {...props}
-      />
+      >
+        {loading && (
+          <span className="absolute inset-0 flex items-center justify-center">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </span>
+        )}
+        <span className={cn(loading && 'invisible')}>{children}</span>
+      </button>
     );
   }
 );

@@ -314,7 +314,7 @@ export function PermissionMatrix({
             )}
 
             <div className="flex justify-end">
-              <Button onClick={handleSave} disabled={saving}>
+              <Button onClick={handleSave} loading={saving}>
                 <Save className="mr-2 h-4 w-4" />
                 {saving ? tCommon('saving') : t('savePermissions')}
               </Button>

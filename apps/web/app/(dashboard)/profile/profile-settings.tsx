@@ -119,7 +119,7 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
                 variant="outline"
                 size="sm"
                 onClick={() => document.getElementById('avatar-upload')?.click()}
-                disabled={uploadingAvatar}
+                loading={uploadingAvatar}
               >
                 <Upload className="mr-2 h-4 w-4" />
                 {uploadingAvatar ? t('uploadingAvatar') : t('changeAvatar')}
@@ -149,7 +149,7 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
                 </div>
               </div>
             )}
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" loading={saving}>
               <Save className="mr-2 h-4 w-4" />
               {saving ? tCommon('saving') : tCommon('save')}
             </Button>
@@ -182,7 +182,7 @@ export function ProfileSettings({ profile, orgName, orgRole }: ProfileSettingsPr
                 placeholder={t('confirmPasswordPlaceholder')}
               />
             </div>
-            <Button type="submit" disabled={changingPassword}>
+            <Button type="submit" loading={changingPassword}>
               <KeyRound className="mr-2 h-4 w-4" />
               {changingPassword ? t('changingPassword') : t('changePasswordButton')}
             </Button>

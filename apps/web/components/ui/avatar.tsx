@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { cn } from '@/lib/utils';
 import { getInitials } from '@joubuild/shared';
 
@@ -16,12 +17,16 @@ const sizeClasses = {
   lg: 'h-12 w-12 text-base',
 };
 
+const sizePx = { sm: 32, md: 40, lg: 48 } as const;
+
 export function Avatar({ src, name, size = 'md', className }: AvatarProps) {
   if (src) {
     return (
-      <img
+      <Image
         src={src}
         alt={name}
+        width={sizePx[size]}
+        height={sizePx[size]}
         className={cn('rounded-full object-cover', sizeClasses[size], className)}
       />
     );

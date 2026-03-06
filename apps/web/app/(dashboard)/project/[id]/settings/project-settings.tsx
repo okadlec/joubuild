@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { CategoryManager } from '@/components/tasks/category-manager';
 import { ProjectRolePermissionsInfo } from '@/components/shared/role-permissions-info';
 import { PermissionMatrix } from '@/components/settings/permission-matrix';
-import { inviteMember, deleteProject, searchUsers } from './actions';
+import { addMember, deleteProject, searchUsers } from './actions';
 import { compressImage } from '@/lib/compress-image';
 import type { ProjectMemberPermission, FolderPermission } from '@joubuild/shared';
 
@@ -147,7 +147,7 @@ export function ProjectSettings({
 
       const { error: uploadError } = await supabase.storage
         .from('photos')
-        .upload(path, compressed, { contentType: 'image/jpeg', upsert: true });
+        .upload(path, compressed, { contentType: 'image/jpeg', upsert: true, cacheControl: '31536000' });
 
       if (uploadError) {
         toast.error(uploadError.message);
@@ -224,12 +224,12 @@ export function ProjectSettings({
     }
 
     setInviting(true);
-    const result = await inviteMember(project.id, newMemberEmail.trim(), newMemberRole);
+    const result = await addMember(project.id, newMemberEmail.trim(), newMemberRole);
 
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success(t('memberInvited'));
+      toast.success(t('memberAdded'));
       setShowAddMember(false);
       setNewMemberEmail('');
       setNewMemberRole('member');
@@ -274,7 +274,7 @@ export function ProjectSettings({
                   type="button"
                   variant="outline"
                   size="sm"
-                  disabled={uploadingCover}
+                  loading={uploadingCover}
                   onClick={() => coverInputRef.current?.click()}
                 >
                   <Upload className="mr-2 h-4 w-4" />
@@ -315,7 +315,7 @@ export function ProjectSettings({
                 ))}
               </Select>
             </div>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" loading={saving}>
               <Save className="mr-2 h-4 w-4" />
               {saving ? tCommon('loading') : tCommon('save')}
             </Button>
@@ -390,7 +390,7 @@ export function ProjectSettings({
 
       <Dialog open={showAddMember} onClose={() => { setShowAddMember(false); setUserQuery(''); setUserResults([]); setShowUserResults(false); }}>
         <DialogHeader>
-          <DialogTitle>{t('inviteMember')}</DialogTitle>
+          <DialogTitle>{t('addMember')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">
@@ -442,8 +442,8 @@ export function ProjectSettings({
           </div>
           <div className="flex justify-end gap-2">
             <Button variant="outline" onClick={() => { setShowAddMember(false); setUserQuery(''); setUserResults([]); setShowUserResults(false); }}>{tCommon('cancel')}</Button>
-            <Button onClick={handleInvite} disabled={inviting}>
-              {inviting ? t('adding') : t('invite')}
+            <Button onClick={handleInvite} loading={inviting}>
+              {inviting ? t('adding') : t('add')}
             </Button>
           </div>
         </div>

@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
+import { ProjectShell } from './project-shell';
 
 export default async function ProjectLayout({
   children,
@@ -29,7 +30,9 @@ export default async function ProjectLayout({
           <p className="hidden text-sm text-muted-foreground sm:block">{project.address}</p>
         )}
       </div>
-      {children}
+      <ProjectShell projectId={id}>
+        {children}
+      </ProjectShell>
     </div>
   );
 }

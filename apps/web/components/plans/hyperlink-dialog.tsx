@@ -136,7 +136,7 @@ export function HyperlinkDialog({
           )}
           <div className="ml-auto flex gap-2">
             <Button type="button" variant="outline" onClick={onClose}>{tCommon('cancel')}</Button>
-            <Button type="submit" disabled={saving}>
+            <Button type="submit" loading={saving}>
               {saving ? tCommon('saving') : tCommon('save')}
             </Button>
           </div>

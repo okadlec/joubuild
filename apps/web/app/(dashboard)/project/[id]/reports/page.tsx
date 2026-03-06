@@ -198,7 +198,8 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
                 variant="outline"
                 className="w-full"
                 onClick={() => generateReport(report.id)}
-                disabled={generating !== null}
+                disabled={generating !== null && generating !== report.id}
+                loading={generating === report.id}
               >
                 {generating === report.id ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

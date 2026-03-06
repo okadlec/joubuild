@@ -99,7 +99,7 @@ export function AnnotationPlanPreview({
       const thumbPath = `${projectId}/${sheetVersionId}.jpg`;
       const { error: uploadErr } = await supabase.storage
         .from('thumbnails')
-        .upload(thumbPath, result.blob, { contentType: 'image/jpeg', upsert: true });
+        .upload(thumbPath, result.blob, { contentType: 'image/jpeg', upsert: true, cacheControl: '31536000' });
       if (cancelled || uploadErr) return;
 
       const { data: thumbUrl } = supabase.storage.from('thumbnails').getPublicUrl(thumbPath);

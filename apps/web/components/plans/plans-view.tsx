@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Plus, Upload, FileText, ChevronRight, GitCompare, History, Trash2, MoreVertical, Download, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -261,7 +262,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       const thumbPath = `${projectId}/${version.id}.jpg`;
       const { error: thumbUploadError } = await supabase.storage
         .from('thumbnails')
-        .upload(thumbPath, result.blob, { contentType: 'image/jpeg' });
+        .upload(thumbPath, result.blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
       if (thumbUploadError) return;
 
       const { data: thumbUrl } = supabase.storage.from('thumbnails').getPublicUrl(thumbPath);
@@ -358,7 +359,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
       const thumbPath = `${projectId}/${version.id}.jpg`;
       const { error: thumbUploadError } = await supabase.storage
         .from('thumbnails')
-        .upload(thumbPath, result.blob, { contentType: 'image/jpeg' });
+        .upload(thumbPath, result.blob, { contentType: 'image/jpeg', cacheControl: '31536000' });
       if (thumbUploadError) return;
 
       const { data: thumbUrl } = supabase.storage.from('thumbnails').getPublicUrl(thumbPath);
@@ -565,7 +566,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
             <Button
               className="w-full"
               onClick={() => document.getElementById('new-version-upload')?.click()}
-              disabled={uploading}
+              loading={uploading}
             >
               <Upload className="mr-2 h-4 w-4" />
               {uploading ? t('uploading') : t('selectPdf')}
@@ -650,12 +651,14 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       )}
-                        <div className="flex h-28 items-center justify-center rounded-t-lg bg-muted overflow-hidden">
+                        <div className="relative flex h-28 items-center justify-center rounded-t-lg bg-muted overflow-hidden">
                           {currentVersion?.thumbnail_url ? (
-                            <img
+                            <Image
                               src={currentVersion.thumbnail_url}
                               alt={sheet.name}
-                              className="h-full w-full object-contain"
+                              fill
+                              className="object-contain"
+                              sizes="(max-width: 768px) 50vw, 25vw"
                             />
                           ) : (
                             <FileText className="h-10 w-10 text-muted-foreground" />
@@ -742,7 +745,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={() => document.getElementById(`upload-${ps.id}`)?.click()}
-                  disabled={uploading}
+                  loading={uploading}
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   {ps.name}

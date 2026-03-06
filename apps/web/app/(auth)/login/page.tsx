@@ -72,7 +72,7 @@ export default function LoginPage() {
           </div>
         </CardContent>
         <CardFooter className="flex-col space-y-3">
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" loading={loading}>
             {loading ? t('loggingIn') : t('loginButton')}
           </Button>
           <p className="text-sm text-muted-foreground">

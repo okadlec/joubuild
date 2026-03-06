@@ -159,7 +159,7 @@ export function TimesheetView({ projectId, tasks }: TimesheetViewProps) {
           <h1 className="text-2xl font-bold">Výkazy</h1>
           <p className="text-sm text-muted-foreground">Týdenní výkaz hodin</p>
         </div>
-        <Button onClick={handleSave} disabled={saving}>
+        <Button onClick={handleSave} loading={saving}>
           <Save className="mr-2 h-4 w-4" />
           {saving ? 'Ukládání...' : 'Uložit výkaz'}
         </Button>

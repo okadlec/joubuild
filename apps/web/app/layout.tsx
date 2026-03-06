@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { Toaster } from 'sonner';
 import { NextIntlClientProvider } from 'next-intl';
 import { getLocale, getMessages } from 'next-intl/server';
+import { NavigationProgress } from '@/components/shared/navigation-progress';
 import { ServiceWorkerRegister } from '@/components/shared/sw-register';
 import { CapacitorInit } from '@/components/shared/capacitor-init';
 import { getTheme } from '@/lib/theme';
@@ -57,6 +58,7 @@ export default async function RootLayout({
       )}
       <body className={inter.className}>
         <NextIntlClientProvider messages={messages}>
+          <NavigationProgress />
           {children}
           <Toaster position="top-right" />
           <ServiceWorkerRegister />

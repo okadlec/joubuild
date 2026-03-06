@@ -291,7 +291,7 @@ export function FilesView({
             />
             <Button
               onClick={() => document.getElementById('file-upload')?.click()}
-              disabled={uploading}
+              loading={uploading}
             >
               <Upload className="mr-2 h-4 w-4" />
               {uploading ? tCommon('loading') : tCommon('upload')}

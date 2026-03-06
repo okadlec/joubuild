@@ -197,7 +197,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
           placeholder={t('comments.placeholder')}
           className="flex-1"
         />
-        <Button type="submit" size="icon" disabled={loading || !body.trim()}>
+        <Button type="submit" size="icon" loading={loading} disabled={!body.trim()}>
           <Send className="h-4 w-4" />
         </Button>
       </form>

@@ -11,6 +11,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { formatDate, formatRelativeTime, sanitizeFileName } from '@joubuild/shared';
 import { Avatar } from '@/components/ui/avatar';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { toast } from 'sonner';
 import { Photo360Viewer } from './photo-360-viewer';
 import { AnnotationPlanPreview } from './annotation-plan-preview';
@@ -231,7 +232,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
       const fileName = `${projectId}/${Date.now()}-${sanitizeFileName(file.name.replace(/\.[^.]+$/, ext))}`;
       const { error: uploadError } = await supabase.storage
         .from('photos')
-        .upload(fileName, uploadBlob, isImage ? { contentType: 'image/jpeg' } : undefined);
+        .upload(fileName, uploadBlob, isImage ? { contentType: 'image/jpeg', cacheControl: '31536000' } : undefined);
 
       if (uploadError) {
         toast.error(t('uploadError', { name: file.name }));
@@ -372,11 +373,11 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
           />
           {canCreate && (
             <>
-              <Button variant="outline" onClick={() => document.getElementById('photo-camera')?.click()} disabled={uploading}>
+              <Button variant="outline" onClick={() => document.getElementById('photo-camera')?.click()} loading={uploading}>
                 <Camera className="mr-2 h-4 w-4" />
                 {t('takePhoto')}
               </Button>
-              <Button onClick={() => document.getElementById('photo-upload')?.click()} disabled={uploading}>
+              <Button onClick={() => document.getElementById('photo-upload')?.click()} loading={uploading}>
                 <Upload className="mr-2 h-4 w-4" />
                 {uploading ? t('uploading') : t('uploadPhotos')}
               </Button>
@@ -470,11 +471,13 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
               className="cursor-pointer overflow-hidden transition-shadow hover:shadow-md"
               onClick={() => setSelectedPhoto(photo)}
             >
-              <div className="aspect-square bg-muted">
-                <img
+              <div className="relative aspect-square bg-muted">
+                <Image
                   src={photo.thumbnail_url || photo.file_url}
                   alt={photo.caption || t('photoAlt')}
-                  className="h-full w-full object-cover"
+                  fill
+                  className="object-cover"
+                  sizes="(max-width: 768px) 50vw, 20vw"
                 />
               </div>
               <div className="p-2">
@@ -552,7 +555,7 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
                     </div>
                     <div className="flex justify-end gap-2">
                       <Button variant="outline" size="sm" onClick={() => setEditingPhoto(false)}>{tCommon('cancel')}</Button>
-                      <Button size="sm" onClick={handleSaveEdit} disabled={savingEdit}>
+                      <Button size="sm" onClick={handleSaveEdit} loading={savingEdit}>
                         <Check className="mr-1 h-3.5 w-3.5" />
                         {savingEdit ? tCommon('saving') : tCommon('save')}
                       </Button>

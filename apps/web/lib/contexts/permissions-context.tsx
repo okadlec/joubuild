@@ -1,27 +1,23 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { getSupabaseClient } from '@/lib/supabase/client';
-import { usePermissionsContext } from '@/lib/contexts/permissions-context';
 import type { PermissionModule, PermissionAction, ProjectMemberPermission } from '@joubuild/shared';
 
-interface UsePermissionsResult {
+interface PermissionsContextValue {
   permissions: ProjectMemberPermission[];
   loading: boolean;
   hasPermission: (module: PermissionModule, action: PermissionAction) => boolean;
   getModulePermissions: (module: PermissionModule) => ProjectMemberPermission | undefined;
 }
 
-export function usePermissions(projectId: string): UsePermissionsResult {
-  const ctx = usePermissionsContext();
-  const hasContext = ctx !== null;
+export const PermissionsContext = createContext<PermissionsContextValue | null>(null);
 
+export function PermissionsProvider({ projectId, children }: { projectId: string; children: React.ReactNode }) {
   const [permissions, setPermissions] = useState<ProjectMemberPermission[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (hasContext) return;
-
     async function load() {
       const supabase = getSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -37,24 +33,29 @@ export function usePermissions(projectId: string): UsePermissionsResult {
       setLoading(false);
     }
     load();
-  }, [projectId, hasContext]);
-
-  const resolvedPermissions = hasContext ? ctx.permissions : permissions;
-  const resolvedLoading = hasContext ? ctx.loading : loading;
+  }, [projectId]);
 
   const hasPermission = useCallback(
     (module: PermissionModule, action: PermissionAction): boolean => {
-      const perm = resolvedPermissions.find(p => p.module === module);
+      const perm = permissions.find(p => p.module === module);
       if (!perm) return false;
       return perm[action];
     },
-    [resolvedPermissions]
+    [permissions]
   );
 
   const getModulePermissions = useCallback(
-    (module: PermissionModule) => resolvedPermissions.find(p => p.module === module),
-    [resolvedPermissions]
+    (module: PermissionModule) => permissions.find(p => p.module === module),
+    [permissions]
   );
 
-  return { permissions: resolvedPermissions, loading: resolvedLoading, hasPermission, getModulePermissions };
+  return (
+    <PermissionsContext.Provider value={{ permissions, loading, hasPermission, getModulePermissions }}>
+      {children}
+    </PermissionsContext.Provider>
+  );
+}
+
+export function usePermissionsContext() {
+  return useContext(PermissionsContext);
 }

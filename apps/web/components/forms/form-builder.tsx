@@ -90,7 +90,7 @@ export function FormBuilder({ templateId, initialSchema, onSave }: FormBuilderPr
     <Card>
       <CardHeader className="flex-row items-center justify-between">
         <CardTitle>Editor polí</CardTitle>
-        <Button size="sm" onClick={handleSave} disabled={saving}>
+        <Button size="sm" onClick={handleSave} loading={saving}>
           <Save className="mr-1 h-3.5 w-3.5" />
           {saving ? 'Ukládání...' : 'Uložit šablonu'}
         </Button>

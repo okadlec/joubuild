@@ -3,7 +3,7 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
-import { LogOut, User, Building2, Menu, Sun, Moon, Monitor } from 'lucide-react';
+import { LogOut, User, Building2, Menu, Sun, Moon, Monitor, Loader2 } from 'lucide-react';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { Avatar } from '@/components/ui/avatar';
 import { DropdownMenu, DropdownItem, DropdownSeparator } from '@/components/ui/dropdown-menu';
@@ -34,12 +34,15 @@ export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProp
   const t = useTranslations('header');
   const tSidebar = useTranslations('sidebar');
   const [currentTheme, setCurrentTheme] = React.useState<Theme>('light');
+  const [themeLoading, setThemeLoading] = React.useState(false);
+  const [signingOut, setSigningOut] = React.useState(false);
 
   React.useEffect(() => {
     setCurrentTheme(getThemeFromCookie());
   }, []);
 
   async function handleSignOut() {
+    setSigningOut(true);
     const supabase = getSupabaseClient();
     await supabase.auth.signOut();
     router.push('/login');
@@ -65,6 +68,7 @@ export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProp
 
         <button
           onClick={async () => {
+            setThemeLoading(true);
             const next = themeCycle[(themeCycle.indexOf(currentTheme) + 1) % themeCycle.length];
             await fetch('/api/theme', {
               method: 'POST',
@@ -72,12 +76,20 @@ export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProp
               body: JSON.stringify({ theme: next }),
             });
             setCurrentTheme(next);
+            const shouldBeDark =
+              next === 'dark' ||
+              (next === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+            document.documentElement.classList.toggle('dark', shouldBeDark);
+            setThemeLoading(false);
             router.refresh();
           }}
-          className="rounded-md p-2 hover:bg-accent"
+          disabled={themeLoading}
+          className="rounded-md p-2 hover:bg-accent disabled:opacity-50"
           title={t(currentTheme === 'dark' ? 'themeDark' : currentTheme === 'system' ? 'themeSystem' : 'themeLight')}
         >
-          {currentTheme === 'dark' ? (
+          {themeLoading ? (
+            <Loader2 className="h-5 w-5 animate-spin" />
+          ) : currentTheme === 'dark' ? (
             <Sun className="h-5 w-5" />
           ) : currentTheme === 'system' ? (
             <Monitor className="h-5 w-5" />
@@ -112,7 +124,11 @@ export function Header({ user, onMenuClick, hideHamburgerInProject }: HeaderProp
           </DropdownItem>
           <DropdownSeparator />
           <DropdownItem onClick={handleSignOut} destructive>
-            <LogOut className="mr-2 h-4 w-4" />
+            {signingOut ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <LogOut className="mr-2 h-4 w-4" />
+            )}
             {t('signOut')}
           </DropdownItem>
         </DropdownMenu>

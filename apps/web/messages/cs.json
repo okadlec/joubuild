@@ -548,8 +548,8 @@
     "projectDescription": "Popis projektu",
     "projectStatus": "Stav projektu",
     "members": "Členové",
-    "inviteMember": "Pozvat člena",
-    "memberInvited": "Člen pozván",
+    "addMember": "Přidat člena",
+    "memberAdded": "Člen přidán",
     "memberRemoved": "Člen odebrán",
     "removeMember": "Odebrat člena",
     "removeMemberConfirm": "Opravdu chcete odebrat tohoto člena?",
@@ -582,7 +582,7 @@
     "roleLabel": "Role",
     "enterEmail": "Zadejte email",
     "adding": "Přidávání...",
-    "invite": "Pozvat"
+    "add": "Přidat"
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -675,7 +675,7 @@
     "slug": "Slug",
     "members": "Členové",
     "inviteMember": "Pozvat člena",
-    "inviteByEmail": "Pozvat emailem",
+    "addByEmail": "Přidat emailem",
     "memberInvited": "Člen pozván",
     "memberRemoved": "Člen odebrán",
     "noMembers": "Žádní členové",

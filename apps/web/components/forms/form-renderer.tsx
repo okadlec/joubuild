@@ -167,11 +167,11 @@ export function FormRenderer({ submissionId, schema, initialData, status, onSave
 
         {!readOnly && (
           <div className="flex gap-2 border-t pt-4">
-            <Button variant="outline" onClick={handleSave} disabled={saving}>
+            <Button variant="outline" onClick={handleSave} loading={saving}>
               <Save className="mr-1 h-3.5 w-3.5" />
               Uložit koncept
             </Button>
-            <Button onClick={handleSubmit} disabled={saving}>
+            <Button onClick={handleSubmit} loading={saving}>
               <Send className="mr-1 h-3.5 w-3.5" />
               Odeslat
             </Button>

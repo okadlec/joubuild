@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useTranslations } from 'next-intl';
 import { Plus, MapPin, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -90,12 +91,14 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
           {projects.map((project) => (
             <Link key={project.id} href={`/project/${project.id}/plans`}>
               <Card className="cursor-pointer transition-shadow hover:shadow-md">
-                <div className="h-32 rounded-t-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                <div className="relative h-32 rounded-t-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                   {project.cover_image_url ? (
-                    <img
+                    <Image
                       src={project.cover_image_url}
                       alt={project.name}
-                      className="h-full w-full rounded-t-lg object-cover"
+                      fill
+                      className="rounded-t-lg object-cover"
+                      sizes="(max-width: 768px) 100vw, 33vw"
                     />
                   ) : (
                     <span className="text-lg font-semibold text-primary/40">{project.name}</span>
@@ -166,7 +169,7 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
             <Button type="button" variant="outline" onClick={() => setShowCreate(false)}>
               {tCommon('cancel')}
             </Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" loading={loading}>
               {loading ? tCommon('loading') : tCommon('create')}
             </Button>
           </div>

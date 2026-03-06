@@ -422,7 +422,7 @@ export function TaskDialog({
           </div>
           <div className="flex gap-2">
             <Button type="button" variant="outline" onClick={onClose}>{tCommon('cancel')}</Button>
-            <Button type="submit" disabled={loading}>
+            <Button type="submit" loading={loading}>
               {loading ? tCommon('saving') : task ? t('updateTask') : t('createTask')}
             </Button>
           </div>

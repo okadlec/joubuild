@@ -1,5 +1,5 @@
 // JouBuild Service Worker - Offline support
-const CACHE_NAME = 'joubuild-v3';
+const CACHE_NAME = 'joubuild-v4';
 const STATIC_ASSETS = [
   '/',
   '/projects',
@@ -40,8 +40,11 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
-  // Skip Supabase API calls and auth endpoints
-  if (url.hostname.includes('supabase') || url.pathname.startsWith('/auth')) return;
+  // Skip Supabase REST/auth/realtime — but allow public storage URLs through
+  if (url.hostname.includes('supabase')) {
+    if (!url.pathname.includes('/storage/v1/object/public/')) return;
+  }
+  if (url.pathname.startsWith('/auth')) return;
 
   // For navigation requests - network first, fallback to cached page or root shell
   if (request.mode === 'navigate') {
@@ -152,6 +155,23 @@ self.addEventListener('fetch', (event) => {
           return new Response('PDF not available offline', { status: 503 });
         }
       })()
+    );
+    return;
+  }
+
+  // For Supabase public storage URLs (stale-while-revalidate)
+  if (url.hostname.includes('supabase') && url.pathname.includes('/storage/v1/object/public/')) {
+    event.respondWith(
+      caches.match(request).then((cached) => {
+        const fetchPromise = fetch(request)
+          .then((response) => {
+            const clone = response.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+            return response;
+          })
+          .catch(() => cached);
+        return cached || fetchPromise;
+      })
     );
     return;
   }

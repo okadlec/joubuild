@@ -542,7 +542,7 @@ export function UserDetail({
                     )}
 
                     <div className="flex justify-end">
-                      <Button onClick={handleSavePermissions} disabled={saving}>
+                      <Button onClick={handleSavePermissions} loading={saving}>
                         <Save className="mr-2 h-4 w-4" />
                         {saving ? tCommon('saving') : t('userDetail.savePermissions')}
                       </Button>

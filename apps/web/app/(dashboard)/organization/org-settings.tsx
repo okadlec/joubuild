@@ -97,7 +97,7 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
     if (result.error) {
       toast.error(result.error);
     } else {
-      toast.success(t('memberInvited'));
+      toast.success(t('memberAdded'));
       setShowAddMember(false);
       setNewMemberEmail('');
       setNewMemberRole('member');
@@ -163,7 +163,7 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
                   variant="outline"
                   size="sm"
                   onClick={() => document.getElementById('org-logo-upload')?.click()}
-                  disabled={uploadingLogo}
+                  loading={uploadingLogo}
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   {uploadingLogo ? tCommon('loading') : tCommon('upload')}
@@ -186,7 +186,7 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
               <Badge variant="secondary">{org.plan}</Badge>
             </div>
             {isAdmin && (
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" loading={saving}>
                 <Save className="mr-2 h-4 w-4" />
                 {saving ? tCommon('loading') : tCommon('save')}
               </Button>
@@ -278,7 +278,7 @@ export function OrgSettings({ org, members: initialMembers, isAdmin }: OrgSettin
       {/* Add member dialog */}
       <Dialog open={showAddMember} onClose={() => setShowAddMember(false)}>
         <DialogHeader>
-          <DialogTitle>{t('inviteMember')}</DialogTitle>
+          <DialogTitle>{t('addMember')}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
           <div className="space-y-2">

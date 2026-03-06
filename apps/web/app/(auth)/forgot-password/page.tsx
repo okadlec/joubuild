@@ -74,7 +74,7 @@ export default function ForgotPasswordPage(): React.JSX.Element {
           </div>
         </CardContent>
         <CardFooter className="flex-col space-y-3">
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button type="submit" className="w-full" loading={loading}>
             {loading ? t('sending') : t('sendLink')}
           </Button>
           <Link href="/login" className="text-sm text-primary hover:underline">
