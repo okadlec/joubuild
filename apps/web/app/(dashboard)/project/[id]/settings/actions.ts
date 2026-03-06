@@ -73,6 +73,51 @@ export async function addMember(projectId: string, email: string, role: string) 
   return { success: true };
 }
 
+export async function removeMember(projectId: string, userId: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Nejste přihlášen' };
+  }
+
+  if (user.id === userId) {
+    return { error: 'Nemůžete odebrat sami sebe' };
+  }
+
+  const { data: callerMember } = await supabase
+    .from('project_members')
+    .select('role')
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (callerMember?.role !== 'admin') {
+    const adminCtx = await getCurrentAdminContext();
+    if (!adminCtx?.isSuperadmin && !adminCtx?.isOrgAdmin) {
+      return { error: 'Nemáte oprávnění odebírat členy' };
+    }
+  }
+
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  const { error } = await serviceClient
+    .from('project_members')
+    .delete()
+    .eq('project_id', projectId)
+    .eq('user_id', userId);
+
+  if (error) {
+    return { error: error.message };
+  }
+
+  revalidatePath(`/project/${projectId}/settings`);
+  return { success: true };
+}
+
 export async function searchUsers(projectId: string, query: string) {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();

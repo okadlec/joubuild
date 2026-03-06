@@ -19,7 +19,7 @@ import { toast } from 'sonner';
 import { CategoryManager } from '@/components/tasks/category-manager';
 import { ProjectRolePermissionsInfo } from '@/components/shared/role-permissions-info';
 import { PermissionMatrix } from '@/components/settings/permission-matrix';
-import { addMember, deleteProject, searchUsers } from './actions';
+import { addMember, removeMember, deleteProject, searchUsers } from './actions';
 import { compressImage } from '@/lib/compress-image';
 import type { ProjectMemberPermission, FolderPermission } from '@joubuild/shared';
 
@@ -48,7 +48,8 @@ interface FolderInfo {
 
 export function ProjectSettings({
   project,
-  members,
+  members: initialMembers,
+  currentUserId,
   initialCategories = [],
   initialPermissions = [],
   initialFolderPermissions = [],
@@ -56,6 +57,7 @@ export function ProjectSettings({
 }: {
   project: Project;
   members: Member[];
+  currentUserId?: string;
   initialCategories?: TaskCategory[];
   initialPermissions?: ProjectMemberPermission[];
   initialFolderPermissions?: FolderPermission[];
@@ -75,6 +77,8 @@ export function ProjectSettings({
   const [uploadingCover, setUploadingCover] = useState(false);
   const coverInputRef = useRef<HTMLInputElement>(null);
   const [taskCategories, setTaskCategories] = useState<TaskCategory[]>(initialCategories);
+  const [memberList, setMemberList] = useState<Member[]>(initialMembers);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
   const [showAddMember, setShowAddMember] = useState(false);
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState('member');
@@ -240,6 +244,18 @@ export function ProjectSettings({
     setInviting(false);
   }
 
+  async function handleRemoveMember(userId: string) {
+    setRemovingMemberId(userId);
+    const result = await removeMember(project.id, userId);
+    if (result.error) {
+      toast.error(result.error);
+    } else {
+      toast.success(t('memberRemoved'));
+      setMemberList((prev) => prev.filter((m) => m.user_id !== userId));
+    }
+    setRemovingMemberId(null);
+  }
+
   return (
     <div className="max-w-2xl space-y-6">
       <div>
@@ -332,11 +348,11 @@ export function ProjectSettings({
           </Button>
         </CardHeader>
         <CardContent>
-          {members.length === 0 ? (
+          {memberList.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t('noMembers')}</p>
           ) : (
             <div className="space-y-2">
-              {members.map((member) => (
+              {memberList.map((member) => (
                 <div key={member.id} className="flex items-center justify-between rounded-md border p-3">
                   <div className="flex items-center gap-3">
                     <Avatar name={member.full_name || member.email || '?'} size="sm" />
@@ -349,11 +365,22 @@ export function ProjectSettings({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-2">
                     <Badge variant="secondary">
                       {tRoles(member.role)}
                     </Badge>
                     <ProjectRolePermissionsInfo />
+                    {member.user_id !== currentUserId && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                        onClick={() => handleRemoveMember(member.user_id)}
+                        disabled={removingMemberId === member.user_id}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               ))}
@@ -370,7 +397,7 @@ export function ProjectSettings({
 
       <PermissionMatrix
         projectId={project.id}
-        members={members}
+        members={memberList}
         initialPermissions={initialPermissions}
         initialFolderPermissions={initialFolderPermissions}
         folders={folders}

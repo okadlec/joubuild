@@ -11,6 +11,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
+  const { data: { user } } = await supabase.auth.getUser();
+
   const [{ data: project }, { data: rawMembers, error: membersError }, { data: categories }, { data: permissions }, { data: folderPermissions }, { data: folders }] = await Promise.all([
     supabase.from('projects').select('*').eq('id', id).maybeSingle(),
     serviceClient.from('project_members').select('*').eq('project_id', id),
@@ -45,6 +47,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
     <ProjectSettings
       project={project}
       members={members}
+      currentUserId={user?.id}
       initialCategories={categories || []}
       initialPermissions={permissions || []}
       initialFolderPermissions={folderPermissions || []}
