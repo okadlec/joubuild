@@ -117,7 +117,7 @@ export async function deleteProject(projectId: string) {
     return { error: 'Nejste přihlášen' };
   }
 
-  const { error } = await supabase.from('projects').delete().eq('id', projectId);
+  const { error } = await supabase.rpc('soft_delete_project', { p_id: projectId });
 
   if (error) {
     return { error: error.message };

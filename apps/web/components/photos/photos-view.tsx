@@ -17,6 +17,7 @@ import { AnnotationPlanPreview } from './annotation-plan-preview';
 import { TagPicker } from '@/components/shared/tag-picker';
 import { compressImage } from '@/lib/compress-image';
 import { useTranslations } from 'next-intl';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 interface Photo {
   id: string;
@@ -44,6 +45,8 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
   const router = useRouter();
   const t = useTranslations('photos');
   const tCommon = useTranslations('common');
+  const { hasPermission } = usePermissions(projectId);
+  const canCreate = hasPermission('photos', 'can_create');
   const [photos, setPhotos] = useState(initialPhotos);
   const [selectedPhoto, setSelectedPhoto] = useState<Photo | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -367,14 +370,18 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
             id="photo-camera"
             onChange={(e) => { if (e.target.files) handleUpload(e.target.files); e.target.value = ''; }}
           />
-          <Button variant="outline" onClick={() => document.getElementById('photo-camera')?.click()} disabled={uploading}>
-            <Camera className="mr-2 h-4 w-4" />
-            {t('takePhoto')}
-          </Button>
-          <Button onClick={() => document.getElementById('photo-upload')?.click()} disabled={uploading}>
-            <Upload className="mr-2 h-4 w-4" />
-            {uploading ? t('uploading') : t('uploadPhotos')}
-          </Button>
+          {canCreate && (
+            <>
+              <Button variant="outline" onClick={() => document.getElementById('photo-camera')?.click()} disabled={uploading}>
+                <Camera className="mr-2 h-4 w-4" />
+                {t('takePhoto')}
+              </Button>
+              <Button onClick={() => document.getElementById('photo-upload')?.click()} disabled={uploading}>
+                <Upload className="mr-2 h-4 w-4" />
+                {uploading ? t('uploading') : t('uploadPhotos')}
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
@@ -442,10 +449,12 @@ export function PhotosView({ projectId, initialPhotos }: { projectId: string; in
           {photos.length === 0 ? (
             <>
               <p className="mb-4 text-sm text-muted-foreground">{t('noPhotosHint')}</p>
-              <Button onClick={() => document.getElementById('photo-upload')?.click()}>
-                <Upload className="mr-2 h-4 w-4" />
-                {t('uploadPhotos')}
-              </Button>
+              {canCreate && (
+                <Button onClick={() => document.getElementById('photo-upload')?.click()}>
+                  <Upload className="mr-2 h-4 w-4" />
+                  {t('uploadPhotos')}
+                </Button>
+              )}
             </>
           ) : (
             <Button variant="outline" size="sm" onClick={handleClearFilters}>

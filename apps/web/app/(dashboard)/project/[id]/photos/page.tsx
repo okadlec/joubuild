@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { PhotosView } from '@/components/photos/photos-view';
+import { ModuleGuard } from '@/components/shared/module-guard';
 
 export default async function PhotosPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -54,5 +55,9 @@ export default async function PhotosPage({ params }: { params: Promise<{ id: str
     };
   });
 
-  return <PhotosView projectId={id} initialPhotos={enrichedPhotos} />;
+  return (
+    <ModuleGuard projectId={id} module="photos">
+      <PhotosView projectId={id} initialPhotos={enrichedPhotos} />
+    </ModuleGuard>
+  );
 }

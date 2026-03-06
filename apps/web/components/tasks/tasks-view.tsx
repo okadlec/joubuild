@@ -11,6 +11,7 @@ import { TaskFiltersBar, EMPTY_FILTERS, type TaskFilters } from './task-filters'
 import { GanttChart } from './gantt-chart';
 import { CalendarView } from './calendar-view';
 import type { Task, TaskCategory, ProjectMember, Tag } from '@joubuild/shared';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 interface TasksViewProps {
   projectId: string;
@@ -23,6 +24,8 @@ interface TasksViewProps {
 export function TasksView({ projectId, initialTasks, categories = [], members = [], tags = [] }: TasksViewProps) {
   const [tasks, setTasks] = useState(initialTasks);
   const [showCreate, setShowCreate] = useState(false);
+  const { hasPermission } = usePermissions(projectId);
+  const canCreate = hasPermission('tasks', 'can_create');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<TaskFilters>(EMPTY_FILTERS);
@@ -65,10 +68,12 @@ export function TasksView({ projectId, initialTasks, categories = [], members = 
             <Filter className="mr-2 h-4 w-4" />
             Filtr
           </Button>
-          <Button onClick={() => setShowCreate(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            Nový úkol
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setShowCreate(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Nový úkol
+            </Button>
+          )}
         </div>
       </div>
 

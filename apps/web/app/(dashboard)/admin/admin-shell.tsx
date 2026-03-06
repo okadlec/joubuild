@@ -3,12 +3,13 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { LayoutDashboard, Users, Building2, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Trash2, type LucideIcon } from 'lucide-react';
 
 const iconMap: Record<string, LucideIcon> = {
   LayoutDashboard,
   Building2,
   Users,
+  Trash2,
 };
 
 export interface NavItem {

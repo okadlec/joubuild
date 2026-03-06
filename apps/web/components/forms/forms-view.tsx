@@ -17,6 +17,7 @@ import { toast } from 'sonner';
 import { RfiView } from './rfi-view';
 import { FormRenderer } from './form-renderer';
 import { FormBuilder } from './form-builder';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 interface FormTemplate {
   id: string;
@@ -60,6 +61,8 @@ const STATUS_VARIANTS: Record<string, 'default' | 'secondary' | 'destructive' | 
 export function FormsView({ projectId, initialTemplates, initialSubmissions, initialRfis = [] }: FormsViewProps) {
   const t = useTranslations('forms');
   const tCommon = useTranslations('common');
+  const { hasPermission } = usePermissions(projectId);
+  const canCreate = hasPermission('forms', 'can_create');
   const [templates, setTemplates] = useState(initialTemplates);
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [showCreate, setShowCreate] = useState(false);
@@ -182,10 +185,12 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
           <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
-        <Button onClick={() => setShowCreate(true)}>
-          <Plus className="mr-2 h-4 w-4" />
-          {t('newTemplate')}
-        </Button>
+        {canCreate && (
+          <Button onClick={() => setShowCreate(true)}>
+            <Plus className="mr-2 h-4 w-4" />
+            {t('newTemplate')}
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="submissions">
@@ -246,10 +251,12 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
             <div className="mt-4 flex flex-col items-center justify-center rounded-lg border border-dashed py-16">
               <ClipboardList className="mb-4 h-12 w-12 text-muted-foreground" />
               <p className="mb-2 text-lg font-medium">{t('noTemplates')}</p>
-              <Button onClick={() => setShowCreate(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                {t('createTemplate')}
-              </Button>
+              {canCreate && (
+                <Button onClick={() => setShowCreate(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {t('createTemplate')}
+                </Button>
+              )}
             </div>
           ) : (
             <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -262,23 +269,27 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
                     </Badge>
                   </CardHeader>
                   <CardContent className="flex gap-2 pt-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => setEditingTemplate(tmpl)}
-                    >
-                      {t('editTemplate')}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1"
-                      onClick={() => handleCreateSubmission(tmpl.id)}
-                    >
-                      <Send className="mr-2 h-4 w-4" />
-                      {t('fill')}
-                    </Button>
+                    {canCreate && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setEditingTemplate(tmpl)}
+                      >
+                        {t('editTemplate')}
+                      </Button>
+                    )}
+                    {canCreate && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => handleCreateSubmission(tmpl.id)}
+                      >
+                        <Send className="mr-2 h-4 w-4" />
+                        {t('fill')}
+                      </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}

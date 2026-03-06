@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { TasksView } from '@/components/tasks/tasks-view';
+import { ModuleGuard } from '@/components/shared/module-guard';
 
 export default async function TasksPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -50,12 +51,14 @@ export default async function TasksPage({ params }: { params: Promise<{ id: stri
   }));
 
   return (
-    <TasksView
-      projectId={id}
-      initialTasks={tasks || []}
-      categories={categories || []}
-      members={enrichedMembers}
-      tags={tags || []}
-    />
+    <ModuleGuard projectId={id} module="tasks">
+      <TasksView
+        projectId={id}
+        initialTasks={tasks || []}
+        categories={categories || []}
+        members={enrichedMembers}
+        tags={tags || []}
+      />
+    </ModuleGuard>
   );
 }

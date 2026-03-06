@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server';
 import { FormsView } from '@/components/forms/forms-view';
+import { ModuleGuard } from '@/components/shared/module-guard';
 
 export default async function FormsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -24,11 +25,13 @@ export default async function FormsPage({ params }: { params: Promise<{ id: stri
   ]);
 
   return (
-    <FormsView
-      projectId={id}
-      initialTemplates={templates || []}
-      initialSubmissions={submissions || []}
-      initialRfis={rfis || []}
-    />
+    <ModuleGuard projectId={id} module="forms">
+      <FormsView
+        projectId={id}
+        initialTemplates={templates || []}
+        initialSubmissions={submissions || []}
+        initialRfis={rfis || []}
+      />
+    </ModuleGuard>
   );
 }

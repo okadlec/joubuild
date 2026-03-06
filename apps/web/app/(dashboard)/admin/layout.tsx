@@ -21,10 +21,12 @@ export default async function AdminLayout({
         { label: t('overview'), href: '/admin', icon: 'LayoutDashboard' },
         { label: t('organizations'), href: '/admin/organizations', icon: 'Building2' },
         { label: t('users'), href: '/admin/users', icon: 'Users' },
+        { label: t('trash'), href: '/admin/trash', icon: 'Trash2' },
       ]
     : [
         { label: t('overview'), href: '/admin', icon: 'LayoutDashboard' },
         { label: t('members'), href: '/admin/users', icon: 'Users' },
+        { label: t('trash'), href: '/admin/trash', icon: 'Trash2' },
       ];
 
   const title = ctx.isSuperadmin ? t('title') : t('orgAdminTitle');

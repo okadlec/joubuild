@@ -172,7 +172,11 @@ export function UsersList({
               </p>
             )}
             {filtered.map((user) => (
-              <div key={user.id} className="flex items-center justify-between rounded-md border p-3">
+              <div
+                key={user.id}
+                className="flex items-center justify-between rounded-md border p-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => router.push(`/admin/users/${user.id}`)}
+              >
                 <div className="flex items-center gap-3 min-w-0">
                   <Avatar name={user.full_name || user.email || '?'} size="sm" />
                   <div className="min-w-0">
@@ -200,12 +204,15 @@ export function UsersList({
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setOpenMenuId(openMenuId === user.id ? null : user.id)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setOpenMenuId(openMenuId === user.id ? null : user.id);
+                        }}
                       >
                         <MoreVertical className="h-4 w-4" />
                       </Button>
                       {openMenuId === user.id && (
-                        <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-md border bg-popover p-1 shadow-md">
+                        <div className="absolute right-0 top-full z-10 mt-1 w-48 rounded-md border bg-popover p-1 shadow-md" onClick={(e) => e.stopPropagation()}>
                           {isSuperadmin && (
                             <button
                               className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm hover:bg-accent"

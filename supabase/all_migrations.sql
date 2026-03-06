@@ -2077,3 +2077,328 @@ CREATE POLICY "Project admins can delete projects" ON projects
     id IN (SELECT get_user_project_ids(auth.uid()))
     OR organization_id IN (SELECT get_user_admin_org_ids(auth.uid()))
   );
+
+-- ============================================================
+-- Migration 00009: Annotation Detail
+-- Adds annotation_id to comments/photos/tasks, makes task_id nullable,
+-- creates annotation-aware RLS policies
+-- ============================================================
+
+-- Comments can be linked to an annotation (in addition to task_id)
+ALTER TABLE comments ADD COLUMN annotation_id UUID REFERENCES annotations(id) ON DELETE CASCADE;
+CREATE INDEX idx_comments_annotation_id ON comments(annotation_id) WHERE annotation_id IS NOT NULL;
+
+-- Photos can be linked to an annotation
+ALTER TABLE photos ADD COLUMN annotation_id UUID REFERENCES annotations(id) ON DELETE SET NULL;
+CREATE INDEX idx_photos_annotation_id ON photos(annotation_id) WHERE annotation_id IS NOT NULL;
+
+-- Tasks can be linked to an annotation
+ALTER TABLE tasks ADD COLUMN annotation_id UUID REFERENCES annotations(id) ON DELETE SET NULL;
+CREATE INDEX idx_tasks_annotation_id ON tasks(annotation_id) WHERE annotation_id IS NOT NULL;
+
+-- Make task_id nullable on comments (can be annotation comment without task)
+ALTER TABLE comments ALTER COLUMN task_id DROP NOT NULL;
+
+-- RLS: Allow project members to insert/select comments on annotations
+DROP POLICY IF EXISTS "comments_select" ON comments;
+CREATE POLICY "comments_select" ON comments
+  FOR SELECT TO authenticated
+  USING (
+    -- Task comments: accessible if user can see the task's project
+    (task_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM tasks t
+      JOIN project_members pm ON pm.project_id = t.project_id
+      WHERE t.id = comments.task_id AND pm.user_id = auth.uid()
+    ))
+    OR
+    -- Annotation comments: accessible if user can see the annotation's sheet version's project
+    (annotation_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM annotations a
+      JOIN sheet_versions sv ON sv.id = a.sheet_version_id
+      JOIN sheets s ON s.id = sv.sheet_id
+      JOIN project_members pm ON pm.project_id = s.project_id
+      WHERE a.id = comments.annotation_id AND pm.user_id = auth.uid()
+    ))
+  );
+
+DROP POLICY IF EXISTS "comments_insert" ON comments;
+CREATE POLICY "comments_insert" ON comments
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    user_id = auth.uid()
+    AND (
+      (task_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM tasks t
+        JOIN project_members pm ON pm.project_id = t.project_id
+        WHERE t.id = comments.task_id AND pm.user_id = auth.uid()
+      ))
+      OR
+      (annotation_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM annotations a
+        JOIN sheet_versions sv ON sv.id = a.sheet_version_id
+        JOIN sheets s ON s.id = sv.sheet_id
+        JOIN project_members pm ON pm.project_id = s.project_id
+        WHERE a.id = comments.annotation_id AND pm.user_id = auth.uid()
+      ))
+    )
+  );
+
+DROP POLICY IF EXISTS "comments_update" ON comments;
+CREATE POLICY "comments_update" ON comments
+  FOR UPDATE TO authenticated
+  USING (user_id = auth.uid())
+  WITH CHECK (user_id = auth.uid());
+
+DROP POLICY IF EXISTS "comments_delete" ON comments;
+CREATE POLICY "comments_delete" ON comments
+  FOR DELETE TO authenticated
+  USING (user_id = auth.uid());
+
+-- ============================================================
+-- Migration 00012: Fix Comments RLS
+-- Drops legacy RLS policies from migration 00004 that conflict
+-- with the annotation-aware policies added in 00009
+-- ============================================================
+
+DROP POLICY IF EXISTS "Can view comments" ON comments;
+DROP POLICY IF EXISTS "Can create comments" ON comments;
+DROP POLICY IF EXISTS "Can update own comments" ON comments;
+DROP POLICY IF EXISTS "Can delete own comments" ON comments;
+
+-- ============================================================
+-- Migration 00013: Photo Comments
+-- Adds photo_id to comments, updates RLS to cover photo comments
+-- ============================================================
+
+-- Add photo_id FK to comments so photos can have their own chat
+ALTER TABLE comments ADD COLUMN photo_id UUID REFERENCES photos(id) ON DELETE CASCADE;
+CREATE INDEX idx_comments_photo_id ON comments(photo_id) WHERE photo_id IS NOT NULL;
+
+-- Update RLS policies to include photo comments
+DROP POLICY IF EXISTS "comments_select" ON comments;
+CREATE POLICY "comments_select" ON comments
+  FOR SELECT TO authenticated
+  USING (
+    -- Task comments
+    (task_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM tasks t
+      JOIN project_members pm ON pm.project_id = t.project_id
+      WHERE t.id = comments.task_id AND pm.user_id = auth.uid()
+    ))
+    OR
+    -- Annotation comments
+    (annotation_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM annotations a
+      JOIN sheet_versions sv ON sv.id = a.sheet_version_id
+      JOIN sheets s ON s.id = sv.sheet_id
+      JOIN project_members pm ON pm.project_id = s.project_id
+      WHERE a.id = comments.annotation_id AND pm.user_id = auth.uid()
+    ))
+    OR
+    -- Photo comments
+    (photo_id IS NOT NULL AND EXISTS (
+      SELECT 1 FROM photos p
+      JOIN project_members pm ON pm.project_id = p.project_id
+      WHERE p.id = comments.photo_id AND pm.user_id = auth.uid()
+    ))
+  );
+
+DROP POLICY IF EXISTS "comments_insert" ON comments;
+CREATE POLICY "comments_insert" ON comments
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    user_id = auth.uid()
+    AND (
+      (task_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM tasks t
+        JOIN project_members pm ON pm.project_id = t.project_id
+        WHERE t.id = comments.task_id AND pm.user_id = auth.uid()
+      ))
+      OR
+      (annotation_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM annotations a
+        JOIN sheet_versions sv ON sv.id = a.sheet_version_id
+        JOIN sheets s ON s.id = sv.sheet_id
+        JOIN project_members pm ON pm.project_id = s.project_id
+        WHERE a.id = comments.annotation_id AND pm.user_id = auth.uid()
+      ))
+      OR
+      (photo_id IS NOT NULL AND EXISTS (
+        SELECT 1 FROM photos p
+        JOIN project_members pm ON pm.project_id = p.project_id
+        WHERE p.id = comments.photo_id AND pm.user_id = auth.uid()
+      ))
+    )
+  );
+
+-- Update and delete policies remain user-based (unchanged from 00009)
+
+-- ============================================================
+-- 00023_fix_viewer_insert_policies.sql
+-- Restrict INSERT on photos and form_submissions to admin/member only
+-- ============================================================
+
+DROP POLICY IF EXISTS "Can create photos" ON photos;
+CREATE POLICY "Can create photos" ON photos
+  FOR INSERT WITH CHECK (
+    project_id IN (SELECT get_user_member_project_ids(auth.uid()))
+    OR project_id IN (SELECT get_org_admin_project_ids(auth.uid()))
+  );
+
+DROP POLICY IF EXISTS "Can create submissions" ON form_submissions;
+CREATE POLICY "Can create submissions" ON form_submissions
+  FOR INSERT WITH CHECK (
+    project_id IN (SELECT get_user_member_project_ids(auth.uid()))
+    OR project_id IN (SELECT get_org_admin_project_ids(auth.uid()))
+  );
+
+-- ============================================================
+-- 00024: Soft Delete + Admin Trash
+-- ============================================================
+
+ALTER TABLE projects ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE plan_sets ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_projects_not_deleted ON projects(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_plan_sets_not_deleted ON plan_sets(id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_projects_deleted ON projects(deleted_at) WHERE deleted_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_plan_sets_deleted ON plan_sets(deleted_at) WHERE deleted_at IS NOT NULL;
+
+DROP POLICY IF EXISTS "Users can view projects" ON projects;
+CREATE POLICY "Users can view projects" ON projects
+  FOR SELECT USING (
+    deleted_at IS NULL
+    AND (
+      id IN (SELECT get_user_project_ids(auth.uid()))
+      OR organization_id IN (SELECT get_user_org_ids(auth.uid()))
+    )
+  );
+
+DROP POLICY IF EXISTS "Project admins can update projects" ON projects;
+CREATE POLICY "Project admins can update projects" ON projects
+  FOR UPDATE USING (
+    deleted_at IS NULL
+    AND (
+      id IN (SELECT get_user_project_ids(auth.uid()))
+      OR organization_id IN (SELECT get_user_admin_org_ids(auth.uid()))
+    )
+  );
+
+DROP POLICY IF EXISTS "Project admins can delete projects" ON projects;
+CREATE POLICY "Project admins can delete projects" ON projects
+  FOR DELETE USING (
+    deleted_at IS NULL
+    AND (
+      id IN (SELECT get_user_project_ids(auth.uid()))
+      OR organization_id IN (SELECT get_user_admin_org_ids(auth.uid()))
+    )
+  );
+
+DROP POLICY IF EXISTS "Project members can view plan sets" ON plan_sets;
+CREATE POLICY "Project members can view plan sets" ON plan_sets
+  FOR SELECT USING (
+    deleted_at IS NULL
+    AND (
+      project_id IN (SELECT get_user_project_ids(auth.uid()))
+      OR project_id IN (SELECT get_org_admin_project_ids(auth.uid()))
+    )
+  );
+
+DROP POLICY IF EXISTS "Admin/member can manage plan sets" ON plan_sets;
+CREATE POLICY "Admin/member can manage plan sets" ON plan_sets
+  FOR ALL USING (
+    deleted_at IS NULL
+    AND (
+      project_id IN (SELECT get_user_member_project_ids(auth.uid()))
+      OR project_id IN (SELECT get_org_admin_project_ids(auth.uid()))
+    )
+  );
+
+CREATE OR REPLACE FUNCTION soft_delete_project(p_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT (
+    p_id IN (SELECT get_user_project_ids(auth.uid()))
+    OR (SELECT organization_id FROM projects WHERE id = p_id)
+       IN (SELECT get_user_admin_org_ids(auth.uid()))
+  ) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+  UPDATE projects SET deleted_at = now() WHERE id = p_id AND deleted_at IS NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION soft_delete_plan_set(p_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF NOT (
+    (SELECT project_id FROM plan_sets WHERE id = p_id)
+      IN (SELECT get_user_member_project_ids(auth.uid()))
+    OR (SELECT project_id FROM plan_sets WHERE id = p_id)
+      IN (SELECT get_org_admin_project_ids(auth.uid()))
+  ) THEN
+    RAISE EXCEPTION 'Permission denied';
+  END IF;
+  UPDATE plan_sets SET deleted_at = now() WHERE id = p_id AND deleted_at IS NULL;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION get_project_storage_paths(p_project_id UUID)
+RETURNS TABLE(bucket TEXT, path TEXT)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT 'plans' AS bucket, sv.file_url AS path
+  FROM sheet_versions sv
+  JOIN sheets s ON s.id = sv.sheet_id
+  WHERE s.project_id = p_project_id AND sv.file_url IS NOT NULL
+  UNION ALL
+  SELECT 'thumbnails' AS bucket, sv.thumbnail_url AS path
+  FROM sheet_versions sv
+  JOIN sheets s ON s.id = sv.sheet_id
+  WHERE s.project_id = p_project_id AND sv.thumbnail_url IS NOT NULL
+  UNION ALL
+  SELECT 'photos' AS bucket, p.file_url AS path
+  FROM photos p
+  WHERE p.project_id = p_project_id AND p.file_url IS NOT NULL
+  UNION ALL
+  SELECT 'photos' AS bucket, p.thumbnail_url AS path
+  FROM photos p
+  WHERE p.project_id = p_project_id AND p.thumbnail_url IS NOT NULL
+  UNION ALL
+  SELECT 'documents' AS bucket, d.file_url AS path
+  FROM documents d
+  WHERE d.project_id = p_project_id AND d.file_url IS NOT NULL
+  UNION ALL
+  SELECT 'specifications' AS bucket, sp.file_url AS path
+  FROM specifications sp
+  WHERE sp.project_id = p_project_id AND sp.file_url IS NOT NULL;
+$$;
+
+CREATE OR REPLACE FUNCTION get_plan_set_storage_paths(p_plan_set_id UUID)
+RETURNS TABLE(bucket TEXT, path TEXT)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+  SELECT 'plans' AS bucket, sv.file_url AS path
+  FROM sheet_versions sv
+  JOIN sheets s ON s.id = sv.sheet_id
+  WHERE s.plan_set_id = p_plan_set_id AND sv.file_url IS NOT NULL
+  UNION ALL
+  SELECT 'thumbnails' AS bucket, sv.thumbnail_url AS path
+  FROM sheet_versions sv
+  JOIN sheets s ON s.id = sv.sheet_id
+  WHERE s.plan_set_id = p_plan_set_id AND sv.thumbnail_url IS NOT NULL;
+$$;

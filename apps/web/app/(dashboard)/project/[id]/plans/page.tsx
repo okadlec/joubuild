@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { createClient } from '@/lib/supabase/server';
 import { PlansView } from '@/components/plans/plans-view';
+import { ModuleGuard } from '@/components/shared/module-guard';
 
 export default async function PlansPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,8 +20,10 @@ export default async function PlansPage({ params }: { params: Promise<{ id: stri
     .order('sort_order');
 
   return (
-    <Suspense>
-      <PlansView projectId={id} initialPlanSets={planSets || []} />
-    </Suspense>
+    <ModuleGuard projectId={id} module="plans">
+      <Suspense>
+        <PlansView projectId={id} initialPlanSets={planSets || []} />
+      </Suspense>
+    </ModuleGuard>
   );
 }

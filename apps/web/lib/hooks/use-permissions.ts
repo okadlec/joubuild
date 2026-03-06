@@ -36,7 +36,7 @@ export function usePermissions(projectId: string): UsePermissionsResult {
   const hasPermission = useCallback(
     (module: PermissionModule, action: PermissionAction): boolean => {
       const perm = permissions.find(p => p.module === module);
-      if (!perm) return true; // no row = default allow
+      if (!perm) return false; // no row = default deny (secure by default)
       return perm[action];
     },
     [permissions]

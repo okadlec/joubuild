@@ -19,6 +19,7 @@ import { CrossCompareDialog } from './cross-compare-dialog';
 import { useOfflinePdf } from '@/lib/hooks/use-offline-pdf';
 import { generatePdfThumbnail } from '@/lib/generate-pdf-thumbnail';
 import { sanitizeFileName } from '@joubuild/shared';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 interface SheetVersion {
   id: string;
@@ -87,6 +88,8 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
   const searchParams = useSearchParams();
   const t = useTranslations('plans');
   const tCommon = useTranslations('common');
+  const { hasPermission } = usePermissions(projectId);
+  const canCreate = hasPermission('plans', 'can_create');
   const [planSets, setPlanSets] = useState(initialPlanSets);
   const [selectedSheet, setSelectedSheet] = useState<Sheet | null>(null);
   const [showUpload, setShowUpload] = useState(false);
@@ -155,13 +158,13 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
   const handleDeleteSet = useCallback(async (planSetId: string) => {
     if (!confirm(t('deleteSetConfirm'))) return;
     const supabase = getSupabaseClient();
-    const { error } = await supabase.from('plan_sets').delete().eq('id', planSetId);
+    const { error } = await supabase.rpc('soft_delete_plan_set', { p_id: planSetId });
     if (error) {
       toast.error(error.message);
       return;
     }
     setPlanSets(prev => prev.filter(ps => ps.id !== planSetId));
-    toast.success(t('planSetDeleted'));
+    toast.success(t('movedToTrash'));
   }, []);
 
   const handleDeleteSheet = useCallback(async (sheetId: string, planSetId: string) => {
@@ -429,10 +432,12 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
               <History className="sm:mr-1 h-3.5 w-3.5" />
               <span className="hidden sm:inline">{t('versions')} ({selectedSheet.sheet_versions.length})</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={() => setShowNewVersion(true)}>
-              <Upload className="sm:mr-1 h-3.5 w-3.5" />
-              <span className="hidden sm:inline">{t('newRevision')}</span>
-            </Button>
+            {canCreate && (
+              <Button variant="outline" size="sm" onClick={() => setShowNewVersion(true)}>
+                <Upload className="sm:mr-1 h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{t('newRevision')}</span>
+              </Button>
+            )}
             {currentVersion && (
               <Button
                 variant="outline"
@@ -579,16 +584,18 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
           <h1 className="text-2xl font-bold">{t('title')}</h1>
           <p className="text-sm text-muted-foreground">{t('noPlansDescription')}</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" onClick={() => setShowNewSet(true)}>
-            <Plus className="sm:mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">{t('newPlanSet')}</span>
-          </Button>
-          <Button size="sm" onClick={() => setShowUpload(true)} disabled={planSets.length === 0}>
-            <Upload className="sm:mr-2 h-4 w-4" />
-            <span className="hidden sm:inline">{t('uploadPlans')}</span>
-          </Button>
-        </div>
+        {canCreate && (
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowNewSet(true)}>
+              <Plus className="sm:mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">{t('newPlanSet')}</span>
+            </Button>
+            <Button size="sm" onClick={() => setShowUpload(true)} disabled={planSets.length === 0}>
+              <Upload className="sm:mr-2 h-4 w-4" />
+              <span className="hidden sm:inline">{t('uploadPlans')}</span>
+            </Button>
+          </div>
+        )}
       </div>
 
       {planSets.length === 0 ? (
@@ -596,10 +603,12 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
           <FileText className="mb-4 h-12 w-12 text-muted-foreground" />
           <p className="mb-2 text-lg font-medium">{t('noPlans')}</p>
           <p className="mb-4 text-sm text-muted-foreground">{t('noPlansDescription')}</p>
-          <Button onClick={() => setShowNewSet(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('newPlanSet')}
-          </Button>
+          {canCreate && (
+            <Button onClick={() => setShowNewSet(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('newPlanSet')}
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-6">
@@ -607,14 +616,16 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
             <div key={planSet.id}>
               <div className="mb-3 flex items-center justify-between">
                 <h3 className="text-lg font-semibold">{planSet.name}</h3>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="text-muted-foreground hover:text-destructive"
-                  onClick={() => handleDeleteSet(planSet.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                {canCreate && (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive"
+                    onClick={() => handleDeleteSet(planSet.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               {planSet.sheets.length === 0 ? (
                 <p className="text-sm text-muted-foreground">{t('noSheetsInSet')}</p>
@@ -628,6 +639,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                         className="group relative cursor-pointer transition-shadow hover:shadow-md"
                         onClick={() => setSelectedSheet(sheet)}
                       >
+                        {canCreate && (
                         <button
                           className="absolute right-1 top-1 z-10 rounded p-1 opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive group-hover:opacity-100"
                           onClick={(e) => {
@@ -637,6 +649,7 @@ export function PlansView({ projectId, initialPlanSets }: PlansViewProps) {
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
+                      )}
                         <div className="flex h-28 items-center justify-center rounded-t-lg bg-muted overflow-hidden">
                           {currentVersion?.thumbnail_url ? (
                             <img
