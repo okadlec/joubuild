@@ -50,6 +50,9 @@ supabase/.branches/
 coverage/
 .nyc_output/
 
+# Old Capacitor mobile app
+apps/mobile-old/
+
 # Misc
 *.tsbuildinfo
 *.log

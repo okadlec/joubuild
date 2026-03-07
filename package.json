@@ -9,9 +9,9 @@
     "clean": "turbo clean",
     "dev:web": "turbo dev --filter=@joubuild/web",
     "build:web": "turbo build --filter=@joubuild/web",
-    "mobile:ios": "cd apps/mobile && npx cap open ios",
-    "mobile:android": "cd apps/mobile && npx cap open android",
-    "mobile:sync": "cd apps/mobile && npx cap sync"
+    "mobile:start": "cd apps/mobile && npx expo start",
+    "mobile:ios": "cd apps/mobile && npx expo start --ios",
+    "mobile:android": "cd apps/mobile && npx expo start --android"
   },
   "devDependencies": {
     "turbo": "^2.4.0",
@@ -28,6 +28,10 @@
     },
     "onlyBuiltDependencies": [
       "sharp"
+    ],
+    "ignoredBuiltDependencies": [
+      "@parcel/watcher",
+      "@swc/core"
     ]
   }
 }

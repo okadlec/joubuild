@@ -1,16 +1,41 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
 node_modules/
 
-# iOS
-ios/App/Pods/
-ios/App/Podfile.lock
-ios/App/output/
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
 
-# Android
-android/.gradle/
-android/app/build/
-android/build/
-android/local.properties
-android/capacitor-cordova-android-plugins/build/
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
 
-# Generated assets
-.build/
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android

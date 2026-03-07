@@ -9,16 +9,28 @@ let browserClient: TypedSupabaseClient | null = null;
  * Create a Supabase client for browser/client-side usage.
  * Returns a singleton instance.
  */
-export function createBrowserClient(): TypedSupabaseClient {
+export function createBrowserClient(
+  supabaseUrl?: string,
+  supabaseAnonKey?: string,
+  options?: {
+    auth?: Partial<{
+      storage: any;
+      persistSession: boolean;
+      autoRefreshToken: boolean;
+      detectSessionInUrl: boolean;
+    }>;
+  }
+): TypedSupabaseClient {
   if (browserClient) return browserClient;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+  const url = supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const key = supabaseAnonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-  browserClient = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  browserClient = createClient<Database>(url, key, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
+      ...options?.auth,
     },
   });
 
