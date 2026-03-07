@@ -57,3 +57,4 @@ apps/mobile-old/
 *.tsbuildinfo
 *.log
 .vercel
+.worktrees/
