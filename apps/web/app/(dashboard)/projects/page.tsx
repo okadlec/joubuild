@@ -6,17 +6,10 @@ export default async function ProjectsPage() {
   const t = await getTranslations('projects');
   const supabase = await createClient();
 
-  const [{ data: projects }, { data: memberEntries }] = await Promise.all([
-    supabase
-      .from('projects')
-      .select('*')
-      .order('updated_at', { ascending: false }),
-    supabase
-      .from('project_members')
-      .select('project_id'),
-  ]);
-
-  const userProjectIds = (memberEntries || []).map(m => m.project_id);
+  const { data: projects } = await supabase
+    .from('projects')
+    .select('*')
+    .order('updated_at', { ascending: false });
 
   return (
     <div>
@@ -26,7 +19,7 @@ export default async function ProjectsPage() {
           <p className="text-sm text-muted-foreground">{t('subtitle')}</p>
         </div>
       </div>
-      <ProjectsList initialProjects={projects || []} userProjectIds={userProjectIds} />
+      <ProjectsList initialProjects={projects || []} />
     </div>
   );
 }

@@ -710,8 +710,7 @@
       "completed": "Dokončený"
     },
     "memberCount": "{count} členů",
-    "subtitle": "Správa stavebních projektů",
-    "noAccess": "K tomuto projektu nemáte přístup"
+    "subtitle": "Správa stavebních projektů"
   },
   "roles": {
     "owner": "Vlastník",
