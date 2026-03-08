@@ -17,7 +17,7 @@ export default async function OrgDetailPage({
 
   const [
     { data: org },
-    { data: memberships },
+    { data: memberships, error: membershipsError },
     { data: projects },
     { data: storageData },
     { data: invitationsData },
@@ -45,6 +45,8 @@ export default async function OrgDetailPage({
       .eq('status', 'pending')
       .order('created_at', { ascending: false }),
   ]);
+
+  console.log('[Admin OrgDetail] memberships query:', { memberships, membershipsError });
 
   if (!org) notFound();
 
