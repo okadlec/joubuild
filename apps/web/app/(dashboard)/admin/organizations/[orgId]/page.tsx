@@ -1,8 +1,15 @@
 import { redirect, notFound } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
+import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { getCurrentAdminContext } from '@/lib/supabase/admin';
 import { OrgDetail } from './org-detail';
 import type { OrgRole } from '@joubuild/shared';
+
+function getServiceClient() {
+  return createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+}
 
 export default async function OrgDetailPage({
   params,
@@ -13,11 +20,11 @@ export default async function OrgDetailPage({
   if (!ctx?.isSuperadmin) redirect('/admin');
 
   const { orgId } = await params;
-  const supabase = await createClient();
+  const supabase = getServiceClient();
 
   const [
     { data: org },
-    { data: memberships, error: membershipsError },
+    { data: memberships },
     { data: projects },
     { data: storageData },
     { data: invitationsData },
@@ -29,7 +36,7 @@ export default async function OrgDetailPage({
       .single(),
     supabase
       .from('organization_members')
-      .select('user_id, role, profiles(email, full_name)')
+      .select('user_id, role, profiles!inner(email, full_name)')
       .eq('organization_id', orgId)
       .order('created_at', { ascending: false }),
     supabase
@@ -45,8 +52,6 @@ export default async function OrgDetailPage({
       .eq('status', 'pending')
       .order('created_at', { ascending: false }),
   ]);
-
-  console.log('[Admin OrgDetail] memberships query:', { memberships, membershipsError });
 
   if (!org) notFound();
 
