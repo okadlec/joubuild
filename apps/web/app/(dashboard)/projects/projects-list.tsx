@@ -1,10 +1,10 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useTranslations } from 'next-intl';
-import { Plus, MapPin, Calendar } from 'lucide-react';
+import { Plus, MapPin, Calendar, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -27,7 +27,7 @@ interface Project {
   updated_at: string;
 }
 
-export function ProjectsList({ initialProjects }: { initialProjects: Project[] }) {
+export function ProjectsList({ initialProjects, userProjectIds }: { initialProjects: Project[]; userProjectIds: string[] }) {
   const t = useTranslations('projects');
   const tCommon = useTranslations('common');
   const [projects, setProjects] = useState(initialProjects);
@@ -36,6 +36,7 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
   const [description, setDescription] = useState('');
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(false);
+  const accessSet = useMemo(() => new Set(userProjectIds), [userProjectIds]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -88,9 +89,10 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {projects.map((project) => (
-            <Link key={project.id} href={`/project/${project.id}/plans`}>
-              <Card className="cursor-pointer transition-shadow hover:shadow-md">
+          {projects.map((project) => {
+            const hasAccess = accessSet.has(project.id);
+            const card = (
+              <Card className={`transition-shadow ${hasAccess ? 'cursor-pointer hover:shadow-md' : 'opacity-60'}`}>
                 <div className="relative h-32 rounded-t-lg bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                   {project.cover_image_url ? (
                     <Image
@@ -111,6 +113,12 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
                       {t(`statuses.${project.status}`)}
                     </Badge>
                   </div>
+                  {!hasAccess && (
+                    <p className="mb-2 flex items-center gap-1 text-sm text-destructive">
+                      <Lock className="h-3 w-3" />
+                      {t('noAccess')}
+                    </p>
+                  )}
                   {project.description && (
                     <p className="mb-2 text-sm text-muted-foreground line-clamp-2">
                       {project.description}
@@ -130,8 +138,16 @@ export function ProjectsList({ initialProjects }: { initialProjects: Project[] }
                   </div>
                 </CardContent>
               </Card>
-            </Link>
-          ))}
+            );
+
+            return hasAccess ? (
+              <Link key={project.id} href={`/project/${project.id}/plans`}>
+                {card}
+              </Link>
+            ) : (
+              <div key={project.id}>{card}</div>
+            );
+          })}
         </div>
       )}
 

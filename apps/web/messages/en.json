@@ -670,7 +670,8 @@
       "completed": "Completed"
     },
     "memberCount": "{count} members",
-    "subtitle": "Manage construction projects"
+    "subtitle": "Manage construction projects",
+    "noAccess": "You don't have access to this project"
   },
   "roles": {
     "owner": "Owner",
