@@ -19,9 +19,9 @@ import { toast } from 'sonner';
 import { CategoryManager } from '@/components/tasks/category-manager';
 import { ProjectRolePermissionsInfo } from '@/components/shared/role-permissions-info';
 import { PermissionMatrix } from '@/components/settings/permission-matrix';
-import { addMember, removeMember, deleteProject, searchUsers } from './actions';
+import { addMember, removeMember, deleteProject, searchUsers, updateMemberRole } from './actions';
 import { compressImage } from '@/lib/compress-image';
-import type { ProjectMemberPermission, FolderPermission } from '@joubuild/shared';
+import type { ProjectMemberPermission, FolderPermission, ProjectRole } from '@joubuild/shared';
 
 interface Project {
   id: string;
@@ -256,6 +256,18 @@ export function ProjectSettings({
     setRemovingMemberId(null);
   }
 
+  async function handleMemberRoleChange(userId: string, newRole: ProjectRole) {
+    const result = await updateMemberRole(project.id, userId, newRole);
+    if (result.error) {
+      toast.error(result.error);
+      return;
+    }
+    setMemberList((prev) =>
+      prev.map((m) => (m.user_id === userId ? { ...m, role: newRole } : m))
+    );
+    toast.success(t('roleUpdated'));
+  }
+
   return (
     <div className="max-w-2xl space-y-6">
       <div>
@@ -401,6 +413,7 @@ export function ProjectSettings({
         initialPermissions={initialPermissions}
         initialFolderPermissions={initialFolderPermissions}
         folders={folders}
+        onMemberRoleChange={handleMemberRoleChange}
       />
 
       <Card className="border-destructive">

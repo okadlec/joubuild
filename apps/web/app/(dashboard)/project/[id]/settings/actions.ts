@@ -4,6 +4,8 @@ import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { revalidatePath } from 'next/cache';
 import { getCurrentAdminContext } from '@/lib/supabase/admin';
+import { PERMISSION_MODULES, getDefaultPermissionsForRole } from '@joubuild/shared';
+import type { ProjectRole } from '@joubuild/shared';
 
 export async function addMember(projectId: string, email: string, role: string) {
   const supabase = await createClient();
@@ -153,6 +155,62 @@ export async function searchUsers(projectId: string, query: string) {
   const filtered = (profiles || []).filter(p => !excludeIds.includes(p.id));
 
   return { data: filtered };
+}
+
+export async function updateMemberRole(projectId: string, userId: string, role: ProjectRole) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Nejste přihlášen' };
+  }
+
+  // Check caller is project admin or org admin/superadmin
+  const { data: callerMember } = await supabase
+    .from('project_members')
+    .select('role')
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (callerMember?.role !== 'admin') {
+    const adminCtx = await getCurrentAdminContext();
+    if (!adminCtx?.isSuperadmin && !adminCtx?.isOrgAdmin) {
+      return { error: 'Nemáte oprávnění měnit role' };
+    }
+  }
+
+  const serviceClient = createServiceClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!
+  );
+
+  // Update role
+  const { error: roleError } = await serviceClient
+    .from('project_members')
+    .update({ role })
+    .eq('project_id', projectId)
+    .eq('user_id', userId);
+
+  if (roleError) {
+    return { error: roleError.message };
+  }
+
+  // Update permissions to match role defaults
+  const defaults = getDefaultPermissionsForRole(role);
+  const permRows = PERMISSION_MODULES.map(mod => ({
+    project_id: projectId,
+    user_id: userId,
+    module: mod,
+    ...defaults,
+  }));
+
+  await serviceClient
+    .from('project_member_permissions')
+    .upsert(permRows, { onConflict: 'project_id,user_id,module' });
+
+  revalidatePath(`/project/${projectId}/settings`);
+  return { success: true };
 }
 
 export async function deleteProject(projectId: string) {

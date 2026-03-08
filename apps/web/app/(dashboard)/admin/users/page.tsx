@@ -34,7 +34,7 @@ export default async function UsersPage() {
       }
     }
 
-    const users = (profiles ?? []).map((p) => {
+    const users = (profiles ?? []).filter((p) => p.id).map((p) => {
       const mem = memberMap.get(p.id);
       return {
         id: p.id,
@@ -75,7 +75,7 @@ export default async function UsersPage() {
       .single(),
   ]);
 
-  const users = (memberships ?? []).map((m) => {
+  const users = (memberships ?? []).filter((m) => m.user_id).map((m) => {
     const p = (m as any).profiles;
     return {
       id: m.user_id,

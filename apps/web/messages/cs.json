@@ -592,7 +592,8 @@
     "roleLabel": "Role",
     "enterEmail": "Zadejte email",
     "adding": "Přidávání...",
-    "add": "Přidat"
+    "add": "Přidat",
+    "roleUpdated": "Role aktualizována"
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -733,6 +734,7 @@
     "deleteColumn": "Smazat",
     "savePermissions": "Uložit oprávnění",
     "permissionsSaved": "Oprávnění uložena",
+    "followerReadOnly": "Sledující má přístup pouze pro čtení",
     "modules": {
       "files": "Soubory",
       "specifications": "Specifikace",

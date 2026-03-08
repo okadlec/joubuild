@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import {
   ArrowLeft, Users, FolderOpen, HardDrive, Image,
-  FileText, Sheet, MoreVertical, UserMinus, Mail, X, RefreshCw,
+  FileText, Sheet, MoreVertical, UserMinus, Mail, X, RefreshCw, Trash2,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { formatBytes } from '@/lib/utils';
 import type { OrgRole, OrganizationInvitation } from '@joubuild/shared';
-import { updateMemberRole, removeMember, inviteOrgMemberFromAdmin, cancelInvitationFromAdmin, resendInvitationFromAdmin } from './actions';
+import { updateMemberRole, removeMember, inviteOrgMemberFromAdmin, cancelInvitationFromAdmin, resendInvitationFromAdmin, deleteOrganization } from './actions';
 
 import { InviteMemberDialog } from '@/components/invite-member-dialog';
 import { MemberProjectsDialog } from './member-projects-dialog';
@@ -121,6 +121,14 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
     toast.success('Pozvánka znovu odeslána');
   }
 
+  async function handleDeleteOrg() {
+    if (!confirm('Opravdu chcete smazat tuto organizaci? Tato akce je nevratná a smaže všechna data včetně projektů, plánů, úkolů, fotek a dokumentů.')) return;
+    const result = await deleteOrganization(org.id);
+    if (result.error) { toast.error(result.error); return; }
+    toast.success('Organizace byla smazána');
+    router.push('/admin/organizations');
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -136,6 +144,10 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
         <Badge variant="secondary" className="ml-auto">
           {org.plan}
         </Badge>
+        <Button variant="destructive" size="sm" onClick={handleDeleteOrg}>
+          <Trash2 className="mr-2 h-4 w-4" />
+          Smazat
+        </Button>
       </div>
 
       <Tabs defaultValue="overview">

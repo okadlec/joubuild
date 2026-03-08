@@ -7,14 +7,16 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
+import { Select } from '@/components/ui/select';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import {
   PERMISSION_MODULES,
   PERMISSION_MODULE_LABELS,
   PERMISSION_ACTION_LABELS,
   PROJECT_ROLE_LABELS,
+  getDefaultPermissionsForRole,
 } from '@joubuild/shared';
-import type { ProjectMemberPermission, FolderPermission, PermissionModule } from '@joubuild/shared';
+import type { ProjectMemberPermission, FolderPermission, PermissionModule, ProjectRole } from '@joubuild/shared';
 import { toast } from 'sonner';
 
 interface Member {
@@ -39,12 +41,14 @@ export function PermissionMatrix({
   initialPermissions,
   initialFolderPermissions,
   folders,
+  onMemberRoleChange,
 }: {
   projectId: string;
   members: Member[];
   initialPermissions: ProjectMemberPermission[];
   initialFolderPermissions: FolderPermission[];
   folders: Folder[];
+  onMemberRoleChange?: (userId: string, newRole: ProjectRole) => void;
 }) {
   const t = useTranslations('permissions');
   const tCommon = useTranslations('common');
@@ -54,6 +58,38 @@ export function PermissionMatrix({
   const [saving, setSaving] = useState(false);
 
   const selectedMember = members.find(m => m.user_id === selectedUserId);
+  const isFollower = selectedMember?.role === 'follower';
+
+  function handleRoleChange(userId: string, newRole: ProjectRole) {
+    onMemberRoleChange?.(userId, newRole);
+    // Auto-set permissions to role defaults
+    const defaults = getDefaultPermissionsForRole(newRole);
+    setPermissions(prev => {
+      const withoutUser = prev.filter(p => p.user_id !== userId);
+      const newPerms = PERMISSION_MODULES.map(mod => ({
+        id: '',
+        project_id: projectId,
+        user_id: userId,
+        module: mod as PermissionModule,
+        ...defaults,
+      }));
+      return [...withoutUser, ...newPerms];
+    });
+    // Auto-set folder permissions
+    setFolderPerms(prev => {
+      const withoutUser = prev.filter(fp => fp.user_id !== userId);
+      const newFolderPerms = folders.map(folder => ({
+        id: '',
+        project_id: projectId,
+        user_id: userId,
+        folder_id: folder.id,
+        can_view: defaults.can_view,
+        can_create: defaults.can_create,
+        can_delete: defaults.can_delete,
+      }));
+      return [...withoutUser, ...newFolderPerms];
+    });
+  }
 
   // Get permissions for selected user
   const userModulePerms = PERMISSION_MODULES.map(mod => {
@@ -226,9 +262,22 @@ export function PermissionMatrix({
                     )}
                   </div>
                 </div>
-                <Badge variant="secondary">
-                  {PROJECT_ROLE_LABELS[member.role] || member.role}
-                </Badge>
+                {onMemberRoleChange ? (
+                  <Select
+                    value={member.role}
+                    onChange={(e) => handleRoleChange(member.user_id, e.target.value as ProjectRole)}
+                    className="h-8 w-auto text-xs"
+                    onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                  >
+                    <option value="admin">{PROJECT_ROLE_LABELS['admin']}</option>
+                    <option value="member">{PROJECT_ROLE_LABELS['member']}</option>
+                    <option value="follower">{PROJECT_ROLE_LABELS['follower']}</option>
+                  </Select>
+                ) : (
+                  <Badge variant="secondary">
+                    {PROJECT_ROLE_LABELS[member.role] || member.role}
+                  </Badge>
+                )}
               </button>
             ))}
           </div>
@@ -241,6 +290,11 @@ export function PermissionMatrix({
               <p className="text-sm font-medium">
                 {t('modulePermissions', { name: selectedMember.full_name || selectedMember.email || '' })}
               </p>
+              {isFollower && (
+                <p className="text-xs text-muted-foreground">
+                  {t('followerReadOnly')}
+                </p>
+              )}
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
@@ -257,16 +311,21 @@ export function PermissionMatrix({
                     {userModulePerms.map(row => (
                       <tr key={row.module} className="border-b">
                         <td className="py-2 pr-4">{PERMISSION_MODULE_LABELS[row.module]}</td>
-                        {ACTIONS.map(action => (
-                          <td key={action} className="px-3 py-2 text-center">
-                            <input
-                              type="checkbox"
-                              checked={row[action]}
-                              onChange={() => toggleModulePerm(row.module, action)}
-                              className="h-4 w-4 rounded border-gray-300"
-                            />
-                          </td>
-                        ))}
+                        {ACTIONS.map(action => {
+                          const lockedByFollower = isFollower && action !== 'can_view';
+                          const forcedChecked = isFollower && action === 'can_view';
+                          return (
+                            <td key={action} className="px-3 py-2 text-center">
+                              <input
+                                type="checkbox"
+                                checked={forcedChecked || row[action]}
+                                onChange={() => toggleModulePerm(row.module, action)}
+                                disabled={lockedByFollower || forcedChecked}
+                                className={`h-4 w-4 rounded border-gray-300 ${lockedByFollower ? 'opacity-40' : ''}`}
+                              />
+                            </td>
+                          );
+                        })}
                       </tr>
                     ))}
                   </tbody>
@@ -295,16 +354,21 @@ export function PermissionMatrix({
                       {userFolderPerms.map(row => (
                         <tr key={row.folder_id} className="border-b">
                           <td className="py-2 pr-4">{row.folder_name}</td>
-                          {(['can_view', 'can_create', 'can_delete'] as const).map(action => (
-                            <td key={action} className="px-3 py-2 text-center">
-                              <input
-                                type="checkbox"
-                                checked={row[action]}
-                                onChange={() => toggleFolderPerm(row.folder_id, action)}
-                                className="h-4 w-4 rounded border-gray-300"
-                              />
-                            </td>
-                          ))}
+                          {(['can_view', 'can_create', 'can_delete'] as const).map(action => {
+                            const lockedByFollower = isFollower && action !== 'can_view';
+                            const forcedChecked = isFollower && action === 'can_view';
+                            return (
+                              <td key={action} className="px-3 py-2 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={forcedChecked || row[action]}
+                                  onChange={() => toggleFolderPerm(row.folder_id, action)}
+                                  disabled={lockedByFollower || forcedChecked}
+                                  className={`h-4 w-4 rounded border-gray-300 ${lockedByFollower ? 'opacity-40' : ''}`}
+                                />
+                              </td>
+                            );
+                          })}
                         </tr>
                       ))}
                     </tbody>

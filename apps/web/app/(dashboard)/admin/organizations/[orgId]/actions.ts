@@ -1,6 +1,7 @@
 'use server';
 
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { revalidatePath } from 'next/cache';
 import { getCurrentAdminContext } from '@/lib/supabase/admin';
 import type { OrgRole } from '@joubuild/shared';
 
@@ -242,6 +243,22 @@ export async function getMemberProjectAccess(userId: string, orgId: string) {
     permissions: permissions || [],
     availableProjects,
   };
+}
+
+export async function deleteOrganization(orgId: string) {
+  if (!orgId) return { error: 'Chybí ID organizace' };
+  const ctx = await getCurrentAdminContext();
+  if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };
+
+  const serviceClient = getServiceClient();
+  const { error } = await serviceClient
+    .from('organizations')
+    .delete()
+    .eq('id', orgId);
+
+  if (error) return { error: 'Chyba při mazání: ' + error.message };
+  revalidatePath('/admin/organizations');
+  return { success: true };
 }
 
 export async function addMemberByEmail(orgId: string, email: string, role: OrgRole) {

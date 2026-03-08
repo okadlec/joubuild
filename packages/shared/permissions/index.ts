@@ -6,6 +6,23 @@ import type {
   ProjectMemberPermission,
 } from '../types';
 
+export interface DefaultPermissions {
+  can_view: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+}
+
+const ROLE_DEFAULTS: Record<ProjectRole, DefaultPermissions> = {
+  admin: { can_view: true, can_create: true, can_edit: true, can_delete: true },
+  member: { can_view: true, can_create: true, can_edit: true, can_delete: false },
+  follower: { can_view: true, can_create: false, can_edit: false, can_delete: false },
+};
+
+export function getDefaultPermissionsForRole(role: ProjectRole): DefaultPermissions {
+  return ROLE_DEFAULTS[role] ?? ROLE_DEFAULTS.member;
+}
+
 export interface PermissionContext {
   orgRole: OrgRole | null;
   projectRole?: ProjectRole | null;

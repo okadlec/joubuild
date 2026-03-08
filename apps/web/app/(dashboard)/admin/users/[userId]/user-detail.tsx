@@ -20,6 +20,7 @@ import {
   PERMISSION_MODULE_LABELS,
   PERMISSION_ACTION_LABELS,
   PROJECT_ROLE_LABELS,
+  getDefaultPermissionsForRole,
 } from '@joubuild/shared';
 import type {
   ProjectRole,
@@ -189,12 +190,38 @@ export function UserDetail({
     });
   }
 
+  const isOrgViewer = orgMembership?.role === 'viewer';
+  const isFollower = selectedProject?.role === 'follower';
+  const isPermissionsLocked = isOrgViewer || isFollower;
+
   async function handleRoleChange(projectId: string, newRole: ProjectRole) {
     const result = await updateProjectMemberRole(profile.id, projectId, newRole);
     if (result.error) { toast.error(result.error); return; }
     setProjects((prev) =>
       prev.map((p) => (p.project_id === projectId ? { ...p, role: newRole } : p))
     );
+
+    // Auto-set permissions to match new role defaults
+    const defaults = getDefaultPermissionsForRole(newRole);
+    const newPerms = PERMISSION_MODULES.map(mod => ({
+      id: '',
+      project_id: projectId,
+      user_id: profile.id,
+      module: mod as PermissionModule,
+      ...defaults,
+    }));
+    setPermissions(prev => {
+      const withoutProject = prev.filter(p => p.project_id !== projectId);
+      return [...withoutProject, ...newPerms];
+    });
+
+    // Also persist the new defaults
+    const moduleRows = PERMISSION_MODULES.map(mod => ({
+      module: mod,
+      ...defaults,
+    }));
+    await updateUserProjectPermissions(profile.id, projectId, moduleRows);
+
     toast.success(t('userDetail.roleUpdated'));
   }
 
@@ -413,6 +440,7 @@ export function UserDetail({
                         }
                         className="h-8 w-auto text-xs"
                         onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                        disabled={isOrgViewer}
                       >
                         <option value="admin">{PROJECT_ROLE_LABELS['admin']}</option>
                         <option value="member">{PROJECT_ROLE_LABELS['member']}</option>
@@ -453,6 +481,16 @@ export function UserDetail({
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {isOrgViewer && (
+                      <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        Uživatel je v organizaci jako prohlížející — má pouze přístup pro čtení
+                      </div>
+                    )}
+                    {isFollower && !isOrgViewer && (
+                      <p className="text-xs text-muted-foreground">
+                        Sledující má přístup pouze pro čtení
+                      </p>
+                    )}
                     {/* Module permissions table */}
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
@@ -474,16 +512,21 @@ export function UserDetail({
                               <td className="py-2 pr-4">
                                 {PERMISSION_MODULE_LABELS[row.module]}
                               </td>
-                              {ACTIONS.map((action) => (
-                                <td key={action} className="px-3 py-2 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={row[action]}
-                                    onChange={() => toggleModulePerm(row.module, action)}
-                                    className="h-4 w-4 rounded border-gray-300"
-                                  />
-                                </td>
-                              ))}
+                              {ACTIONS.map((action) => {
+                                const locked = isPermissionsLocked && action !== 'can_view';
+                                const forcedChecked = isPermissionsLocked && action === 'can_view';
+                                return (
+                                  <td key={action} className="px-3 py-2 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={forcedChecked || row[action]}
+                                      onChange={() => toggleModulePerm(row.module, action)}
+                                      disabled={locked || forcedChecked}
+                                      className={`h-4 w-4 rounded border-gray-300 ${locked ? 'opacity-40' : ''}`}
+                                    />
+                                  </td>
+                                );
+                              })}
                             </tr>
                           ))}
                         </tbody>
@@ -520,18 +563,23 @@ export function UserDetail({
                                 <tr key={row.folder_id} className="border-b">
                                   <td className="py-2 pr-4">{row.folder_name}</td>
                                   {(['can_view', 'can_create', 'can_delete'] as const).map(
-                                    (action) => (
-                                      <td key={action} className="px-3 py-2 text-center">
-                                        <input
-                                          type="checkbox"
-                                          checked={row[action]}
-                                          onChange={() =>
-                                            toggleFolderPerm(row.folder_id, action)
-                                          }
-                                          className="h-4 w-4 rounded border-gray-300"
-                                        />
-                                      </td>
-                                    )
+                                    (action) => {
+                                      const locked = isPermissionsLocked && action !== 'can_view';
+                                      const forcedChecked = isPermissionsLocked && action === 'can_view';
+                                      return (
+                                        <td key={action} className="px-3 py-2 text-center">
+                                          <input
+                                            type="checkbox"
+                                            checked={forcedChecked || row[action]}
+                                            onChange={() =>
+                                              toggleFolderPerm(row.folder_id, action)
+                                            }
+                                            disabled={locked || forcedChecked}
+                                            className={`h-4 w-4 rounded border-gray-300 ${locked ? 'opacity-40' : ''}`}
+                                          />
+                                        </td>
+                                      );
+                                    }
                                   )}
                                 </tr>
                               ))}

@@ -591,7 +591,8 @@
     "roleLabel": "Role",
     "enterEmail": "Enter email",
     "adding": "Adding...",
-    "add": "Add"
+    "add": "Add",
+    "roleUpdated": "Role updated"
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -693,6 +694,7 @@
     "deleteColumn": "Delete",
     "savePermissions": "Save Permissions",
     "permissionsSaved": "Permissions saved",
+    "followerReadOnly": "Follower has read-only access",
     "modules": {
       "files": "Files",
       "specifications": "Specifications",

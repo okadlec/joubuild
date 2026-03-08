@@ -55,7 +55,7 @@ export default async function OrgDetailPage({
 
   if (!org) notFound();
 
-  const members = (memberships ?? []).map((m: any) => ({
+  const members = (memberships ?? []).filter((m: any) => m.user_id).map((m: any) => ({
     user_id: m.user_id,
     email: m.profiles?.email ?? null,
     full_name: m.profiles?.full_name ?? null,

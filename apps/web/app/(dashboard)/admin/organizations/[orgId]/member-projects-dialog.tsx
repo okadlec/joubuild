@@ -291,6 +291,11 @@ export function MemberProjectsDialog({ open, onClose, member, orgId }: MemberPro
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {member.role === 'viewer' && (
+                      <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+                        Prohlížející má přístup pouze pro čtení
+                      </div>
+                    )}
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm">
                         <thead>
@@ -309,16 +314,22 @@ export function MemberProjectsDialog({ open, onClose, member, orgId }: MemberPro
                               <td className="py-2 pr-4">
                                 {PERMISSION_MODULE_LABELS[row.module]}
                               </td>
-                              {ACTIONS.map((action) => (
-                                <td key={action} className="px-3 py-2 text-center">
-                                  <input
-                                    type="checkbox"
-                                    checked={row[action]}
-                                    onChange={() => toggleModulePerm(row.module, action)}
-                                    className="h-4 w-4 rounded border-gray-300"
-                                  />
-                                </td>
-                              ))}
+                              {ACTIONS.map((action) => {
+                                const isViewer = member.role === 'viewer';
+                                const locked = isViewer && action !== 'can_view';
+                                const forcedChecked = isViewer && action === 'can_view';
+                                return (
+                                  <td key={action} className="px-3 py-2 text-center">
+                                    <input
+                                      type="checkbox"
+                                      checked={forcedChecked || row[action]}
+                                      onChange={() => toggleModulePerm(row.module, action)}
+                                      disabled={locked || forcedChecked}
+                                      className={`h-4 w-4 rounded border-gray-300 ${locked ? 'opacity-40' : ''}`}
+                                    />
+                                  </td>
+                                );
+                              })}
                             </tr>
                           ))}
                         </tbody>
@@ -326,7 +337,7 @@ export function MemberProjectsDialog({ open, onClose, member, orgId }: MemberPro
                     </div>
 
                     <div className="flex justify-end">
-                      <Button onClick={handleSavePermissions} loading={saving}>
+                      <Button onClick={handleSavePermissions} loading={saving} disabled={member.role === 'viewer'}>
                         <Save className="mr-2 h-4 w-4" />
                         {saving ? tCommon('saving') : t('userDetail.savePermissions')}
                       </Button>
