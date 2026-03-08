@@ -6,7 +6,7 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import {
   ArrowLeft, Users, FolderOpen, HardDrive, Image,
-  FileText, Sheet, MoreVertical, UserMinus, UserPlus,
+  FileText, Sheet, MoreVertical, UserMinus, UserPlus, Mail, X, RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -20,8 +20,9 @@ import { Select } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { formatBytes } from '@/lib/utils';
-import type { OrgRole } from '@joubuild/shared';
-import { updateMemberRole, removeMember, addMemberByEmail } from './actions';
+import type { OrgRole, OrganizationInvitation } from '@joubuild/shared';
+import { updateMemberRole, removeMember, addMemberByEmail, inviteOrgMemberFromAdmin, cancelInvitationFromAdmin, resendInvitationFromAdmin } from './actions';
+import { InviteMemberDialog } from '@/components/invite-member-dialog';
 
 const ORG_ROLE_VARIANTS: Record<OrgRole, 'default' | 'secondary' | 'outline'> = {
   owner: 'default',
@@ -51,6 +52,14 @@ interface StorageStats {
   total: number;
 }
 
+interface PendingInvitation {
+  id: string;
+  email: string;
+  role: OrgRole;
+  created_at: string;
+  expires_at: string;
+}
+
 interface OrgDetailProps {
   org: {
     id: string;
@@ -61,9 +70,10 @@ interface OrgDetailProps {
   members: Member[];
   projects: Project[];
   storage: StorageStats;
+  pendingInvitations?: PendingInvitation[];
 }
 
-export function OrgDetail({ org, members: initialMembers, projects, storage }: OrgDetailProps) {
+export function OrgDetail({ org, members: initialMembers, projects, storage, pendingInvitations: initialInvitations = [] }: OrgDetailProps) {
   const router = useRouter();
   const t = useTranslations('admin');
   const tRoles = useTranslations('roles');
@@ -75,6 +85,8 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
   const [newMemberEmail, setNewMemberEmail] = useState('');
   const [newMemberRole, setNewMemberRole] = useState<OrgRole>('member');
   const [inviting, setInviting] = useState(false);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
+  const [invitations, setInvitations] = useState(initialInvitations);
 
   const storageItems = [
     { label: t('storage.photos'), value: storage.photos, icon: Image },
@@ -114,6 +126,19 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
       setNewMemberRole('member');
     }
     setInviting(false);
+  }
+
+  async function handleCancelInvitation(invId: string) {
+    const result = await cancelInvitationFromAdmin(org.id, invId);
+    if (result.error) { toast.error(result.error); return; }
+    setInvitations((prev) => prev.filter((i) => i.id !== invId));
+    toast.success('Pozvánka zrušena');
+  }
+
+  async function handleResendInvitation(invId: string) {
+    const result = await resendInvitationFromAdmin(org.id, invId);
+    if (result.error) { toast.error(result.error); return; }
+    toast.success('Pozvánka znovu odeslána');
   }
 
   return (
@@ -208,10 +233,16 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
             <CardContent className="pt-6">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">{t('members')}</h3>
-                <Button size="sm" variant="outline" onClick={() => setShowAddMember(true)}>
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  {t('orgDetail.addMember')}
-                </Button>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setShowInviteDialog(true)}>
+                    <Mail className="mr-2 h-4 w-4" />
+                    Pozvat
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => setShowAddMember(true)}>
+                    <UserPlus className="mr-2 h-4 w-4" />
+                    {t('orgDetail.addMember')}
+                  </Button>
+                </div>
               </div>
               <div className="space-y-2">
                 {members.length === 0 && (
@@ -273,6 +304,49 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
                   </div>
                 ))}
               </div>
+
+              {/* Pending Invitations */}
+              {invitations.length > 0 && (
+                <div className="mt-6">
+                  <h3 className="mb-2 text-sm font-semibold text-muted-foreground">Nevyřízené pozvánky</h3>
+                  <div className="space-y-2">
+                    {invitations.map((inv) => (
+                      <div key={inv.id} className="flex items-center justify-between rounded-md border border-dashed p-3">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">{inv.email}</p>
+                            <p className="text-xs text-muted-foreground">
+                              Pozváno {new Date(inv.created_at).toLocaleDateString('cs-CZ')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline">{tRoles(inv.role)}</Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleResendInvitation(inv.id)}
+                            title="Znovu odeslat"
+                          >
+                            <RefreshCw className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleCancelInvitation(inv.id)}
+                            title="Zrušit pozvánku"
+                          >
+                            <X className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -303,6 +377,17 @@ export function OrgDetail({ org, members: initialMembers, projects, storage }: O
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Invite Member Dialog */}
+      <InviteMemberDialog
+        open={showInviteDialog}
+        onClose={() => setShowInviteDialog(false)}
+        onInvite={async (email, role) => {
+          const result = await inviteOrgMemberFromAdmin(org.id, email, role);
+          if (result.success) router.refresh();
+          return result;
+        }}
+      />
 
       {/* Add member dialog */}
       <Dialog open={showAddMember} onClose={() => setShowAddMember(false)}>

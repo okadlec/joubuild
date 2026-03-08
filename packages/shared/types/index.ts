@@ -15,6 +15,20 @@ export interface Organization {
 
 export type OrgRole = 'owner' | 'admin' | 'member' | 'viewer';
 
+export type InvitationStatus = 'pending' | 'accepted' | 'expired' | 'cancelled';
+
+export interface OrganizationInvitation {
+  id: string;
+  organization_id: string;
+  email: string;
+  role: OrgRole;
+  invited_by: string | null;
+  status: InvitationStatus;
+  created_at: string;
+  expires_at: string;
+  accepted_at: string | null;
+}
+
 export interface OrganizationMember {
   id: string;
   organization_id: string;

@@ -57,6 +57,128 @@ export async function addMemberToOrg(userId: string, orgId: string, role: OrgRol
   return { success: true };
 }
 
+export async function inviteOrgMemberFromAdmin(orgId: string, email: string, role: string) {
+  const ctx = await getCurrentAdminContext();
+  if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };
+
+  if (role === 'owner') return { error: 'Nelze pozvat jako vlastníka' };
+
+  const serviceClient = getServiceClient();
+
+  const { data: org } = await serviceClient
+    .from('organizations')
+    .select('name')
+    .eq('id', orgId)
+    .single();
+
+  // Check if user already exists
+  const { data: existingProfile } = await serviceClient
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existingProfile) {
+    const { data: existingMember } = await serviceClient
+      .from('organization_members')
+      .select('id')
+      .eq('organization_id', orgId)
+      .eq('user_id', existingProfile.id)
+      .maybeSingle();
+
+    if (existingMember) return { error: 'Uživatel je již členem organizace' };
+
+    const { error: insertError } = await serviceClient
+      .from('organization_members')
+      .insert({ organization_id: orgId, user_id: existingProfile.id, role });
+
+    if (insertError) return { error: insertError.message };
+    return { success: true, directlyAdded: true };
+  }
+
+  const { error: invError } = await serviceClient
+    .from('organization_invitations')
+    .upsert(
+      {
+        organization_id: orgId,
+        email,
+        role,
+        invited_by: ctx.userId,
+        status: 'pending',
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      { onConflict: 'organization_id,email' }
+    );
+
+  if (invError) return { error: invError.message };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
+  const { error: emailError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${appUrl}/auth/callback?next=/invite/accept`,
+    data: { invited_org_name: org?.name || '' },
+  });
+
+  if (emailError) return { error: 'Chyba při odesílání pozvánky: ' + emailError.message };
+  return { success: true };
+}
+
+export async function cancelInvitationFromAdmin(orgId: string, invitationId: string) {
+  const ctx = await getCurrentAdminContext();
+  if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };
+
+  const serviceClient = getServiceClient();
+  const { error } = await serviceClient
+    .from('organization_invitations')
+    .update({ status: 'cancelled' })
+    .eq('id', invitationId)
+    .eq('organization_id', orgId)
+    .eq('status', 'pending');
+
+  if (error) return { error: error.message };
+  return { success: true };
+}
+
+export async function resendInvitationFromAdmin(orgId: string, invitationId: string) {
+  const ctx = await getCurrentAdminContext();
+  if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };
+
+  const serviceClient = getServiceClient();
+
+  const { data: invitation } = await serviceClient
+    .from('organization_invitations')
+    .select('email')
+    .eq('id', invitationId)
+    .eq('organization_id', orgId)
+    .single();
+
+  if (!invitation) return { error: 'Pozvánka nenalezena' };
+
+  const { data: org } = await serviceClient
+    .from('organizations')
+    .select('name')
+    .eq('id', orgId)
+    .single();
+
+  const { error: updateError } = await serviceClient
+    .from('organization_invitations')
+    .update({
+      status: 'pending',
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+    })
+    .eq('id', invitationId);
+
+  if (updateError) return { error: updateError.message };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
+  const { error: emailError } = await serviceClient.auth.admin.inviteUserByEmail(invitation.email, {
+    redirectTo: `${appUrl}/auth/callback?next=/invite/accept`,
+    data: { invited_org_name: org?.name || '' },
+  });
+
+  if (emailError) return { error: 'Chyba při odesílání: ' + emailError.message };
+  return { success: true };
+}
+
 export async function addMemberByEmail(orgId: string, email: string, role: OrgRole) {
   const ctx = await getCurrentAdminContext();
   if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };

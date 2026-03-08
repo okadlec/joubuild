@@ -11,3 +11,4 @@ export * from './profiles';
 export * from './forms';
 export * from './specifications';
 export * from './reports';
+export * from './invitations';

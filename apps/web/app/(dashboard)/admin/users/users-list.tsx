@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useTranslations } from 'next-intl';
 import {
   UserPlus, MoreVertical, Trash2, Shield, ShieldOff,
-  UserMinus, Search,
+  UserMinus, Search, Mail,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -19,11 +19,13 @@ import { toast } from 'sonner';
 import type { OrgRole } from '@joubuild/shared';
 import {
   createUser,
+  inviteUser,
   toggleSuperadmin,
   updateUserOrgRole,
   deleteUser,
   removeUserFromOrg,
 } from './actions';
+import { InviteMemberDialog } from '@/components/invite-member-dialog';
 
 const ORG_ROLE_VARIANTS: Record<OrgRole, 'default' | 'secondary' | 'outline'> = {
   owner: 'default',
@@ -67,6 +69,7 @@ export function UsersList({
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [showInviteDialog, setShowInviteDialog] = useState(false);
 
   function getRoleLabel(role: OrgRole): string {
     return tRoles(role);
@@ -157,6 +160,12 @@ export function UsersList({
                   className="pl-9"
                 />
               </div>
+              {organizationId && (
+                <Button onClick={() => setShowInviteDialog(true)} size="sm" variant="outline">
+                  <Mail className="mr-2 h-4 w-4" />
+                  Pozvat
+                </Button>
+              )}
               <Button onClick={() => setShowCreateDialog(true)} size="sm">
                 <UserPlus className="mr-2 h-4 w-4" />
                 {tCommon('add')}
@@ -273,6 +282,19 @@ export function UsersList({
           </div>
         </CardContent>
       </Card>
+
+      {/* Invite Member Dialog */}
+      {organizationId && (
+        <InviteMemberDialog
+          open={showInviteDialog}
+          onClose={() => setShowInviteDialog(false)}
+          onInvite={async (email, role) => {
+            const result = await inviteUser(email, role as OrgRole, organizationId);
+            if (result.success) router.refresh();
+            return result;
+          }}
+        />
+      )}
 
       {/* Create User Dialog */}
       <Dialog open={showCreateDialog} onClose={() => setShowCreateDialog(false)}>

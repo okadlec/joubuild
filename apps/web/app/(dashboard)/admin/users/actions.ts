@@ -61,6 +61,87 @@ export async function createUser(data: {
   return { data: { id: userId } };
 }
 
+export async function inviteUser(email: string, orgRole: OrgRole, organizationId: string) {
+  const ctx = await getCurrentAdminContext();
+  if (!ctx) return { error: 'Nemáte oprávnění' };
+
+  if (!ctx.isSuperadmin) {
+    if (orgRole === 'owner') return { error: 'Nemůžete nastavit roli vlastníka' };
+    if (organizationId !== ctx.organizationId) {
+      return { error: 'Nemáte oprávnění pro tuto organizaci' };
+    }
+  }
+
+  const serviceClient = getServiceClient();
+
+  // Get org name
+  const { data: org } = await serviceClient
+    .from('organizations')
+    .select('name')
+    .eq('id', organizationId)
+    .single();
+
+  // Check if user already exists
+  const { data: existingProfile } = await serviceClient
+    .from('profiles')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (existingProfile) {
+    const { data: existingMember } = await serviceClient
+      .from('organization_members')
+      .select('id')
+      .eq('organization_id', organizationId)
+      .eq('user_id', existingProfile.id)
+      .maybeSingle();
+
+    if (existingMember) {
+      return { error: 'Uživatel je již členem organizace' };
+    }
+
+    const { error: insertError } = await serviceClient
+      .from('organization_members')
+      .insert({
+        organization_id: organizationId,
+        user_id: existingProfile.id,
+        role: orgRole,
+      });
+
+    if (insertError) return { error: insertError.message };
+    revalidatePath('/admin/users');
+    return { success: true, directlyAdded: true };
+  }
+
+  // Insert invitation
+  const { error: invError } = await serviceClient
+    .from('organization_invitations')
+    .upsert(
+      {
+        organization_id: organizationId,
+        email,
+        role: orgRole,
+        invited_by: ctx.userId,
+        status: 'pending',
+        expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      },
+      { onConflict: 'organization_id,email' }
+    );
+
+  if (invError) return { error: invError.message };
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
+  const { error: emailError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
+    redirectTo: `${appUrl}/auth/callback?next=/invite/accept`,
+    data: { invited_org_name: org?.name || '' },
+  });
+
+  if (emailError) return { error: 'Chyba při odesílání pozvánky: ' + emailError.message };
+
+  revalidatePath('/admin/users');
+  return { success: true };
+}
+
 export async function toggleSuperadmin(userId: string) {
   const ctx = await getCurrentAdminContext();
   if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };

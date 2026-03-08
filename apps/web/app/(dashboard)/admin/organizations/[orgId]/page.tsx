@@ -20,6 +20,7 @@ export default async function OrgDetailPage({
     { data: memberships },
     { data: projects },
     { data: storageData },
+    { data: invitationsData },
   ] = await Promise.all([
     supabase
       .from('organizations')
@@ -37,6 +38,12 @@ export default async function OrgDetailPage({
       .eq('organization_id', orgId)
       .order('created_at', { ascending: false }),
     supabase.rpc('get_org_storage_stats', { org_id: orgId }),
+    supabase
+      .from('organization_invitations')
+      .select('id, email, role, created_at, expires_at')
+      .eq('organization_id', orgId)
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false }),
   ]);
 
   if (!org) notFound();
@@ -56,6 +63,13 @@ export default async function OrgDetailPage({
       members={members}
       projects={projects ?? []}
       storage={storage}
+      pendingInvitations={(invitationsData ?? []).map((i: any) => ({
+        id: i.id,
+        email: i.email,
+        role: i.role as OrgRole,
+        created_at: i.created_at,
+        expires_at: i.expires_at,
+      }))}
     />
   );
 }

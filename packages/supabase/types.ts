@@ -756,6 +756,41 @@ export interface Database {
         };
         Relationships: [];
       };
+      organization_invitations: {
+        Row: {
+          id: string;
+          organization_id: string;
+          email: string;
+          role: string;
+          invited_by: string | null;
+          status: string;
+          created_at: string;
+          expires_at: string;
+          accepted_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          organization_id: string;
+          email: string;
+          role: string;
+          invited_by?: string | null;
+          status?: string;
+          created_at?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          organization_id?: string;
+          email?: string;
+          role?: string;
+          invited_by?: string | null;
+          status?: string;
+          expires_at?: string;
+          accepted_at?: string | null;
+        };
+        Relationships: [];
+      };
       profiles: {
         Row: {
           id: string;
