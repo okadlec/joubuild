@@ -282,12 +282,14 @@ export function AnnotationDetailDialog({
                 <AnnotationChatPanel
                   annotationId={annotationId}
                   projectId={projectId}
+                  readOnly={readOnly}
                 />
               )}
               {activeTab === 'photos' && (
                 <AnnotationPhotosPanel
                   annotationId={annotationId}
                   projectId={projectId}
+                  readOnly={readOnly}
                 />
               )}
               {activeTab === 'attributes' && isMobile && (
@@ -300,6 +302,7 @@ export function AnnotationDetailDialog({
                   onTaskCreated={handleTaskCreated}
                   onTaskUpdated={handleTaskUpdated}
                   onTaskDeleted={handleTaskDeleted}
+                  readOnly={readOnly}
                 />
               )}
             </div>
@@ -311,7 +314,7 @@ export function AnnotationDetailDialog({
                   <CheckSquare className="h-3.5 w-3.5 text-muted-foreground" />
                   <span className="text-xs font-medium text-muted-foreground">{t('checklist')}</span>
                 </div>
-                <TaskChecklist taskId={selectedTask.id} />
+                <TaskChecklist taskId={selectedTask.id} readOnly={readOnly} />
               </div>
             )}
           </div>
@@ -331,6 +334,7 @@ export function AnnotationDetailDialog({
                 onTaskCreated={handleTaskCreated}
                 onTaskUpdated={handleTaskUpdated}
                 onTaskDeleted={handleTaskDeleted}
+                readOnly={readOnly}
               />
             </div>
           )}

@@ -12,11 +12,14 @@ import { Select } from '@/components/ui/select';
 import { getSupabaseClient } from '@/lib/supabase/client';
 import { toast } from 'sonner';
 import { use } from 'react';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 export default function ReportsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const t = useTranslations('reports');
   const tCommon = useTranslations('common');
+  const { hasPermission } = usePermissions(id);
+  const canCreate = hasPermission('reports', 'can_create');
   const [generating, setGenerating] = useState<string | null>(null);
   const [showSchedule, setShowSchedule] = useState(false);
 
@@ -194,20 +197,22 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => generateReport(report.id)}
-                disabled={generating !== null && generating !== report.id}
-                loading={generating === report.id}
-              >
-                {generating === report.id ? (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                ) : (
-                  <Download className="mr-2 h-4 w-4" />
-                )}
-                {generating === report.id ? t('generating') : t('generate')}
-              </Button>
+              {canCreate && (
+                <Button
+                  variant="outline"
+                  className="w-full"
+                  onClick={() => generateReport(report.id)}
+                  disabled={generating !== null && generating !== report.id}
+                  loading={generating === report.id}
+                >
+                  {generating === report.id ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Download className="mr-2 h-4 w-4" />
+                  )}
+                  {generating === report.id ? t('generating') : t('generate')}
+                </Button>
+              )}
             </CardContent>
           </Card>
         ))}
@@ -219,10 +224,12 @@ export default function ReportsPage({ params }: { params: Promise<{ id: string }
           <Calendar className="mb-3 h-10 w-10 text-muted-foreground" />
           <p className="mb-1 font-medium">{t('noScheduledReports')}</p>
           <p className="mb-4 text-sm text-muted-foreground">{t('scheduleHint')}</p>
-          <Button variant="outline" onClick={() => setShowSchedule(true)}>
-            <Plus className="mr-2 h-4 w-4" />
-            {t('scheduleReport')}
-          </Button>
+          {canCreate && (
+            <Button variant="outline" onClick={() => setShowSchedule(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {t('scheduleReport')}
+            </Button>
+          )}
         </div>
       </div>
 

@@ -23,9 +23,10 @@ interface Comment {
 interface AnnotationChatPanelProps {
   annotationId: string;
   projectId: string;
+  readOnly?: boolean;
 }
 
-export function AnnotationChatPanel({ annotationId }: AnnotationChatPanelProps) {
+export function AnnotationChatPanel({ annotationId, readOnly = false }: AnnotationChatPanelProps) {
   const [comments, setComments] = useState<Comment[]>([]);
   const [body, setBody] = useState('');
   const [sending, setSending] = useState(false);
@@ -204,7 +205,7 @@ export function AnnotationChatPanel({ annotationId }: AnnotationChatPanelProps) 
                   <p className="text-sm">{comment.body}</p>
                 )}
               </div>
-              {isOwn && editingId !== comment.id && (
+              {isOwn && !readOnly && editingId !== comment.id && (
                 <div className="flex flex-col gap-0.5 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
                   <Button
                     size="icon"
@@ -230,18 +231,20 @@ export function AnnotationChatPanel({ annotationId }: AnnotationChatPanelProps) 
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSendComment} className="flex gap-2 border-t p-3">
-        <Input
-          ref={inputRef}
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Napište komentář..."
-          className="flex-1"
-        />
-        <Button type="submit" size="icon" disabled={sending || !body.trim()}>
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+      {!readOnly && (
+        <form onSubmit={handleSendComment} className="flex gap-2 border-t p-3">
+          <Input
+            ref={inputRef}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Napište komentář..."
+            className="flex-1"
+          />
+          <Button type="submit" size="icon" disabled={sending || !body.trim()}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

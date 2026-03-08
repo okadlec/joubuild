@@ -9,6 +9,8 @@ interface PermissionsContextValue {
   loading: boolean;
   isSuperadmin: boolean;
   isOrgAdmin: boolean;
+  isFollower: boolean;
+  isOrgViewer: boolean;
   hasPermission: (module: PermissionModule, action: PermissionAction) => boolean;
   getModulePermissions: (module: PermissionModule) => ProjectMemberPermission | undefined;
 }
@@ -20,6 +22,8 @@ export function PermissionsProvider({ projectId, children }: { projectId: string
   const [loading, setLoading] = useState(true);
   const [isSuperadmin, setIsSuperadmin] = useState(false);
   const [isOrgAdmin, setIsOrgAdmin] = useState(false);
+  const [isFollower, setIsFollower] = useState(false);
+  const [isOrgViewer, setIsOrgViewer] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -68,6 +72,24 @@ export function PermissionsProvider({ projectId, children }: { projectId: string
           setLoading(false);
           return;
         }
+
+        if (orgMember?.role === 'viewer') {
+          console.log('[Permissions] Org viewer detected — read-only access');
+          setIsOrgViewer(true);
+        }
+      }
+
+      // Check project role for follower
+      const { data: projectMember } = await supabase
+        .from('project_members')
+        .select('role')
+        .eq('project_id', projectId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (projectMember?.role === 'follower') {
+        console.log('[Permissions] Follower detected — read-only access');
+        setIsFollower(true);
       }
 
       const { data, error } = await supabase
@@ -87,11 +109,12 @@ export function PermissionsProvider({ projectId, children }: { projectId: string
   const hasPermission = useCallback(
     (module: PermissionModule, action: PermissionAction): boolean => {
       if (isSuperadmin || isOrgAdmin) return true;
+      if (isFollower || isOrgViewer) return action === 'can_view';
       const perm = permissions.find(p => p.module === module);
       if (!perm) return false;
       return perm[action];
     },
-    [permissions, isSuperadmin, isOrgAdmin]
+    [permissions, isSuperadmin, isOrgAdmin, isFollower, isOrgViewer]
   );
 
   const getModulePermissions = useCallback(
@@ -100,7 +123,7 @@ export function PermissionsProvider({ projectId, children }: { projectId: string
   );
 
   return (
-    <PermissionsContext.Provider value={{ permissions, loading, isSuperadmin, isOrgAdmin, hasPermission, getModulePermissions }}>
+    <PermissionsContext.Provider value={{ permissions, loading, isSuperadmin, isOrgAdmin, isFollower, isOrgViewer, hasPermission, getModulePermissions }}>
       {children}
     </PermissionsContext.Provider>
   );

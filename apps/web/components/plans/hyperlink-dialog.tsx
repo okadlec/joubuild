@@ -19,6 +19,7 @@ interface HyperlinkDialogProps {
   position?: { x: number; y: number; width: number; height: number };
   onCreated?: (hyperlink: Hyperlink) => void;
   onDeleted?: (id: string) => void;
+  readOnly?: boolean;
 }
 
 export function HyperlinkDialog({
@@ -29,6 +30,7 @@ export function HyperlinkDialog({
   position,
   onCreated,
   onDeleted,
+  readOnly = false,
 }: HyperlinkDialogProps) {
   const t = useTranslations('plans.hyperlinks');
   const tCommon = useTranslations('common');
@@ -99,7 +101,7 @@ export function HyperlinkDialog({
       <form onSubmit={handleSave} className="space-y-4">
         <div className="space-y-2">
           <Label>{t('targetType')}</Label>
-          <Select value={targetType} onChange={(e) => setTargetType(e.target.value as 'sheet' | 'document' | 'url')}>
+          <Select value={targetType} onChange={(e) => setTargetType(e.target.value as 'sheet' | 'document' | 'url')} disabled={readOnly}>
             <option value="url">{t('targetUrl')}</option>
             <option value="sheet">{t('targetSheet')}</option>
             <option value="document">{t('targetDocument')}</option>
@@ -115,6 +117,7 @@ export function HyperlinkDialog({
               onChange={(e) => setTargetUrl(e.target.value)}
               placeholder="https://..."
               required
+              disabled={readOnly}
             />
           </div>
         )}
@@ -125,20 +128,23 @@ export function HyperlinkDialog({
             value={label}
             onChange={(e) => setLabel(e.target.value)}
             placeholder={t('labelPlaceholder')}
+            disabled={readOnly}
           />
         </div>
 
         <div className="flex justify-between">
-          {hyperlink && (
+          {hyperlink && !readOnly && (
             <Button type="button" variant="destructive" size="sm" onClick={handleDelete}>
               {tCommon('delete')}
             </Button>
           )}
           <div className="ml-auto flex gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>{tCommon('cancel')}</Button>
-            <Button type="submit" loading={saving}>
-              {saving ? tCommon('saving') : tCommon('save')}
-            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>{readOnly ? tCommon('close') : tCommon('cancel')}</Button>
+            {!readOnly && (
+              <Button type="submit" loading={saving}>
+                {saving ? tCommon('saving') : tCommon('save')}
+              </Button>
+            )}
           </div>
         </div>
       </form>

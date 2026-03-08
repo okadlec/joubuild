@@ -26,6 +26,8 @@ export function TasksView({ projectId, initialTasks, categories = [], members = 
   const [showCreate, setShowCreate] = useState(false);
   const { hasPermission } = usePermissions(projectId);
   const canCreate = hasPermission('tasks', 'can_create');
+  const canEdit = hasPermission('tasks', 'can_edit');
+  const canDelete = hasPermission('tasks', 'can_delete');
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<TaskFilters>(EMPTY_FILTERS);
@@ -148,6 +150,7 @@ export function TasksView({ projectId, initialTasks, categories = [], members = 
         categories={categories}
         members={members}
         tags={tags}
+        readOnly={!canEdit && !canCreate}
       />
     </div>
   );

@@ -8,7 +8,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import type { ChecklistItem } from '@joubuild/shared';
 import { toast } from 'sonner';
 
-export function TaskChecklist({ taskId }: { taskId: string }) {
+export function TaskChecklist({ taskId, readOnly = false }: { taskId: string; readOnly?: boolean }) {
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [newTitle, setNewTitle] = useState('');
 
@@ -95,7 +95,7 @@ export function TaskChecklist({ taskId }: { taskId: string }) {
       <div className="space-y-1">
         {items.map((item) => (
           <div key={item.id} className="flex items-center gap-2 rounded-md px-1 py-0.5 hover:bg-muted/50">
-            <button onClick={() => handleToggle(item)} className="shrink-0">
+            <button onClick={() => !readOnly && handleToggle(item)} disabled={readOnly} className="shrink-0">
               {item.is_checked
                 ? <CheckSquare className="h-4 w-4 text-green-500" />
                 : <Square className="h-4 w-4 text-muted-foreground" />
@@ -104,29 +104,33 @@ export function TaskChecklist({ taskId }: { taskId: string }) {
             <span className={`flex-1 text-sm ${item.is_checked ? 'text-muted-foreground line-through' : ''}`}>
               {item.title}
             </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6 opacity-0 group-hover:opacity-100"
-              onClick={() => handleDelete(item.id)}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
+            {!readOnly && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                onClick={() => handleDelete(item.id)}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
           </div>
         ))}
       </div>
 
-      <form onSubmit={handleAdd} className="mt-2 flex gap-2">
-        <Input
-          value={newTitle}
-          onChange={(e) => setNewTitle(e.target.value)}
-          placeholder="Přidat položku..."
-          className="h-8 flex-1 text-sm"
-        />
-        <Button type="submit" size="sm" variant="outline" className="h-8" disabled={!newTitle.trim()}>
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
-      </form>
+      {!readOnly && (
+        <form onSubmit={handleAdd} className="mt-2 flex gap-2">
+          <Input
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            placeholder="Přidat položku..."
+            className="h-8 flex-1 text-sm"
+          />
+          <Button type="submit" size="sm" variant="outline" className="h-8" disabled={!newTitle.trim()}>
+            <Plus className="h-3.5 w-3.5" />
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

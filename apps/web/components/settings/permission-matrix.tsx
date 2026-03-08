@@ -14,7 +14,6 @@ import {
   PERMISSION_MODULE_LABELS,
   PERMISSION_ACTION_LABELS,
   PROJECT_ROLE_LABELS,
-  getDefaultPermissionsForRole,
 } from '@joubuild/shared';
 import type { ProjectMemberPermission, FolderPermission, PermissionModule, ProjectRole } from '@joubuild/shared';
 import { toast } from 'sonner';
@@ -62,33 +61,6 @@ export function PermissionMatrix({
 
   function handleRoleChange(userId: string, newRole: ProjectRole) {
     onMemberRoleChange?.(userId, newRole);
-    // Auto-set permissions to role defaults
-    const defaults = getDefaultPermissionsForRole(newRole);
-    setPermissions(prev => {
-      const withoutUser = prev.filter(p => p.user_id !== userId);
-      const newPerms = PERMISSION_MODULES.map(mod => ({
-        id: '',
-        project_id: projectId,
-        user_id: userId,
-        module: mod as PermissionModule,
-        ...defaults,
-      }));
-      return [...withoutUser, ...newPerms];
-    });
-    // Auto-set folder permissions
-    setFolderPerms(prev => {
-      const withoutUser = prev.filter(fp => fp.user_id !== userId);
-      const newFolderPerms = folders.map(folder => ({
-        id: '',
-        project_id: projectId,
-        user_id: userId,
-        folder_id: folder.id,
-        can_view: defaults.can_view,
-        can_create: defaults.can_create,
-        can_delete: defaults.can_delete,
-      }));
-      return [...withoutUser, ...newFolderPerms];
-    });
   }
 
   // Get permissions for selected user

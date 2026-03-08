@@ -20,7 +20,7 @@ interface Comment {
   user_email?: string | null;
 }
 
-export function TaskComments({ taskId }: { taskId: string }) {
+export function TaskComments({ taskId, readOnly = false }: { taskId: string; readOnly?: boolean }) {
   const t = useTranslations('tasks');
   const [comments, setComments] = useState<Comment[]>([]);
   const [body, setBody] = useState('');
@@ -164,7 +164,7 @@ export function TaskComments({ taskId }: { taskId: string }) {
                   <p className="text-sm">{comment.body}</p>
                 )}
               </div>
-              {isOwn && editingId !== comment.id && (
+              {isOwn && !readOnly && editingId !== comment.id && (
                 <div className="flex flex-col gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <Button
                     size="icon"
@@ -190,17 +190,19 @@ export function TaskComments({ taskId }: { taskId: string }) {
         <div ref={bottomRef} />
       </div>
 
-      <form onSubmit={handleSend} className="flex gap-2">
-        <Input
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder={t('comments.placeholder')}
-          className="flex-1"
-        />
-        <Button type="submit" size="icon" loading={loading} disabled={!body.trim()}>
-          <Send className="h-4 w-4" />
-        </Button>
-      </form>
+      {!readOnly && (
+        <form onSubmit={handleSend} className="flex gap-2">
+          <Input
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder={t('comments.placeholder')}
+            className="flex-1"
+          />
+          <Button type="submit" size="icon" loading={loading} disabled={!body.trim()}>
+            <Send className="h-4 w-4" />
+          </Button>
+        </form>
+      )}
     </div>
   );
 }

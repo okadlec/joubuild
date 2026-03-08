@@ -21,9 +21,10 @@ interface Photo {
 interface AnnotationPhotosPanelProps {
   annotationId: string;
   projectId: string;
+  readOnly?: boolean;
 }
 
-export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPhotosPanelProps) {
+export function AnnotationPhotosPanel({ annotationId, projectId, readOnly = false }: AnnotationPhotosPanelProps) {
   const t = useTranslations('plans.annotationPhotos');
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -141,44 +142,46 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
 
   return (
     <div className="p-3">
-      <div className="mb-3 flex gap-2">
-        <input
-          type="file"
-          accept="image/*"
-          capture="environment"
-          multiple
-          className="hidden"
-          id={`annotation-photo-camera-${annotationId}`}
-          onChange={(e) => { if (e.target.files) handlePhotoUpload(e.target.files); e.target.value = ''; }}
-        />
-        <input
-          type="file"
-          accept="image/*"
-          multiple
-          className="hidden"
-          id={`annotation-photo-gallery-${annotationId}`}
-          onChange={(e) => { if (e.target.files) handlePhotoUpload(e.target.files); e.target.value = ''; }}
-        />
-        <Button
-          size="sm"
-          className="flex-1"
-          onClick={() => document.getElementById(`annotation-photo-camera-${annotationId}`)?.click()}
-          loading={uploading}
-        >
-          <Camera className="mr-1 h-4 w-4" />
-          {t('takePhoto')}
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="flex-1"
-          onClick={() => document.getElementById(`annotation-photo-gallery-${annotationId}`)?.click()}
-          loading={uploading}
-        >
-          <Upload className="mr-1 h-4 w-4" />
-          {t('fromGallery')}
-        </Button>
-      </div>
+      {!readOnly && (
+        <div className="mb-3 flex gap-2">
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            multiple
+            className="hidden"
+            id={`annotation-photo-camera-${annotationId}`}
+            onChange={(e) => { if (e.target.files) handlePhotoUpload(e.target.files); e.target.value = ''; }}
+          />
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            className="hidden"
+            id={`annotation-photo-gallery-${annotationId}`}
+            onChange={(e) => { if (e.target.files) handlePhotoUpload(e.target.files); e.target.value = ''; }}
+          />
+          <Button
+            size="sm"
+            className="flex-1"
+            onClick={() => document.getElementById(`annotation-photo-camera-${annotationId}`)?.click()}
+            loading={uploading}
+          >
+            <Camera className="mr-1 h-4 w-4" />
+            {t('takePhoto')}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1"
+            onClick={() => document.getElementById(`annotation-photo-gallery-${annotationId}`)?.click()}
+            loading={uploading}
+          >
+            <Upload className="mr-1 h-4 w-4" />
+            {t('fromGallery')}
+          </Button>
+        </div>
+      )}
 
       {photos.length === 0 ? (
         <p className="text-center text-sm text-muted-foreground">{t('noPhotos')}</p>
@@ -197,7 +200,7 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
                 />
               </button>
               <div className="p-1">
-                {editingPhotoId === photo.id ? (
+                {!readOnly && editingPhotoId === photo.id ? (
                   <div className="flex gap-1">
                     <Input
                       value={editPhotoCaption}
@@ -214,6 +217,10 @@ export function AnnotationPhotosPanel({ annotationId, projectId }: AnnotationPho
                       <Check className="h-3 w-3" />
                     </Button>
                   </div>
+                ) : readOnly ? (
+                  <span className="block w-full truncate text-xs text-muted-foreground">
+                    {photo.caption || ''}
+                  </span>
                 ) : (
                   <button
                     className="w-full truncate text-left text-xs text-muted-foreground hover:text-foreground"

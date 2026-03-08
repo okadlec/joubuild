@@ -63,6 +63,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
   const tCommon = useTranslations('common');
   const { hasPermission } = usePermissions(projectId);
   const canCreate = hasPermission('forms', 'can_create');
+  const canEdit = hasPermission('forms', 'can_edit');
   const [templates, setTemplates] = useState(initialTemplates);
   const [submissions, setSubmissions] = useState(initialSubmissions);
   const [showCreate, setShowCreate] = useState(false);
@@ -363,7 +364,7 @@ export function FormsView({ projectId, initialTemplates, initialSubmissions, ini
                 setSelectedSubmission(null);
               }}
             />
-            {selectedSubmission.status === 'submitted' && (
+            {selectedSubmission.status === 'submitted' && canEdit && (
               <div className="mt-4 flex gap-2 border-t pt-4">
                 <Button
                   variant="outline"

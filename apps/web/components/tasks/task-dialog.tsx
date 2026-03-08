@@ -32,6 +32,7 @@ interface TaskDialogProps {
   initialPinX?: number;
   initialPinY?: number;
   initialSheetId?: string;
+  readOnly?: boolean;
 }
 
 export function TaskDialog({
@@ -48,6 +49,7 @@ export function TaskDialog({
   initialPinX,
   initialPinY,
   initialSheetId,
+  readOnly = false,
 }: TaskDialogProps) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -258,6 +260,7 @@ export function TaskDialog({
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t('taskName')}
             required
+            disabled={readOnly}
           />
         </div>
 
@@ -267,13 +270,14 @@ export function TaskDialog({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={t('descriptionPlaceholder')}
+            disabled={readOnly}
           />
         </div>
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>{tCommon('status')}</Label>
-            <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+            <Select value={status} onChange={(e) => setStatus(e.target.value)} disabled={readOnly}>
               {TASK_STATUSES.map((s) => (
                 <option key={s} value={s}>{t(`statuses.${s}`)}</option>
               ))}
@@ -281,7 +285,7 @@ export function TaskDialog({
           </div>
           <div className="space-y-2">
             <Label>{t('priority')}</Label>
-            <Select value={priority} onChange={(e) => setPriority(e.target.value)}>
+            <Select value={priority} onChange={(e) => setPriority(e.target.value)} disabled={readOnly}>
               {TASK_PRIORITIES.map((p) => (
                 <option key={p} value={p}>{t(`priorities.${p}`)}</option>
               ))}
@@ -293,7 +297,7 @@ export function TaskDialog({
           {categories.length > 0 && (
             <div className="space-y-2">
               <Label>{t('category')}</Label>
-              <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
+              <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={readOnly}>
                 <option value="">{t('noCategoryOption')}</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>{c.name}</option>
@@ -304,7 +308,7 @@ export function TaskDialog({
           {members.length > 0 && (
             <div className="space-y-2">
               <Label>{t('assignee')}</Label>
-              <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+              <Select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} disabled={readOnly}>
                 <option value="">{t('unassignedOption')}</option>
                 {members.map((m) => (
                   <option key={m.user_id} value={m.user_id}>
@@ -323,6 +327,7 @@ export function TaskDialog({
             onChange={setTaskTags}
             suggestions={projectTags.map(t => t.name)}
             placeholder={t('addTag')}
+            disabled={readOnly}
           />
         </div>
 
@@ -333,6 +338,7 @@ export function TaskDialog({
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
+              disabled={readOnly}
             />
           </div>
           <div className="space-y-2">
@@ -341,6 +347,7 @@ export function TaskDialog({
               type="date"
               value={dueDate}
               onChange={(e) => setDueDate(e.target.value)}
+              disabled={readOnly}
             />
           </div>
         </div>
@@ -354,6 +361,7 @@ export function TaskDialog({
               value={estimatedHours}
               onChange={(e) => setEstimatedHours(e.target.value)}
               placeholder="0"
+              disabled={readOnly}
             />
           </div>
           <div className="space-y-2">
@@ -364,6 +372,7 @@ export function TaskDialog({
               value={estimatedCost}
               onChange={(e) => setEstimatedCost(e.target.value)}
               placeholder="0"
+              disabled={readOnly}
             />
           </div>
         </div>
@@ -378,6 +387,7 @@ export function TaskDialog({
                 value={actualHours}
                 onChange={(e) => setActualHours(e.target.value)}
                 placeholder="0"
+                disabled={readOnly}
               />
             </div>
             <div className="space-y-2">
@@ -388,6 +398,7 @@ export function TaskDialog({
                 value={actualCost}
                 onChange={(e) => setActualCost(e.target.value)}
                 placeholder="0"
+                disabled={readOnly}
               />
             </div>
           </div>
@@ -395,19 +406,19 @@ export function TaskDialog({
 
         {task && (
           <div className="border-t pt-4">
-            <TaskChecklist taskId={task.id} />
+            <TaskChecklist taskId={task.id} readOnly={readOnly} />
           </div>
         )}
 
         {task && (
           <div className="border-t pt-4">
-            <TaskComments taskId={task.id} />
+            <TaskComments taskId={task.id} readOnly={readOnly} />
           </div>
         )}
 
         <div className="flex justify-between border-t pt-4">
           <div className="flex gap-2">
-            {task && (
+            {task && !readOnly && (
               <Button type="button" variant="destructive" size="sm" onClick={handleDelete}>
                 <Trash2 className="mr-2 h-4 w-4" />
                 {tCommon('delete')}
@@ -421,10 +432,12 @@ export function TaskDialog({
             )}
           </div>
           <div className="flex gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>{tCommon('cancel')}</Button>
-            <Button type="submit" loading={loading}>
-              {loading ? tCommon('saving') : task ? t('updateTask') : t('createTask')}
-            </Button>
+            <Button type="button" variant="outline" onClick={onClose}>{readOnly ? tCommon('close') : tCommon('cancel')}</Button>
+            {!readOnly && (
+              <Button type="submit" loading={loading}>
+                {loading ? tCommon('saving') : task ? t('updateTask') : t('createTask')}
+              </Button>
+            )}
           </div>
         </div>
       </form>

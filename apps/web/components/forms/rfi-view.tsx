@@ -14,6 +14,7 @@ import { getSupabaseClient } from '@/lib/supabase/client';
 import { formatDate } from '@joubuild/shared';
 import type { Rfi } from '@joubuild/shared';
 import { toast } from 'sonner';
+import { usePermissions } from '@/lib/hooks/use-permissions';
 
 const STATUS_LABELS: Record<string, string> = {
   open: 'Otevřený',
@@ -42,6 +43,9 @@ interface RfiViewProps {
 export function RfiView({ projectId, rfis, onRfisChange }: RfiViewProps) {
   const t = useTranslations('forms');
   const tCommon = useTranslations('common');
+  const { hasPermission } = usePermissions(projectId);
+  const canCreate = hasPermission('forms', 'can_create');
+  const canEdit = hasPermission('forms', 'can_edit');
   const [showCreate, setShowCreate] = useState(false);
   const [selectedRfi, setSelectedRfi] = useState<Rfi | null>(null);
   const [subject, setSubject] = useState('');
@@ -111,10 +115,12 @@ export function RfiView({ projectId, rfis, onRfisChange }: RfiViewProps) {
     <div>
       <div className="mb-4 flex items-center justify-between">
         <h3 className="text-lg font-semibold">{t('rfi.title', { count: rfis.length })}</h3>
-        <Button size="sm" onClick={() => setShowCreate(true)}>
-          <Plus className="mr-1 h-3.5 w-3.5" />
-          {t('rfi.newRfi')}
-        </Button>
+        {canCreate && (
+          <Button size="sm" onClick={() => setShowCreate(true)}>
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            {t('rfi.newRfi')}
+          </Button>
+        )}
       </div>
 
       {rfis.length === 0 ? (
@@ -192,12 +198,12 @@ export function RfiView({ projectId, rfis, onRfisChange }: RfiViewProps) {
                   value={answer}
                   onChange={(e) => setAnswer(e.target.value)}
                   placeholder={t('rfi.answerPlaceholder')}
-                  disabled={selectedRfi.status === 'closed'}
+                  disabled={selectedRfi.status === 'closed' || !canEdit}
                 />
               </div>
               <div className="flex justify-end gap-2">
                 <Button variant="outline" onClick={() => setSelectedRfi(null)}>{tCommon('close')}</Button>
-                {selectedRfi.status !== 'closed' && (
+                {selectedRfi.status !== 'closed' && canEdit && (
                   <Button onClick={handleAnswer} disabled={!answer.trim()}>
                     {t('rfi.answerButton')}
                   </Button>

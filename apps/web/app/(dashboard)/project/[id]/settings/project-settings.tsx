@@ -262,10 +262,8 @@ export function ProjectSettings({
       toast.error(result.error);
       return;
     }
-    setMemberList((prev) =>
-      prev.map((m) => (m.user_id === userId ? { ...m, role: newRole } : m))
-    );
     toast.success(t('roleUpdated'));
+    router.refresh();
   }
 
   return (

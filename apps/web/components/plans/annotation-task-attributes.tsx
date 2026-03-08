@@ -48,6 +48,7 @@ interface AnnotationTaskAttributesProps {
   onTaskCreated: (task: Task) => void;
   onTaskUpdated: (task: Task) => void;
   onTaskDeleted: (id: string) => void;
+  readOnly?: boolean;
 }
 
 export function AnnotationTaskAttributes({
@@ -59,6 +60,7 @@ export function AnnotationTaskAttributes({
   onTaskCreated,
   onTaskUpdated,
   onTaskDeleted,
+  readOnly = false,
 }: AnnotationTaskAttributesProps) {
   const t = useTranslations('plans.annotationTasks');
   const tTasks = useTranslations('tasks');
@@ -302,19 +304,21 @@ export function AnnotationTaskAttributes({
         <div className="rounded-lg border border-dashed p-4 text-center">
           <CheckSquare className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
           <p className="mb-3 text-sm text-muted-foreground">{t('noLinkedTask')}</p>
-          <div className="flex gap-2">
-            <Input
-              value={newTaskTitle}
-              onChange={(e) => setNewTaskTitle(e.target.value)}
-              placeholder={t('taskNamePlaceholder')}
-              className="flex-1"
-              onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTask(); }}
-            />
-            <Button size="sm" onClick={handleCreateTask} disabled={creating || !newTaskTitle.trim()}>
-              <Plus className="mr-1 h-4 w-4" />
-              {tCommon('create')}
-            </Button>
-          </div>
+          {!readOnly && (
+            <div className="flex gap-2">
+              <Input
+                value={newTaskTitle}
+                onChange={(e) => setNewTaskTitle(e.target.value)}
+                placeholder={t('taskNamePlaceholder')}
+                className="flex-1"
+                onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTask(); }}
+              />
+              <Button size="sm" onClick={handleCreateTask} disabled={creating || !newTaskTitle.trim()}>
+                <Plus className="mr-1 h-4 w-4" />
+                {tCommon('create')}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -348,35 +352,37 @@ export function AnnotationTaskAttributes({
         </div>
 
         {/* Add task button / inline form */}
-        <div className="px-4 py-2">
-          {showCreateForm ? (
-            <div className="flex gap-2">
-              <Input
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                placeholder={t('taskNamePlaceholder')}
-                className="h-7 flex-1 text-sm"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreateTask();
-                  if (e.key === 'Escape') { setShowCreateForm(false); setNewTaskTitle(''); }
-                }}
-                autoFocus
-              />
-              <Button size="sm" className="h-7 text-xs" onClick={handleCreateTask} disabled={creating || !newTaskTitle.trim()}>
-                <Plus className="mr-1 h-3 w-3" />
-                {tCommon('create')}
-              </Button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setShowCreateForm(true)}
-              className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <Plus className="h-3 w-3" />
-              {t('addTask')}
-            </button>
-          )}
-        </div>
+        {!readOnly && (
+          <div className="px-4 py-2">
+            {showCreateForm ? (
+              <div className="flex gap-2">
+                <Input
+                  value={newTaskTitle}
+                  onChange={(e) => setNewTaskTitle(e.target.value)}
+                  placeholder={t('taskNamePlaceholder')}
+                  className="h-7 flex-1 text-sm"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateTask();
+                    if (e.key === 'Escape') { setShowCreateForm(false); setNewTaskTitle(''); }
+                  }}
+                  autoFocus
+                />
+                <Button size="sm" className="h-7 text-xs" onClick={handleCreateTask} disabled={creating || !newTaskTitle.trim()}>
+                  <Plus className="mr-1 h-3 w-3" />
+                  {tCommon('create')}
+                </Button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Plus className="h-3 w-3" />
+                {t('addTask')}
+              </button>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Selected task attributes */}
@@ -389,12 +395,14 @@ export function AnnotationTaskAttributes({
               {TASK_STATUSES.map((s) => (
                 <button
                   key={s}
-                  onClick={() => autoSaveField('status', s)}
+                  onClick={() => !readOnly && autoSaveField('status', s)}
+                  disabled={readOnly}
                   className="rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors"
                   style={{
                     backgroundColor: selectedTask.status === s ? TASK_STATUS_COLORS[s] : undefined,
                     color: selectedTask.status === s ? '#fff' : TASK_STATUS_COLORS[s],
                     border: `1px solid ${TASK_STATUS_COLORS[s]}`,
+                    opacity: readOnly && selectedTask.status !== s ? 0.5 : 1,
                   }}
                 >
                   {TASK_STATUS_LABELS[s]}
@@ -410,6 +418,7 @@ export function AnnotationTaskAttributes({
               value={selectedTask.priority}
               onChange={(e) => autoSaveField('priority', e.target.value)}
               className="h-8 text-sm"
+              disabled={readOnly}
             >
               {TASK_PRIORITIES.map((p) => (
                 <option key={p} value={p}>{TASK_PRIORITY_LABELS[p]}</option>
@@ -425,6 +434,7 @@ export function AnnotationTaskAttributes({
                 value={selectedTask.category_id || ''}
                 onChange={(e) => autoSaveField('category_id', e.target.value || null)}
                 className="h-8 text-sm"
+                disabled={readOnly}
               >
                 <option value="">{t('noCategoryOption')}</option>
                 {categories.map((c) => (
@@ -441,6 +451,7 @@ export function AnnotationTaskAttributes({
               value={selectedTask.assignee_id || ''}
               onChange={(e) => autoSaveField('assignee_id', e.target.value || null)}
               className="h-8 text-sm"
+              disabled={readOnly}
             >
               <option value="">{t('unassignedOption')}</option>
               {members.map((m) => (
@@ -491,6 +502,7 @@ export function AnnotationTaskAttributes({
                     value={selectedTask.start_date || ''}
                     onChange={(e) => autoSaveField('start_date', e.target.value || null)}
                     className="h-8 text-sm"
+                    disabled={readOnly}
                   />
                 </div>
                 <div className="space-y-1">
@@ -500,6 +512,7 @@ export function AnnotationTaskAttributes({
                     value={selectedTask.due_date || ''}
                     onChange={(e) => autoSaveField('due_date', e.target.value || null)}
                     className="h-8 text-sm"
+                    disabled={readOnly}
                   />
                 </div>
               </div>
@@ -515,6 +528,7 @@ export function AnnotationTaskAttributes({
                     onChange={(e) => debouncedSave('estimated_hours', e.target.value ? parseFloat(e.target.value) : null)}
                     className="h-8 text-sm"
                     placeholder="0"
+                    disabled={readOnly}
                   />
                 </div>
                 <div className="space-y-1">
@@ -526,6 +540,7 @@ export function AnnotationTaskAttributes({
                     onChange={(e) => debouncedSave('estimated_cost', e.target.value ? parseFloat(e.target.value) : null)}
                     className="h-8 text-sm"
                     placeholder="0 Kč"
+                    disabled={readOnly}
                   />
                 </div>
               </div>
@@ -535,23 +550,26 @@ export function AnnotationTaskAttributes({
                 <Label className="text-xs text-muted-foreground">{tTasks('tagsLabel')}</Label>
                 <TagPicker
                   tags={taskTags}
-                  onChange={handleTagsChange}
+                  onChange={readOnly ? () => {} : handleTagsChange}
                   suggestions={projectTags.map(t => t.name)}
                   placeholder={tTasks('addTag')}
+                  disabled={readOnly}
                 />
               </div>
 
               {/* Delete task */}
-              <div className="border-t pt-3">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-                  onClick={handleDeleteTask}
-                >
-                  {tTasks('deleteTask')}
-                </Button>
-              </div>
+              {!readOnly && (
+                <div className="border-t pt-3">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    onClick={handleDeleteTask}
+                  >
+                    {tTasks('deleteTask')}
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </div>

@@ -18,6 +18,7 @@ export function usePermissions(projectId: string): UsePermissionsResult {
 
   const [permissions, setPermissions] = useState<ProjectMemberPermission[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isReadOnly, setIsReadOnly] = useState(false);
 
   useEffect(() => {
     if (hasContext) return;
@@ -26,6 +27,38 @@ export function usePermissions(projectId: string): UsePermissionsResult {
       const supabase = getSupabaseClient();
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoading(false); return; }
+
+      // Check if follower or org viewer
+      const { data: projectMember } = await supabase
+        .from('project_members')
+        .select('role')
+        .eq('project_id', projectId)
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (projectMember?.role === 'follower') {
+        setIsReadOnly(true);
+      } else {
+        // Check org viewer
+        const { data: project } = await supabase
+          .from('projects')
+          .select('organization_id')
+          .eq('id', projectId)
+          .single();
+
+        if (project?.organization_id) {
+          const { data: orgMember } = await supabase
+            .from('organization_members')
+            .select('role')
+            .eq('organization_id', project.organization_id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (orgMember?.role === 'viewer') {
+            setIsReadOnly(true);
+          }
+        }
+      }
 
       const { data } = await supabase
         .from('project_member_permissions')
@@ -45,11 +78,12 @@ export function usePermissions(projectId: string): UsePermissionsResult {
   const hasPermission = useCallback(
     (module: PermissionModule, action: PermissionAction): boolean => {
       if (hasContext) return ctx.hasPermission(module, action);
+      if (isReadOnly) return action === 'can_view';
       const perm = resolvedPermissions.find(p => p.module === module);
       if (!perm) return false;
       return perm[action];
     },
-    [resolvedPermissions, hasContext, ctx]
+    [resolvedPermissions, hasContext, ctx, isReadOnly]
   );
 
   const getModulePermissions = useCallback(

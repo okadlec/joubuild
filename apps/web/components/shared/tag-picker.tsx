@@ -11,9 +11,10 @@ interface TagPickerProps {
   onChange: (tags: string[]) => void;
   suggestions?: string[];
   placeholder?: string;
+  disabled?: boolean;
 }
 
-export function TagPicker({ tags, onChange, suggestions = [], placeholder = 'Nový tag...' }: TagPickerProps) {
+export function TagPicker({ tags, onChange, suggestions = [], placeholder = 'Nový tag...', disabled = false }: TagPickerProps) {
   const [newTag, setNewTag] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
 
@@ -49,44 +50,48 @@ export function TagPicker({ tags, onChange, suggestions = [], placeholder = 'Nov
           {tags.map(tag => (
             <Badge key={tag} variant="secondary" className="gap-1">
               {tag}
-              <button onClick={() => handleRemove(tag)} className="ml-0.5 hover:text-destructive">
-                <X className="h-3 w-3" />
-              </button>
+              {!disabled && (
+                <button onClick={() => handleRemove(tag)} className="ml-0.5 hover:text-destructive">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
             </Badge>
           ))}
         </div>
       )}
-      <div className="relative">
-        <div className="flex gap-1">
-          <Input
-            value={newTag}
-            onChange={(e) => { setNewTag(e.target.value); setShowSuggestions(true); }}
-            placeholder={placeholder}
-            className="h-8 flex-1"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') { e.preventDefault(); handleAdd(); }
-            }}
-            onFocus={() => setShowSuggestions(true)}
-            onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-          />
-          <Button variant="outline" size="sm" className="h-8" onClick={handleAdd} disabled={!newTag.trim()}>
-            <Plus className="h-3.5 w-3.5" />
-          </Button>
-        </div>
-        {showSuggestions && newTag && filteredSuggestions.length > 0 && (
-          <div className="absolute top-9 left-0 z-10 w-full rounded-md border bg-popover shadow-md">
-            {filteredSuggestions.slice(0, 5).map(s => (
-              <button
-                key={s}
-                className="w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
-                onMouseDown={() => handleSelectSuggestion(s)}
-              >
-                {s}
-              </button>
-            ))}
+      {!disabled && (
+        <div className="relative">
+          <div className="flex gap-1">
+            <Input
+              value={newTag}
+              onChange={(e) => { setNewTag(e.target.value); setShowSuggestions(true); }}
+              placeholder={placeholder}
+              className="h-8 flex-1"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { e.preventDefault(); handleAdd(); }
+              }}
+              onFocus={() => setShowSuggestions(true)}
+              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+            />
+            <Button variant="outline" size="sm" className="h-8" onClick={handleAdd} disabled={!newTag.trim()}>
+              <Plus className="h-3.5 w-3.5" />
+            </Button>
           </div>
-        )}
-      </div>
+          {showSuggestions && newTag && filteredSuggestions.length > 0 && (
+            <div className="absolute top-9 left-0 z-10 w-full rounded-md border bg-popover shadow-md">
+              {filteredSuggestions.slice(0, 5).map(s => (
+                <button
+                  key={s}
+                  className="w-full px-3 py-1.5 text-left text-sm hover:bg-accent"
+                  onMouseDown={() => handleSelectSuggestion(s)}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
