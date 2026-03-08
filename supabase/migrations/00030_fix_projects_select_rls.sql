@@ -1,12 +1,11 @@
--- Fix: Only org admins/owners see all projects; regular members only see assigned projects
+-- Fix: All org members can see projects, only admins can create them
 DROP POLICY IF EXISTS "Users can view projects" ON projects;
 CREATE POLICY "Users can view projects" ON projects
   FOR SELECT USING (
     deleted_at IS NULL
     AND (
       is_superadmin()
-      OR id IN (SELECT get_user_project_ids(auth.uid()))
-      OR organization_id IN (SELECT get_user_admin_org_ids(auth.uid()))
+      OR organization_id IN (SELECT get_user_org_ids(auth.uid()))
     )
   );
 

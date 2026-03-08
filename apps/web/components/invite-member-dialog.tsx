@@ -16,40 +16,24 @@ interface InviteMemberDialogProps {
   onClose: () => void;
   onInvite: (
     email: string,
-    role: string,
-    projectIds?: string[]
+    role: string
   ) => Promise<{ error?: string; success?: boolean; directlyAdded?: boolean }>;
-  projects?: { id: string; name: string }[];
 }
 
-export function InviteMemberDialog({ open, onClose, onInvite, projects }: InviteMemberDialogProps) {
+export function InviteMemberDialog({ open, onClose, onInvite }: InviteMemberDialogProps) {
   const t = useTranslations('admin');
   const tRoles = useTranslations('roles');
   const tCommon = useTranslations('common');
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<OrgRole>('member');
   const [loading, setLoading] = useState(false);
-  const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
-
-  function toggleProject(projectId: string) {
-    setSelectedProjects((prev) => {
-      const next = new Set(prev);
-      if (next.has(projectId)) {
-        next.delete(projectId);
-      } else {
-        next.add(projectId);
-      }
-      return next;
-    });
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!email.trim()) return;
 
     setLoading(true);
-    const projectIds = selectedProjects.size > 0 ? Array.from(selectedProjects) : undefined;
-    const result = await onInvite(email.trim(), role, projectIds);
+    const result = await onInvite(email.trim(), role);
     setLoading(false);
 
     if (result.error) {
@@ -65,7 +49,6 @@ export function InviteMemberDialog({ open, onClose, onInvite, projects }: Invite
 
     setEmail('');
     setRole('member');
-    setSelectedProjects(new Set());
     onClose();
   }
 
@@ -101,34 +84,6 @@ export function InviteMemberDialog({ open, onClose, onInvite, projects }: Invite
             <option value="viewer">{tRoles('viewer')}</option>
           </Select>
         </div>
-
-        {projects && projects.length > 0 && (
-          <div className="space-y-2">
-            <Label>Projekty</Label>
-            <p className="text-xs text-muted-foreground">
-              Projekty se přiřadí pouze existujícím uživatelům. Pro nové uživatele se přiřadí po přijetí pozvánky.
-            </p>
-            <div className="max-h-48 space-y-1 overflow-y-auto rounded-md border p-2">
-              {projects.map((project) => (
-                <div key={project.id} className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    id={`project-${project.id}`}
-                    checked={selectedProjects.has(project.id)}
-                    onChange={() => toggleProject(project.id)}
-                    className="h-4 w-4 rounded border-gray-300"
-                  />
-                  <label
-                    htmlFor={`project-${project.id}`}
-                    className="flex-1 cursor-pointer text-sm"
-                  >
-                    {project.name}
-                  </label>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="flex justify-end gap-2 pt-2">
           <Button type="button" variant="outline" onClick={onClose}>

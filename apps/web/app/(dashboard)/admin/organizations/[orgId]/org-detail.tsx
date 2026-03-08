@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { formatBytes } from '@/lib/utils';
 import type { OrgRole, OrganizationInvitation } from '@joubuild/shared';
 import { updateMemberRole, removeMember, inviteOrgMemberFromAdmin, cancelInvitationFromAdmin, resendInvitationFromAdmin } from './actions';
-import { addUserToProject } from '@/app/(dashboard)/admin/users/[userId]/actions';
+
 import { InviteMemberDialog } from '@/components/invite-member-dialog';
 import { MemberProjectsDialog } from './member-projects-dialog';
 
@@ -371,15 +371,9 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
       <InviteMemberDialog
         open={showInviteDialog}
         onClose={() => setShowInviteDialog(false)}
-        projects={projects.map((p) => ({ id: p.id, name: p.name }))}
-        onInvite={async (email, role, projectIds) => {
-          const result = await inviteOrgMemberFromAdmin(org.id, email, role, projectIds);
+        onInvite={async (email, role) => {
+          const result = await inviteOrgMemberFromAdmin(org.id, email, role);
           if (result.success) {
-            if (result.directlyAdded && result.userId && projectIds?.length) {
-              for (const projectId of projectIds) {
-                await addUserToProject(result.userId, projectId, 'member');
-              }
-            }
             router.refresh();
           }
           return result;

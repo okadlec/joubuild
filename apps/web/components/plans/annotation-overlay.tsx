@@ -43,6 +43,7 @@ interface AnnotationOverlayProps {
   onPinCreated?: (annotationId: string, initialTab: 'photos' | 'attributes') => void;
   pixelsPerMeter: number | null; // calibration ratio
   displayScale?: number; // CSS scale compensation when effectiveScale < zoom scale
+  annotationCounts?: Record<string, { photos: number; tasks: number }>;
 }
 
 function generateId() {
@@ -64,6 +65,7 @@ export function AnnotationOverlay({
   onPinCreated,
   pixelsPerMeter,
   displayScale = 1,
+  annotationCounts,
 }: AnnotationOverlayProps) {
   const stageRef = useRef<Konva.Stage>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
@@ -401,6 +403,71 @@ export function AnnotationOverlay({
   const isLineBased = (type: AnnotationData['type']) =>
     ['line', 'arrow', 'freehand', 'highlighter', 'measurement'].includes(type);
 
+  function getBadgePosition(ann: AnnotationData): { x: number; y: number } | null {
+    const s = 1 / displayScale;
+    switch (ann.type) {
+      case 'pin':
+        return { x: ann.data.x! + 12 * s, y: ann.data.y! - 12 * s };
+      case 'rectangle':
+      case 'area':
+      case 'cloud':
+        return { x: (ann.data.x ?? 0) + (ann.data.width ?? 0), y: ann.data.y ?? 0 };
+      case 'ellipse':
+        return { x: (ann.data.x ?? 0) + (ann.data.radiusX ?? 0), y: (ann.data.y ?? 0) - (ann.data.radiusY ?? 0) };
+      case 'line':
+      case 'arrow':
+      case 'freehand':
+      case 'highlighter':
+      case 'measurement': {
+        const pts = ann.data.points;
+        if (!pts || pts.length < 2) return null;
+        return { x: pts[0] + 8 * s, y: pts[1] - 16 * s };
+      }
+      default:
+        return null;
+    }
+  }
+
+  const renderBadge = (ann: AnnotationData) => {
+    if (!annotationCounts) return null;
+    const counts = annotationCounts[ann.id];
+    if (!counts || (counts.photos === 0 && counts.tasks === 0)) return null;
+
+    const pos = getBadgePosition(ann);
+    if (!pos) return null;
+
+    const parts: string[] = [];
+    if (counts.photos > 0) parts.push(`${counts.photos}P`);
+    if (counts.tasks > 0) parts.push(`${counts.tasks}T`);
+    const label = parts.join(' ');
+
+    const s = 1 / displayScale;
+    const fontSize = 10 * s;
+    const padding = 3 * s;
+    const charWidth = fontSize * 0.65;
+    const badgeW = label.length * charWidth + padding * 2;
+    const badgeH = fontSize + padding * 2;
+
+    return (
+      <Group key={`badge-${ann.id}`} x={pos.x} y={pos.y} listening={false}>
+        <Rect
+          width={badgeW}
+          height={badgeH}
+          fill="rgba(0,0,0,0.75)"
+          cornerRadius={4 * s}
+        />
+        <Text
+          x={padding}
+          y={padding}
+          text={label}
+          fontSize={fontSize}
+          fill="#fff"
+          fontStyle="bold"
+        />
+      </Group>
+    );
+  };
+
   const handleDragEnd = useCallback((id: string, e: Konva.KonvaEventObject<DragEvent>) => {
     const node = e.target;
     const ann = annotations.find(a => a.id === id);
@@ -635,14 +702,16 @@ export function AnnotationOverlay({
         const radius = 10 / (displayScale ?? 1);
         return (
           <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}
+            x={pinX}
+            y={pinY}
             draggable={activeTool === 'select'}
             ref={isSelected ? ((node: Konva.Node | null) => { selectedShapeRef.current = node; }) as React.LegacyRef<Konva.Group> : undefined}
             onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(ann.id, e)}
           >
-            <Circle x={pinX + 1} y={pinY + 1} radius={radius} fill="rgba(0,0,0,0.3)" />
+            <Circle x={1} y={1} radius={radius} fill="rgba(0,0,0,0.3)" />
             <Circle
-              x={pinX}
-              y={pinY}
+              x={0}
+              y={0}
               radius={radius}
               fill={isSelected ? '#0EA5E9' : ann.data.color}
               stroke="#fff"
@@ -686,6 +755,9 @@ export function AnnotationOverlay({
     >
       <Layer>
         {annotations.map(renderAnnotation)}
+
+        {/* Count badges (rendered on top of annotations, non-interactive) */}
+        {annotationCounts && annotations.map(renderBadge)}
 
         {/* Transformer for selected annotation */}
         {activeTool === 'select' && selectedId && (

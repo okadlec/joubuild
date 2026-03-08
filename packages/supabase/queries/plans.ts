@@ -111,6 +111,44 @@ export function deleteAnnotation(client: TypedSupabaseClient, id: string) {
   return client.from('annotations').delete().eq('id', id);
 }
 
+export async function getAnnotationCounts(
+  client: TypedSupabaseClient,
+  annotationIds: string[]
+): Promise<Record<string, { photos: number; tasks: number }>> {
+  if (annotationIds.length === 0) return {};
+
+  const [photosRes, tasksRes] = await Promise.all([
+    client
+      .from('photos')
+      .select('annotation_id')
+      .in('annotation_id', annotationIds),
+    client
+      .from('tasks')
+      .select('annotation_id')
+      .in('annotation_id', annotationIds),
+  ]);
+
+  const counts: Record<string, { photos: number; tasks: number }> = {};
+  for (const id of annotationIds) {
+    counts[id] = { photos: 0, tasks: 0 };
+  }
+  if (photosRes.data) {
+    for (const row of photosRes.data) {
+      if (row.annotation_id && counts[row.annotation_id]) {
+        counts[row.annotation_id].photos++;
+      }
+    }
+  }
+  if (tasksRes.data) {
+    for (const row of tasksRes.data) {
+      if (row.annotation_id && counts[row.annotation_id]) {
+        counts[row.annotation_id].tasks++;
+      }
+    }
+  }
+  return counts;
+}
+
 export function createAnnotationComment(
   client: TypedSupabaseClient,
   data: { annotation_id: string; user_id: string; body: string }

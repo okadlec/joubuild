@@ -17,6 +17,7 @@ import { usePinchZoom } from '@/lib/hooks/use-pinch-zoom';
 import { getOfflinePdfData } from '@/lib/offline/pdf-offline';
 import { useProjectRole } from '@/lib/hooks/use-project-role';
 import { AnnotationListPanel } from './annotation-list-panel';
+import { getAnnotationCounts } from '@joubuild/supabase/queries/plans';
 import type { Task, AnnotationType } from '@joubuild/shared';
 
 // --- Tile-based rendering types and helpers ---
@@ -141,6 +142,9 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   // Task pin state
   const [tasks, setTasks] = useState<Task[]>([]);
   const [showPins, setShowPins] = useState(true);
+
+  // Annotation counts (photos/tasks per annotation)
+  const [annotationCounts, setAnnotationCounts] = useState<Record<string, { photos: number; tasks: number }>>({});
 
   // Annotation detail panel state
   const [detailAnnotationId, setDetailAnnotationId] = useState<string | null>(null);
@@ -312,6 +316,14 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     };
   }, [fileUrl]);
 
+  // Fetch photo/task counts for all annotations
+  const refreshAnnotationCounts = useCallback(async (ids: string[]) => {
+    if (ids.length === 0) return;
+    const supabase = getSupabaseClient();
+    const counts = await getAnnotationCounts(supabase, ids);
+    setAnnotationCounts(counts);
+  }, []);
+
   // Load existing annotations
   useEffect(() => {
     async function loadAnnotations() {
@@ -330,6 +342,8 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
             data: a.data,
           }))
         );
+        // Fetch counts for loaded annotations
+        refreshAnnotationCounts(data.map((a: { id: string }) => a.id));
       }
       annotationsLoadedRef.current = true;
 
@@ -1322,6 +1336,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
               onPinCreated={handlePinCreated}
               pixelsPerMeter={pixelsPerMeter}
               displayScale={ds}
+              annotationCounts={annotationCounts}
             />
             </div>
             );
@@ -1349,7 +1364,11 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         projectId={projectId}
         sheetVersionId={sheetVersionId}
         initialTab={detailInitialTab}
-        onClose={() => { setDetailAnnotationId(null); setDetailInitialTab('chat'); }}
+        onClose={() => {
+          setDetailAnnotationId(null);
+          setDetailInitialTab('chat');
+          refreshAnnotationCounts(annotations.map(a => a.id));
+        }}
         onTaskCreated={handleDialogTaskCreated}
         onTaskUpdated={handleDialogTaskUpdated}
         onTaskDeleted={handleDialogTaskDeleted}
