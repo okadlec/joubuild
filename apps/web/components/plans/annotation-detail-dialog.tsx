@@ -29,6 +29,7 @@ interface AnnotationDetailDialogProps {
   onTaskUpdated?: (task: Task) => void;
   onTaskDeleted?: (id: string) => void;
   onAnnotationDeleted?: (id: string) => void;
+  readOnly?: boolean;
 }
 
 export function AnnotationDetailDialog({
@@ -41,6 +42,7 @@ export function AnnotationDetailDialog({
   onTaskUpdated,
   onTaskDeleted,
   onAnnotationDeleted,
+  readOnly = false,
 }: AnnotationDetailDialogProps) {
   const t = useTranslations('plans.annotationDetail');
   const [linkedTasks, setLinkedTasks] = useState<Task[]>([]);
@@ -220,6 +222,10 @@ export function AnnotationDetailDialog({
                       className="h-8 text-sm font-semibold"
                       autoFocus
                     />
+                  ) : readOnly ? (
+                    <h3 className="truncate text-sm font-semibold">
+                      {selectedTask.title}
+                    </h3>
                   ) : (
                     <h3
                       className="cursor-pointer truncate text-sm font-semibold hover:text-primary"
@@ -236,9 +242,11 @@ export function AnnotationDetailDialog({
                 )}
               </div>
 
-              <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:text-destructive" onClick={handleDeleteAnnotation} title={t('deleteAnnotation')}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              {!readOnly && (
+                <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:text-destructive" onClick={handleDeleteAnnotation} title={t('deleteAnnotation')}>
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={onClose}>
                 <X className="h-4 w-4" />
               </Button>

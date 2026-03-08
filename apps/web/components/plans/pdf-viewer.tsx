@@ -157,7 +157,12 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
   const [showListView, setShowListView] = useState(false);
 
   // Admin role check
-  const { canManage } = useProjectRole(projectId || '');
+  const { canManage, canEdit } = useProjectRole(projectId || '');
+
+  // Force select tool for read-only users (followers)
+  useEffect(() => {
+    if (!canEdit) setActiveTool('select');
+  }, [canEdit]);
 
   // CSS transform preview for pinch-zoom (no re-render during gesture)
   const [zoomPreview, setZoomPreview] = useState(1);
@@ -378,6 +383,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
 
   // Auto-save annotations (debounced upsert, no deletions)
   useEffect(() => {
+    if (!canEdit) return;
     if (!annotationsLoadedRef.current) return;
     if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
 
@@ -408,7 +414,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       setAutoSaveStatus('saved');
       setTimeout(() => setAutoSaveStatus('idle'), 2000);
     }, 1500);
-  }, [annotations, sheetVersionId]);
+  }, [annotations, sheetVersionId, canEdit]);
 
   // Cleanup auto-save timer on unmount
   useEffect(() => {
@@ -1193,7 +1199,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
             <span className="hidden lg:inline">{tCommon('delete')}</span>
           </Button>
         )}
-        {!isFullscreen && (
+        {canEdit && !isFullscreen && (
           <Button variant="outline" size="sm" onClick={() => setShowCalibration(true)}>
             <Ruler className="mr-1 h-3.5 w-3.5" />
             <span className="hidden lg:inline">{t('calibrate')}</span>
@@ -1217,7 +1223,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
       </div>
 
       {/* Annotation toolbar */}
-      {showAnnotations && (
+      {showAnnotations && canEdit && (
         <AnnotationToolbar
           activeTool={activeTool}
           onToolChange={setActiveTool}
@@ -1337,6 +1343,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
               pixelsPerMeter={pixelsPerMeter}
               displayScale={ds}
               annotationCounts={annotationCounts}
+              readOnly={!canEdit}
             />
             </div>
             );
@@ -1364,6 +1371,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
         projectId={projectId}
         sheetVersionId={sheetVersionId}
         initialTab={detailInitialTab}
+        readOnly={!canEdit}
         onClose={() => {
           setDetailAnnotationId(null);
           setDetailInitialTab('chat');

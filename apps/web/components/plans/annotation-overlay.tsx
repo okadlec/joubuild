@@ -45,6 +45,7 @@ interface AnnotationOverlayProps {
   pixelsPerMeter: number | null; // calibration ratio
   displayScale?: number; // CSS scale compensation when effectiveScale < zoom scale
   annotationCounts?: Record<string, { photos: number; tasks: number }>;
+  readOnly?: boolean;
 }
 
 function generateId() {
@@ -67,6 +68,7 @@ export function AnnotationOverlay({
   pixelsPerMeter,
   displayScale = 1,
   annotationCounts,
+  readOnly = false,
 }: AnnotationOverlayProps) {
   const locale = useLocale();
   const stageRef = useRef<Konva.Stage>(null);
@@ -105,6 +107,7 @@ export function AnnotationOverlay({
   }, [scale]);
 
   const handleMouseDown = useCallback((e?: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
+    if (readOnly) return;
     if (activeTool === 'select') return;
 
     // Prevent scrolling while drawing on touch devices
@@ -146,7 +149,7 @@ export function AnnotationOverlay({
     } else if (activeTool === 'measurement' || activeTool === 'area') {
       setCurrentPoints([pos.x, pos.y]);
     }
-  }, [activeTool, activeColor, annotations, onAnnotationsChange, onPinCreated, getRelativePointerPosition]);
+  }, [readOnly, activeTool, activeColor, annotations, onAnnotationsChange, onPinCreated, getRelativePointerPosition]);
 
   const handleMouseMove = useCallback((e?: Konva.KonvaEventObject<MouseEvent | TouchEvent>) => {
     if (!isDrawing) return;
@@ -573,7 +576,7 @@ export function AnnotationOverlay({
       onTap: handleSelect,
       stroke: isSelected ? '#0EA5E9' : ann.data.color,
       strokeWidth: ann.data.strokeWidth,
-      draggable: activeTool === 'select',
+      draggable: activeTool === 'select' && !readOnly,
       ref: isSelected ? ((node: Konva.Node | null) => { selectedShapeRef.current = node; }) : undefined,
       onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(ann.id, e),
       onTransformEnd: (e: Konva.KonvaEventObject<Event>) => handleTransformEnd(ann.id, e),
@@ -642,7 +645,7 @@ export function AnnotationOverlay({
         const midY = (pts[1] + pts[3]) / 2;
         return (
           <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}
-            draggable={activeTool === 'select'}
+            draggable={activeTool === 'select' && !readOnly}
             ref={isSelected ? ((node: Konva.Node | null) => { selectedShapeRef.current = node; }) as React.LegacyRef<Konva.Group> : undefined}
             onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(ann.id, e)}
             onTransformEnd={(e: Konva.KonvaEventObject<Event>) => handleTransformEnd(ann.id, e)}
@@ -668,7 +671,7 @@ export function AnnotationOverlay({
       case 'area': {
         return (
           <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}
-            draggable={activeTool === 'select'}
+            draggable={activeTool === 'select' && !readOnly}
             ref={isSelected ? ((node: Konva.Node | null) => { selectedShapeRef.current = node; }) as React.LegacyRef<Konva.Group> : undefined}
             onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(ann.id, e)}
             onTransformEnd={(e: Konva.KonvaEventObject<Event>) => handleTransformEnd(ann.id, e)}
@@ -708,7 +711,7 @@ export function AnnotationOverlay({
           <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}
             x={pinX}
             y={pinY}
-            draggable={activeTool === 'select'}
+            draggable={activeTool === 'select' && !readOnly}
             ref={isSelected ? ((node: Konva.Node | null) => { selectedShapeRef.current = node; }) as React.LegacyRef<Konva.Group> : undefined}
             onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(ann.id, e)}
           >
@@ -764,7 +767,7 @@ export function AnnotationOverlay({
         {annotationCounts && annotations.map(renderBadge)}
 
         {/* Transformer for selected annotation */}
-        {activeTool === 'select' && selectedId && (
+        {!readOnly && activeTool === 'select' && selectedId && (
           <Transformer
             ref={transformerRef}
             rotateEnabled={false}

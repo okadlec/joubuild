@@ -205,6 +205,7 @@ export async function updateUserOrgRole(userId: string, orgId: string, newRole: 
 }
 
 export async function deleteUser(userId: string) {
+  if (!userId) return { error: 'Chybí ID uživatele' };
   const ctx = await getCurrentAdminContext();
   if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };
   if (userId === ctx.userId) return { error: 'Nemůžete smazat sami sebe' };
@@ -221,6 +222,7 @@ export async function deleteUser(userId: string) {
 }
 
 export async function removeUserFromOrg(userId: string, orgId: string) {
+  if (!userId || !orgId) return { error: 'Chybí ID uživatele nebo organizace' };
   const ctx = await getCurrentAdminContext();
   if (!ctx) return { error: 'Nemáte oprávnění' };
 

@@ -12,6 +12,7 @@ function getServiceClient() {
 }
 
 export async function updateMemberRole(userId: string, orgId: string, newRole: OrgRole) {
+  if (!userId || !orgId) return { error: 'Chybí ID' };
   const ctx = await getCurrentAdminContext();
   if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };
 
@@ -28,6 +29,7 @@ export async function updateMemberRole(userId: string, orgId: string, newRole: O
 }
 
 export async function removeMember(userId: string, orgId: string) {
+  if (!userId || !orgId) return { error: 'Chybí ID' };
   const ctx = await getCurrentAdminContext();
   if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };
 
