@@ -68,7 +68,8 @@
     "confirmPasswordPlaceholder": "Zopakujte heslo",
     "passwordMismatch": "Hesla se neshodují",
     "passwordMinLength": "Heslo musí mít alespoň 6 znaků",
-    "passwordSet": "Heslo bylo nastaveno"
+    "passwordSet": "Heslo bylo nastaveno",
+    "skipSetPassword": "Přeskočit"
   },
   "sidebar": {
     "projects": "Projekty",

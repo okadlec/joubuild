@@ -81,6 +81,14 @@ export function SetPasswordForm() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? tCommon('saving') : t('setPassword')}
             </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              onClick={() => router.push('/projects')}
+            >
+              {t('skipSetPassword')}
+            </Button>
           </form>
         </CardContent>
       </Card>

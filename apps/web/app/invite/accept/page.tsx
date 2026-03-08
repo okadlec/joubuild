@@ -1,6 +1,6 @@
-import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { redirect } from 'next/navigation';
 import { SetPasswordForm } from './set-password-form';
 
 export default async function InviteAcceptPage() {
@@ -54,14 +54,6 @@ export default async function InviteAcceptPage() {
     }
   }
 
-  // If user was invited (created via invite), show password setup form
-  // Invited users have no identities with a password yet
-  const hasPassword = user.app_metadata?.providers?.includes('email') &&
-    user.user_metadata?.has_set_password;
-
-  if (!hasPassword && user.app_metadata?.invited_at) {
-    return <SetPasswordForm />;
-  }
-
-  redirect('/projects');
+  // This page is only reachable via invite link, so always show password setup
+  return <SetPasswordForm />;
 }

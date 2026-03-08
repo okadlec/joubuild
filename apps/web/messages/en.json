@@ -68,7 +68,8 @@
     "confirmPasswordPlaceholder": "Repeat password",
     "passwordMismatch": "Passwords do not match",
     "passwordMinLength": "Password must be at least 6 characters",
-    "passwordSet": "Password has been set"
+    "passwordSet": "Password has been set",
+    "skipSetPassword": "Skip for now"
   },
   "sidebar": {
     "projects": "Projects",
