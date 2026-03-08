@@ -10,7 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { toast } from 'sonner';
 
-export function SetPasswordForm() {
+export function SetPasswordForm({ email }: { email: string }) {
   const t = useTranslations('auth');
   const tCommon = useTranslations('common');
   const router = useRouter();
@@ -53,7 +53,21 @@ export function SetPasswordForm() {
           <p className="text-sm text-muted-foreground">{t('setPasswordDescription')}</p>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
+            {/* Hidden username field for password managers */}
+            <input type="hidden" name="username" autoComplete="username" value={email} />
+            <div className="space-y-2">
+              <Label htmlFor="email">{tCommon('email')}</Label>
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                readOnly
+                className="bg-muted"
+                tabIndex={-1}
+                autoComplete="username"
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="password">{tCommon('password')}</Label>
               <Input
@@ -64,6 +78,7 @@ export function SetPasswordForm() {
                 placeholder={t('passwordPlaceholder')}
                 required
                 minLength={6}
+                autoComplete="new-password"
               />
             </div>
             <div className="space-y-2">
@@ -76,18 +91,11 @@ export function SetPasswordForm() {
                 placeholder={t('confirmPasswordPlaceholder')}
                 required
                 minLength={6}
+                autoComplete="new-password"
               />
             </div>
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? tCommon('saving') : t('setPassword')}
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={() => router.push('/projects')}
-            >
-              {t('skipSetPassword')}
             </Button>
           </form>
         </CardContent>

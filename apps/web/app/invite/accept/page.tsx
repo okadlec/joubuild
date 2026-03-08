@@ -55,5 +55,5 @@ export default async function InviteAcceptPage() {
   }
 
   // This page is only reachable via invite link, so always show password setup
-  return <SetPasswordForm />;
+  return <SetPasswordForm email={email} />;
 }
