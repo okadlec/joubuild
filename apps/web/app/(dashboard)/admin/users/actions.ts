@@ -131,10 +131,12 @@ export async function inviteUser(email: string, orgRole: OrgRole, organizationId
   if (invError) return { error: invError.message };
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
-  const { error: emailError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
+  console.log('[invite] Sending invite email', { email, appUrl, redirectTo: `${appUrl}/auth/callback?next=/invite/accept` });
+  const { data: emailData, error: emailError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
     redirectTo: `${appUrl}/auth/callback?next=/invite/accept`,
     data: { invited_org_name: org?.name || '' },
   });
+  console.log('[invite] inviteUserByEmail result', { emailData, emailError: emailError ? { message: emailError.message, status: (emailError as any).status, name: emailError.name } : null });
 
   if (emailError) return { error: 'Chyba při odesílání pozvánky: ' + emailError.message };
 

@@ -220,10 +220,12 @@ export async function inviteOrgMember(orgId: string, email: string, role: string
 
   // Send invitation email via Supabase Auth
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
-  const { error: emailError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
+  console.log('[invite] Sending invite email', { email, appUrl, redirectTo: `${appUrl}/auth/callback?next=/invite/accept` });
+  const { data: emailData, error: emailError } = await serviceClient.auth.admin.inviteUserByEmail(email, {
     redirectTo: `${appUrl}/auth/callback?next=/invite/accept`,
     data: { invited_org_name: org?.name || '' },
   });
+  console.log('[invite] inviteUserByEmail result', { emailData, emailError: emailError ? { message: emailError.message, status: (emailError as any).status, name: emailError.name } : null });
 
   if (emailError) return { error: 'Chyba při odesílání pozvánky: ' + emailError.message };
 
@@ -282,10 +284,12 @@ export async function resendInvitation(orgId: string, invitationId: string) {
 
   // Resend email
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.NEXT_PUBLIC_SITE_URL || '';
-  const { error: emailError } = await serviceClient.auth.admin.inviteUserByEmail(invitation.email, {
+  console.log('[invite-resend] Resending invite email', { email: invitation.email, appUrl });
+  const { data: emailData, error: emailError } = await serviceClient.auth.admin.inviteUserByEmail(invitation.email, {
     redirectTo: `${appUrl}/auth/callback?next=/invite/accept`,
     data: { invited_org_name: org?.name || '' },
   });
+  console.log('[invite-resend] inviteUserByEmail result', { emailData, emailError: emailError ? { message: emailError.message, status: (emailError as any).status, name: emailError.name } : null });
 
   if (emailError) return { error: 'Chyba při odesílání: ' + emailError.message };
   return { success: true };
