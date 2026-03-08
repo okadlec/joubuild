@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
+import { useLocale } from 'next-intl';
 import { Stage, Layer, Line, Rect, Ellipse, Arrow, Text, Circle, Group, Transformer } from 'react-konva';
 import type Konva from 'konva';
 import type { AnnotationType } from '@joubuild/shared';
@@ -67,6 +68,7 @@ export function AnnotationOverlay({
   displayScale = 1,
   annotationCounts,
 }: AnnotationOverlayProps) {
+  const locale = useLocale();
   const stageRef = useRef<Konva.Stage>(null);
   const transformerRef = useRef<Konva.Transformer>(null);
   const selectedShapeRef = useRef<Konva.Node | null>(null);
@@ -436,9 +438,11 @@ export function AnnotationOverlay({
     const pos = getBadgePosition(ann);
     if (!pos) return null;
 
+    const photoLabel = locale === 'cs' ? 'F' : 'P';
+    const taskLabel = locale === 'cs' ? 'Ú' : 'T';
     const parts: string[] = [];
-    if (counts.photos > 0) parts.push(`${counts.photos}P`);
-    if (counts.tasks > 0) parts.push(`${counts.tasks}T`);
+    if (counts.photos > 0) parts.push(`${counts.photos}${photoLabel}`);
+    if (counts.tasks > 0) parts.push(`${counts.tasks}${taskLabel}`);
     const label = parts.join(' ');
 
     const s = 1 / displayScale;
