@@ -190,7 +190,7 @@ export function UsersList({
                   <Avatar name={user.full_name || user.email || '?'} size="sm" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
-                      {user.full_name || user.email || user.id.slice(0, 8)}
+                      {user.full_name || user.email || (user.id?.slice(0, 8) ?? '?')}
                     </p>
                     {user.email && (
                       <p className="truncate text-xs text-muted-foreground">{user.email}</p>

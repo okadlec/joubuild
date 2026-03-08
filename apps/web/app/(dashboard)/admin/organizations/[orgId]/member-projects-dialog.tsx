@@ -206,7 +206,7 @@ export function MemberProjectsDialog({ open, onClose, member, orgId }: MemberPro
           <DialogTitle className="flex items-center gap-3">
             <Avatar name={member.full_name || member.email || '?'} size="sm" />
             <div>
-              <span>{member.full_name || member.email || member.user_id.slice(0, 8)}</span>
+              <span>{member.full_name || member.email || (member.user_id?.slice(0, 8) ?? '?')}</span>
               {member.email && member.full_name && (
                 <span className="ml-2 text-sm font-normal text-muted-foreground">{member.email}</span>
               )}
