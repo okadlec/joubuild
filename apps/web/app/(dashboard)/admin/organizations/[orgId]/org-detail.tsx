@@ -372,12 +372,12 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
         open={showInviteDialog}
         onClose={() => setShowInviteDialog(false)}
         projects={projects.map((p) => ({ id: p.id, name: p.name }))}
-        onInvite={async (email, role, projectAssignments) => {
-          const result = await inviteOrgMemberFromAdmin(org.id, email, role);
+        onInvite={async (email, role, projectIds) => {
+          const result = await inviteOrgMemberFromAdmin(org.id, email, role, projectIds);
           if (result.success) {
-            if (result.directlyAdded && result.userId && projectAssignments?.length) {
-              for (const pa of projectAssignments) {
-                await addUserToProject(result.userId, pa.projectId, pa.role as any);
+            if (result.directlyAdded && result.userId && projectIds?.length) {
+              for (const projectId of projectIds) {
+                await addUserToProject(result.userId, projectId, 'member');
               }
             }
             router.refresh();

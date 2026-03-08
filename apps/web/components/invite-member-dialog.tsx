@@ -9,13 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { PROJECT_ROLE_LABELS } from '@joubuild/shared';
-import type { OrgRole, ProjectRole } from '@joubuild/shared';
-
-interface ProjectAssignment {
-  projectId: string;
-  role: ProjectRole;
-}
+import type { OrgRole } from '@joubuild/shared';
 
 interface InviteMemberDialogProps {
   open: boolean;
@@ -23,7 +17,7 @@ interface InviteMemberDialogProps {
   onInvite: (
     email: string,
     role: string,
-    projectAssignments?: ProjectAssignment[]
+    projectIds?: string[]
   ) => Promise<{ error?: string; success?: boolean; directlyAdded?: boolean }>;
   projects?: { id: string; name: string }[];
 }
@@ -35,20 +29,18 @@ export function InviteMemberDialog({ open, onClose, onInvite, projects }: Invite
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<OrgRole>('member');
   const [loading, setLoading] = useState(false);
-  const [selectedProjects, setSelectedProjects] = useState<Record<string, ProjectRole>>({});
+  const [selectedProjects, setSelectedProjects] = useState<Set<string>>(new Set());
 
   function toggleProject(projectId: string) {
     setSelectedProjects((prev) => {
-      if (prev[projectId]) {
-        const { [projectId]: _, ...rest } = prev;
-        return rest;
+      const next = new Set(prev);
+      if (next.has(projectId)) {
+        next.delete(projectId);
+      } else {
+        next.add(projectId);
       }
-      return { ...prev, [projectId]: 'member' };
+      return next;
     });
-  }
-
-  function setProjectRole(projectId: string, role: ProjectRole) {
-    setSelectedProjects((prev) => ({ ...prev, [projectId]: role }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -56,10 +48,8 @@ export function InviteMemberDialog({ open, onClose, onInvite, projects }: Invite
     if (!email.trim()) return;
 
     setLoading(true);
-    const projectAssignments = Object.entries(selectedProjects).map(
-      ([projectId, role]) => ({ projectId, role })
-    );
-    const result = await onInvite(email.trim(), role, projectAssignments.length > 0 ? projectAssignments : undefined);
+    const projectIds = selectedProjects.size > 0 ? Array.from(selectedProjects) : undefined;
+    const result = await onInvite(email.trim(), role, projectIds);
     setLoading(false);
 
     if (result.error) {
@@ -75,7 +65,7 @@ export function InviteMemberDialog({ open, onClose, onInvite, projects }: Invite
 
     setEmail('');
     setRole('member');
-    setSelectedProjects({});
+    setSelectedProjects(new Set());
     onClose();
   }
 
@@ -124,7 +114,7 @@ export function InviteMemberDialog({ open, onClose, onInvite, projects }: Invite
                   <input
                     type="checkbox"
                     id={`project-${project.id}`}
-                    checked={!!selectedProjects[project.id]}
+                    checked={selectedProjects.has(project.id)}
                     onChange={() => toggleProject(project.id)}
                     className="h-4 w-4 rounded border-gray-300"
                   />
@@ -134,17 +124,6 @@ export function InviteMemberDialog({ open, onClose, onInvite, projects }: Invite
                   >
                     {project.name}
                   </label>
-                  {selectedProjects[project.id] && (
-                    <Select
-                      value={selectedProjects[project.id]}
-                      onChange={(e) => setProjectRole(project.id, e.target.value as ProjectRole)}
-                      className="h-7 w-auto text-xs"
-                    >
-                      <option value="admin">{PROJECT_ROLE_LABELS['admin']}</option>
-                      <option value="member">{PROJECT_ROLE_LABELS['member']}</option>
-                      <option value="follower">{PROJECT_ROLE_LABELS['follower']}</option>
-                    </Select>
-                  )}
                 </div>
               ))}
             </div>

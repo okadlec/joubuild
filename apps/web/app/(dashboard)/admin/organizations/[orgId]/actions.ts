@@ -57,7 +57,7 @@ export async function addMemberToOrg(userId: string, orgId: string, role: OrgRol
   return { success: true };
 }
 
-export async function inviteOrgMemberFromAdmin(orgId: string, email: string, role: string) {
+export async function inviteOrgMemberFromAdmin(orgId: string, email: string, role: string, projectIds?: string[]) {
   const ctx = await getCurrentAdminContext();
   if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };
 
@@ -115,6 +115,7 @@ export async function inviteOrgMemberFromAdmin(orgId: string, email: string, rol
         invited_by: ctx.userId,
         status: 'pending',
         expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        project_ids: projectIds || [],
       },
       { onConflict: 'organization_id,email' }
     );

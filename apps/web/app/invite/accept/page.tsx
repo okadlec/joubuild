@@ -24,9 +24,11 @@ export default async function InviteAcceptPage() {
   // Check for pending invitations
   const { data: invitations } = await serviceClient
     .from('organization_invitations')
-    .select('id, organization_id, role')
+    .select('id, organization_id, role, project_ids')
     .eq('email', email)
     .eq('status', 'pending');
+
+  const PERMISSION_MODULES = ['files','specifications','plans','tasks','photos','forms','timesheets','reports'];
 
   if (invitations && invitations.length > 0) {
     for (const inv of invitations) {
@@ -45,6 +47,37 @@ export default async function InviteAcceptPage() {
             user_id: user.id,
             role: inv.role,
           });
+      }
+
+      // Process project assignments
+      const projectIds: string[] = inv.project_ids || [];
+      for (const projectId of projectIds) {
+        const { data: existingMember } = await serviceClient
+          .from('project_members')
+          .select('id')
+          .eq('project_id', projectId)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!existingMember) {
+          await serviceClient
+            .from('project_members')
+            .insert({ project_id: projectId, user_id: user.id, role: 'member' });
+
+          const defaultPerms = PERMISSION_MODULES.map((mod) => ({
+            project_id: projectId,
+            user_id: user.id,
+            module: mod,
+            can_view: true,
+            can_create: true,
+            can_edit: true,
+            can_delete: false,
+          }));
+
+          await serviceClient
+            .from('project_member_permissions')
+            .upsert(defaultPerms, { onConflict: 'project_id,user_id,module' });
+        }
       }
 
       await serviceClient
