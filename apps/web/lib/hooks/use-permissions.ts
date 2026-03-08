@@ -44,11 +44,12 @@ export function usePermissions(projectId: string): UsePermissionsResult {
 
   const hasPermission = useCallback(
     (module: PermissionModule, action: PermissionAction): boolean => {
+      if (hasContext) return ctx.hasPermission(module, action);
       const perm = resolvedPermissions.find(p => p.module === module);
       if (!perm) return false;
       return perm[action];
     },
-    [resolvedPermissions]
+    [resolvedPermissions, hasContext, ctx]
   );
 
   const getModulePermissions = useCallback(

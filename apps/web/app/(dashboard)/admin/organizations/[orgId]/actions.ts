@@ -98,7 +98,7 @@ export async function inviteOrgMemberFromAdmin(orgId: string, email: string, rol
         .insert({ organization_id: orgId, user_id: existingProfile.id, role });
 
       if (insertError) return { error: insertError.message };
-      return { success: true, directlyAdded: true };
+      return { success: true, directlyAdded: true, userId: existingProfile.id };
     }
 
     // Osiřelý profil — smazat a pokračovat s invite flow
@@ -190,6 +190,55 @@ export async function resendInvitationFromAdmin(orgId: string, invitationId: str
 
   if (emailError) return { error: 'Chyba při odesílání: ' + emailError.message };
   return { success: true };
+}
+
+export async function getMemberProjectAccess(userId: string, orgId: string) {
+  const ctx = await getCurrentAdminContext();
+  if (!ctx?.isSuperadmin) return { error: 'Pouze superadmin' };
+
+  const serviceClient = getServiceClient();
+
+  // Projects where user is a member (within this org)
+  const { data: memberProjects } = await serviceClient
+    .from('project_members')
+    .select('project_id, role, projects!inner(id, name, status)')
+    .eq('user_id', userId)
+    .eq('projects.organization_id', orgId);
+
+  // All projects in org
+  const { data: allProjects } = await serviceClient
+    .from('projects')
+    .select('id, name')
+    .eq('organization_id', orgId);
+
+  const memberProjectIds = new Set(
+    (memberProjects || []).map((mp: any) => mp.project_id)
+  );
+
+  const availableProjects = (allProjects || []).filter(
+    (p) => !memberProjectIds.has(p.id)
+  );
+
+  // Permissions for member projects
+  const { data: permissions } = await serviceClient
+    .from('project_member_permissions')
+    .select('*')
+    .eq('user_id', userId)
+    .in(
+      'project_id',
+      (memberProjects || []).map((mp: any) => mp.project_id)
+    );
+
+  return {
+    memberProjects: (memberProjects || []).map((mp: any) => ({
+      project_id: mp.project_id,
+      role: mp.role,
+      name: mp.projects.name,
+      status: mp.projects.status,
+    })),
+    permissions: permissions || [],
+    availableProjects,
+  };
 }
 
 export async function addMemberByEmail(orgId: string, email: string, role: OrgRole) {

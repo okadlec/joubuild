@@ -18,7 +18,9 @@ import { toast } from 'sonner';
 import { formatBytes } from '@/lib/utils';
 import type { OrgRole, OrganizationInvitation } from '@joubuild/shared';
 import { updateMemberRole, removeMember, inviteOrgMemberFromAdmin, cancelInvitationFromAdmin, resendInvitationFromAdmin } from './actions';
+import { addUserToProject } from '@/app/(dashboard)/admin/users/[userId]/actions';
 import { InviteMemberDialog } from '@/components/invite-member-dialog';
+import { MemberProjectsDialog } from './member-projects-dialog';
 
 const ORG_ROLE_VARIANTS: Record<OrgRole, 'default' | 'secondary' | 'outline'> = {
   owner: 'default',
@@ -79,6 +81,7 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [invitations, setInvitations] = useState(initialInvitations);
+  const [selectedMember, setSelectedMember] = useState<Member | null>(null);
 
   const storageItems = [
     { label: t('storage.photos'), value: storage.photos, icon: Image },
@@ -220,7 +223,11 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
                   <p className="py-8 text-center text-sm text-muted-foreground">{tCommon('noResults')}</p>
                 )}
                 {members.map((member) => (
-                  <div key={member.user_id} className="flex items-center justify-between rounded-md border p-3">
+                  <div
+                    key={member.user_id}
+                    className="flex cursor-pointer items-center justify-between rounded-md border p-3 transition-colors hover:bg-accent"
+                    onClick={() => setSelectedMember(member)}
+                  >
                     <div className="flex items-center gap-3">
                       <Avatar name={member.full_name || member.email || '?'} size="sm" />
                       <div>
@@ -240,9 +247,10 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() =>
-                            setOpenMenuId(openMenuId === member.user_id ? null : member.user_id)
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenMenuId(openMenuId === member.user_id ? null : member.user_id);
+                          }}
                         >
                           <MoreVertical className="h-4 w-4" />
                         </Button>
@@ -349,13 +357,31 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
         </TabsContent>
       </Tabs>
 
+      {/* Member Projects Dialog */}
+      {selectedMember && (
+        <MemberProjectsDialog
+          open={!!selectedMember}
+          onClose={() => setSelectedMember(null)}
+          member={selectedMember}
+          orgId={org.id}
+        />
+      )}
+
       {/* Invite Member Dialog */}
       <InviteMemberDialog
         open={showInviteDialog}
         onClose={() => setShowInviteDialog(false)}
-        onInvite={async (email, role) => {
+        projects={projects.map((p) => ({ id: p.id, name: p.name }))}
+        onInvite={async (email, role, projectAssignments) => {
           const result = await inviteOrgMemberFromAdmin(org.id, email, role);
-          if (result.success) router.refresh();
+          if (result.success) {
+            if (result.directlyAdded && result.userId && projectAssignments?.length) {
+              for (const pa of projectAssignments) {
+                await addUserToProject(result.userId, pa.projectId, pa.role as any);
+              }
+            }
+            router.refresh();
+          }
           return result;
         }}
       />

@@ -8,6 +8,7 @@ interface PermissionsContextValue {
   permissions: ProjectMemberPermission[];
   loading: boolean;
   isSuperadmin: boolean;
+  isOrgAdmin: boolean;
   hasPermission: (module: PermissionModule, action: PermissionAction) => boolean;
   getModulePermissions: (module: PermissionModule) => ProjectMemberPermission | undefined;
 }
@@ -18,6 +19,7 @@ export function PermissionsProvider({ projectId, children }: { projectId: string
   const [permissions, setPermissions] = useState<ProjectMemberPermission[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSuperadmin, setIsSuperadmin] = useState(false);
+  const [isOrgAdmin, setIsOrgAdmin] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -45,6 +47,29 @@ export function PermissionsProvider({ projectId, children }: { projectId: string
         return;
       }
 
+      // Check if user is org admin/owner for this project's organization
+      const { data: project } = await supabase
+        .from('projects')
+        .select('organization_id')
+        .eq('id', projectId)
+        .single();
+
+      if (project?.organization_id) {
+        const { data: orgMember } = await supabase
+          .from('organization_members')
+          .select('role')
+          .eq('organization_id', project.organization_id)
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (orgMember?.role === 'owner' || orgMember?.role === 'admin') {
+          console.log('[Permissions] Org admin detected — granting full access');
+          setIsOrgAdmin(true);
+          setLoading(false);
+          return;
+        }
+      }
+
       const { data, error } = await supabase
         .from('project_member_permissions')
         .select('*')
@@ -61,12 +86,12 @@ export function PermissionsProvider({ projectId, children }: { projectId: string
 
   const hasPermission = useCallback(
     (module: PermissionModule, action: PermissionAction): boolean => {
-      if (isSuperadmin) return true;
+      if (isSuperadmin || isOrgAdmin) return true;
       const perm = permissions.find(p => p.module === module);
       if (!perm) return false;
       return perm[action];
     },
-    [permissions, isSuperadmin]
+    [permissions, isSuperadmin, isOrgAdmin]
   );
 
   const getModulePermissions = useCallback(
@@ -75,7 +100,7 @@ export function PermissionsProvider({ projectId, children }: { projectId: string
   );
 
   return (
-    <PermissionsContext.Provider value={{ permissions, loading, isSuperadmin, hasPermission, getModulePermissions }}>
+    <PermissionsContext.Provider value={{ permissions, loading, isSuperadmin, isOrgAdmin, hasPermission, getModulePermissions }}>
       {children}
     </PermissionsContext.Provider>
   );

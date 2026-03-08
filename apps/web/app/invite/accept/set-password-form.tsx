@@ -14,12 +14,18 @@ export function SetPasswordForm({ email }: { email: string }) {
   const t = useTranslations('auth');
   const tCommon = useTranslations('common');
   const router = useRouter();
+  const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+
+    if (!fullName.trim()) {
+      toast.error(t('fullNameRequired'));
+      return;
+    }
 
     if (password.length < 6) {
       toast.error(t('passwordMinLength'));
@@ -33,7 +39,10 @@ export function SetPasswordForm({ email }: { email: string }) {
 
     setLoading(true);
     const supabase = getSupabaseClient();
-    const { error } = await supabase.auth.updateUser({ password });
+    const { error } = await supabase.auth.updateUser({
+      password,
+      data: { full_name: fullName.trim() },
+    });
     setLoading(false);
 
     if (error) {
@@ -49,13 +58,26 @@ export function SetPasswordForm({ email }: { email: string }) {
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>{t('setPassword')}</CardTitle>
-          <p className="text-sm text-muted-foreground">{t('setPasswordDescription')}</p>
+          <CardTitle>{t('completeAccount')}</CardTitle>
+          <p className="text-sm text-muted-foreground">{t('completeAccountDescription')}</p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4" autoComplete="on">
             {/* Hidden username field for password managers */}
             <input type="hidden" name="username" autoComplete="username" value={email} />
+            <div className="space-y-2">
+              <Label htmlFor="fullName">{t('fullName')}</Label>
+              <Input
+                id="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                placeholder={t('fullNamePlaceholder')}
+                required
+                autoComplete="name"
+                autoFocus
+              />
+            </div>
             <div className="space-y-2">
               <Label htmlFor="email">{tCommon('email')}</Label>
               <Input

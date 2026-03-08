@@ -68,7 +68,10 @@
     "confirmPasswordPlaceholder": "Repeat password",
     "passwordMismatch": "Passwords do not match",
     "passwordMinLength": "Password must be at least 6 characters",
-    "passwordSet": "Password has been set"
+    "passwordSet": "Password has been set",
+    "fullNameRequired": "Please enter your full name",
+    "completeAccount": "Complete Your Account",
+    "completeAccountDescription": "Set your name and password to get started with JouBuild"
   },
   "sidebar": {
     "projects": "Projects",

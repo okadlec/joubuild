@@ -68,7 +68,10 @@
     "confirmPasswordPlaceholder": "Zopakujte heslo",
     "passwordMismatch": "Hesla se neshodují",
     "passwordMinLength": "Heslo musí mít alespoň 6 znaků",
-    "passwordSet": "Heslo bylo nastaveno"
+    "passwordSet": "Heslo bylo nastaveno",
+    "fullNameRequired": "Zadejte prosím celé jméno",
+    "completeAccount": "Dokončení účtu",
+    "completeAccountDescription": "Nastavte si jméno a heslo pro přístup do JouBuild"
   },
   "sidebar": {
     "projects": "Projekty",
