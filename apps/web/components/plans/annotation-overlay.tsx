@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { Stage, Layer, Line, Rect, Ellipse, Arrow, Text, Circle, Group } from 'react-konva';
+import { Stage, Layer, Line, Rect, Ellipse, Arrow, Text, Circle, Group, Transformer } from 'react-konva';
 import type Konva from 'konva';
 import type { AnnotationType } from '@joubuild/shared';
 import type { AnnotationTool } from './annotation-toolbar';
@@ -66,6 +66,27 @@ export function AnnotationOverlay({
   displayScale = 1,
 }: AnnotationOverlayProps) {
   const stageRef = useRef<Konva.Stage>(null);
+  const transformerRef = useRef<Konva.Transformer>(null);
+  const selectedShapeRef = useRef<Konva.Node | null>(null);
+
+  // Attach/detach Transformer when selection changes
+  useEffect(() => {
+    const tr = transformerRef.current;
+    if (!tr) return;
+    if (selectedId && selectedShapeRef.current) {
+      // Don't attach transformer to pin annotations
+      const ann = annotations.find(a => a.id === selectedId);
+      if (ann?.type === 'pin') {
+        tr.nodes([]);
+      } else {
+        tr.nodes([selectedShapeRef.current]);
+      }
+    } else {
+      tr.nodes([]);
+    }
+    tr.getLayer()?.batchDraw();
+  }, [selectedId, annotations]);
+
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<number[]>([]);
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
@@ -377,6 +398,95 @@ export function AnnotationOverlay({
     return points;
   }
 
+  const isLineBased = (type: AnnotationData['type']) =>
+    ['line', 'arrow', 'freehand', 'highlighter', 'measurement'].includes(type);
+
+  const handleDragEnd = useCallback((id: string, e: Konva.KonvaEventObject<DragEvent>) => {
+    const node = e.target;
+    const ann = annotations.find(a => a.id === id);
+    if (!ann) return;
+
+    let updated: AnnotationData[];
+    if (isLineBased(ann.type)) {
+      // Offset all points by node position, then reset node to 0,0
+      const dx = node.x();
+      const dy = node.y();
+      const oldPoints = ann.data.points!;
+      const newPoints = oldPoints.map((v, i) => i % 2 === 0 ? v + dx : v + dy);
+      node.position({ x: 0, y: 0 });
+
+      const newData = { ...ann.data, points: newPoints };
+      // Recalculate measurement distance
+      if (ann.type === 'measurement' && pixelsPerMeter) {
+        const ddx = newPoints[2] - newPoints[0];
+        const ddy = newPoints[3] - newPoints[1];
+        newData.realDistance = Math.sqrt(ddx * ddx + ddy * ddy) / pixelsPerMeter;
+      }
+      updated = annotations.map(a => a.id === id ? { ...a, data: newData } : a);
+    } else {
+      // rect/ellipse/cloud/text/area/pin: update x, y
+      const newData = { ...ann.data, x: node.x(), y: node.y() };
+      // Recalculate area
+      if (ann.type === 'area' && pixelsPerMeter && newData.width && newData.height) {
+        newData.realArea = (newData.width * newData.height) / (pixelsPerMeter * pixelsPerMeter);
+      }
+      updated = annotations.map(a => a.id === id ? { ...a, data: newData } : a);
+    }
+    onAnnotationsChange(updated);
+  }, [annotations, onAnnotationsChange, pixelsPerMeter]);
+
+  const handleTransformEnd = useCallback((id: string, e: Konva.KonvaEventObject<Event>) => {
+    const node = e.target;
+    const ann = annotations.find(a => a.id === id);
+    if (!ann) return;
+
+    const scaleX = node.scaleX();
+    const scaleY = node.scaleY();
+    // Reset scale on node
+    node.scaleX(1);
+    node.scaleY(1);
+
+    let updated: AnnotationData[];
+    if (isLineBased(ann.type)) {
+      const oldPoints = ann.data.points!;
+      const dx = node.x();
+      const dy = node.y();
+      const newPoints = oldPoints.map((v, i) => i % 2 === 0 ? v * scaleX + dx : v * scaleY + dy);
+      node.position({ x: 0, y: 0 });
+
+      const newData = { ...ann.data, points: newPoints };
+      if (ann.type === 'measurement' && pixelsPerMeter) {
+        const ddx = newPoints[2] - newPoints[0];
+        const ddy = newPoints[3] - newPoints[1];
+        newData.realDistance = Math.sqrt(ddx * ddx + ddy * ddy) / pixelsPerMeter;
+      }
+      updated = annotations.map(a => a.id === id ? { ...a, data: newData } : a);
+    } else if (ann.type === 'ellipse') {
+      const newData = {
+        ...ann.data,
+        x: node.x(),
+        y: node.y(),
+        radiusX: ann.data.radiusX! * Math.abs(scaleX),
+        radiusY: ann.data.radiusY! * Math.abs(scaleY),
+      };
+      updated = annotations.map(a => a.id === id ? { ...a, data: newData } : a);
+    } else {
+      // rect/cloud/area/text
+      const newData = {
+        ...ann.data,
+        x: node.x(),
+        y: node.y(),
+        width: (ann.data.width ?? 0) * Math.abs(scaleX),
+        height: (ann.data.height ?? 0) * Math.abs(scaleY),
+      };
+      if (ann.type === 'area' && pixelsPerMeter) {
+        newData.realArea = (newData.width! * newData.height!) / (pixelsPerMeter * pixelsPerMeter);
+      }
+      updated = annotations.map(a => a.id === id ? { ...a, data: newData } : a);
+    }
+    onAnnotationsChange(updated);
+  }, [annotations, onAnnotationsChange, pixelsPerMeter]);
+
   const renderAnnotation = (ann: AnnotationData) => {
     const isSelected = selectedId === ann.id;
     const handleSelect = () => {
@@ -387,10 +497,15 @@ export function AnnotationOverlay({
     };
     const commonProps = {
       key: ann.id,
+      id: ann.id,
       onClick: handleSelect,
       onTap: handleSelect,
       stroke: isSelected ? '#0EA5E9' : ann.data.color,
       strokeWidth: ann.data.strokeWidth,
+      draggable: activeTool === 'select',
+      ref: isSelected ? ((node: Konva.Node | null) => { selectedShapeRef.current = node; }) : undefined,
+      onDragEnd: (e: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(ann.id, e),
+      onTransformEnd: (e: Konva.KonvaEventObject<Event>) => handleTransformEnd(ann.id, e),
     };
 
     switch (ann.type) {
@@ -419,14 +534,12 @@ export function AnnotationOverlay({
       case 'text':
         return (
           <Text
-            key={ann.id}
+            {...commonProps}
             x={ann.data.x}
             y={ann.data.y}
             text={ann.data.text}
             fontSize={16}
             fill={ann.data.color}
-            onClick={handleSelect}
-            onTap={handleSelect}
           />
         );
 
@@ -457,8 +570,13 @@ export function AnnotationOverlay({
         const midX = (pts[0] + pts[2]) / 2;
         const midY = (pts[1] + pts[3]) / 2;
         return (
-          <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}>
-            <Line {...commonProps} points={pts} dash={[8, 4]} />
+          <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}
+            draggable={activeTool === 'select'}
+            ref={isSelected ? ((node: Konva.Node | null) => { selectedShapeRef.current = node; }) as React.LegacyRef<Konva.Group> : undefined}
+            onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(ann.id, e)}
+            onTransformEnd={(e: Konva.KonvaEventObject<Event>) => handleTransformEnd(ann.id, e)}
+          >
+            <Line {...commonProps} points={pts} dash={[8, 4]} draggable={false} />
             <Circle x={pts[0]} y={pts[1]} radius={4} fill="#EF4444" onClick={handleSelect} onTap={handleSelect} />
             <Circle x={pts[2]} y={pts[3]} radius={4} fill="#EF4444" onClick={handleSelect} onTap={handleSelect} />
             <Text
@@ -478,7 +596,12 @@ export function AnnotationOverlay({
 
       case 'area': {
         return (
-          <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}>
+          <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}
+            draggable={activeTool === 'select'}
+            ref={isSelected ? ((node: Konva.Node | null) => { selectedShapeRef.current = node; }) as React.LegacyRef<Konva.Group> : undefined}
+            onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(ann.id, e)}
+            onTransformEnd={(e: Konva.KonvaEventObject<Event>) => handleTransformEnd(ann.id, e)}
+          >
             <Rect
               x={ann.data.x}
               y={ann.data.y}
@@ -511,7 +634,11 @@ export function AnnotationOverlay({
         const pinY = ann.data.y!;
         const radius = 10 / (displayScale ?? 1);
         return (
-          <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}>
+          <Group key={ann.id} onClick={handleSelect} onTap={handleSelect}
+            draggable={activeTool === 'select'}
+            ref={isSelected ? ((node: Konva.Node | null) => { selectedShapeRef.current = node; }) as React.LegacyRef<Konva.Group> : undefined}
+            onDragEnd={(e: Konva.KonvaEventObject<DragEvent>) => handleDragEnd(ann.id, e)}
+          >
             <Circle x={pinX + 1} y={pinY + 1} radius={radius} fill="rgba(0,0,0,0.3)" />
             <Circle
               x={pinX}
@@ -559,6 +686,17 @@ export function AnnotationOverlay({
     >
       <Layer>
         {annotations.map(renderAnnotation)}
+
+        {/* Transformer for selected annotation */}
+        {activeTool === 'select' && selectedId && (
+          <Transformer
+            ref={transformerRef}
+            rotateEnabled={false}
+            boundBoxFunc={(_old, newBox) =>
+              newBox.width < 5 || newBox.height < 5 ? _old : newBox
+            }
+          />
+        )}
 
         {/* Drawing preview */}
         {isDrawing && drawStart && (() => {

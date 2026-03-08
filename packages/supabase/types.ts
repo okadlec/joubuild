@@ -211,6 +211,33 @@ export interface Database {
         };
         Relationships: [];
       };
+      annotations: {
+        Row: {
+          id: string;
+          sheet_version_id: string;
+          type: string;
+          data: Record<string, unknown>;
+          created_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          sheet_version_id: string;
+          type: string;
+          data: Record<string, unknown>;
+          created_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          type?: string;
+          data?: Record<string, unknown>;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       task_categories: {
         Row: {
           id: string;
@@ -243,6 +270,7 @@ export interface Database {
           project_id: string;
           sheet_id: string | null;
           category_id: string | null;
+          annotation_id: string | null;
           title: string;
           description: string | null;
           status: string;
@@ -267,6 +295,7 @@ export interface Database {
           project_id: string;
           sheet_id?: string | null;
           category_id?: string | null;
+          annotation_id?: string | null;
           title: string;
           description?: string | null;
           status?: string;
@@ -288,6 +317,7 @@ export interface Database {
           project_id?: string;
           sheet_id?: string | null;
           category_id?: string | null;
+          annotation_id?: string | null;
           title?: string;
           description?: string | null;
           status?: string;
@@ -350,10 +380,23 @@ export interface Database {
         };
         Relationships: [];
       };
+      task_tags: {
+        Row: {
+          task_id: string;
+          tag_id: string;
+        };
+        Insert: {
+          task_id: string;
+          tag_id: string;
+        };
+        Update: {};
+        Relationships: [];
+      };
       comments: {
         Row: {
           id: string;
-          task_id: string;
+          task_id: string | null;
+          annotation_id: string | null;
           user_id: string | null;
           body: string;
           created_at: string;
@@ -361,7 +404,8 @@ export interface Database {
         };
         Insert: {
           id?: string;
-          task_id: string;
+          task_id?: string | null;
+          annotation_id?: string | null;
           user_id?: string | null;
           body: string;
           created_at?: string;
@@ -379,6 +423,7 @@ export interface Database {
           id: string;
           project_id: string;
           task_id: string | null;
+          annotation_id: string | null;
           sheet_id: string | null;
           pin_x: number | null;
           pin_y: number | null;
@@ -399,6 +444,7 @@ export interface Database {
           id?: string;
           project_id: string;
           task_id?: string | null;
+          annotation_id?: string | null;
           sheet_id?: string | null;
           pin_x?: number | null;
           pin_y?: number | null;
@@ -675,6 +721,66 @@ export interface Database {
           status?: string;
           file_url?: string | null;
           completed_at?: string | null;
+        };
+        Relationships: [];
+      };
+      specifications: {
+        Row: {
+          id: string;
+          project_id: string;
+          name: string;
+          description: string | null;
+          file_url: string;
+          file_size: number | null;
+          uploaded_by: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          project_id: string;
+          name: string;
+          description?: string | null;
+          file_url: string;
+          file_size?: number | null;
+          uploaded_by?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          name?: string;
+          description?: string | null;
+          file_url?: string;
+          file_size?: number | null;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          id: string;
+          email: string | null;
+          full_name: string | null;
+          avatar_url: string | null;
+          is_superadmin: boolean;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          email?: string | null;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          is_superadmin?: boolean;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          email?: string | null;
+          full_name?: string | null;
+          avatar_url?: string | null;
+          is_superadmin?: boolean;
+          updated_at?: string;
         };
         Relationships: [];
       };

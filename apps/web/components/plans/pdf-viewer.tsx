@@ -847,6 +847,40 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
     setRedoStack(r => r.slice(0, -1));
   }, [redoStack, annotations]);
 
+  // When selecting an annotation, sync toolbar color/stroke from it
+  const handleSelectId = useCallback((id: string | null) => {
+    setSelectedId(id);
+    if (id) {
+      const ann = annotations.find(a => a.id === id);
+      if (ann) {
+        setActiveColor(ann.data.color);
+        setStrokeWidth(ann.data.strokeWidth);
+      }
+    }
+  }, [annotations]);
+
+  // Color change: update tool setting + apply to selected annotation
+  const handleColorChange = useCallback((color: string) => {
+    setActiveColor(color);
+    if (selectedId) {
+      const updated = annotations.map(a =>
+        a.id === selectedId ? { ...a, data: { ...a.data, color } } : a
+      );
+      handleAnnotationsChange(updated);
+    }
+  }, [selectedId, annotations, handleAnnotationsChange]);
+
+  // Stroke width change: update tool setting + apply to selected annotation
+  const handleStrokeWidthChange = useCallback((width: number) => {
+    setStrokeWidth(width);
+    if (selectedId) {
+      const updated = annotations.map(a =>
+        a.id === selectedId ? { ...a, data: { ...a.data, strokeWidth: width } } : a
+      );
+      handleAnnotationsChange(updated);
+    }
+  }, [selectedId, annotations, handleAnnotationsChange]);
+
   const handleDeleteSelected = useCallback(() => {
     if (!selectedId) return;
     setUndoStack(prev => [...prev, annotations]);
@@ -1174,9 +1208,9 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
           activeTool={activeTool}
           onToolChange={setActiveTool}
           activeColor={activeColor}
-          onColorChange={setActiveColor}
+          onColorChange={handleColorChange}
           strokeWidth={strokeWidth}
-          onStrokeWidthChange={setStrokeWidth}
+          onStrokeWidthChange={handleStrokeWidthChange}
           onUndo={handleUndo}
           onRedo={handleRedo}
           onSave={handleSave}
@@ -1283,7 +1317,7 @@ export function PdfViewer({ fileUrl, sheetVersionId, sheetId, projectId, isCurre
               annotations={annotations}
               onAnnotationsChange={handleAnnotationsChange}
               selectedId={selectedId}
-              onSelectId={setSelectedId}
+              onSelectId={handleSelectId}
               onAnnotationClick={handleAnnotationClick}
               onPinCreated={handlePinCreated}
               pixelsPerMeter={pixelsPerMeter}

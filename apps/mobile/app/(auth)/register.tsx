@@ -10,10 +10,12 @@ import {
   Platform,
 } from 'react-native';
 import { Link } from 'expo-router';
-import { useAuth } from '../../providers/auth-provider';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function RegisterScreen() {
   const { signUp } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,12 +23,12 @@ export default function RegisterScreen() {
 
   async function handleRegister() {
     if (!email || !password || !confirmPassword) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return;
     }
 
     if (password !== confirmPassword) {
-      Alert.alert('Error', 'Passwords do not match.');
+      Alert.alert(t('common.error'), t('auth.passwordsNoMatch'));
       return;
     }
 
@@ -35,9 +37,9 @@ export default function RegisterScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Registration failed', error.message);
+      Alert.alert(t('auth.registrationFailed'), error.message);
     } else {
-      Alert.alert('Success', 'Check your email to confirm your account.');
+      Alert.alert(t('auth.registrationSuccess'), t('auth.checkEmail'));
     }
   }
 
@@ -48,14 +50,14 @@ export default function RegisterScreen() {
     >
       <View className="flex-1 justify-center px-6">
         <Text className="text-3xl font-bold text-white mb-2">JouBuild</Text>
-        <Text className="text-neutral-400 mb-8">Create a new account</Text>
+        <Text className="text-neutral-400 mb-8">{t('auth.signUpSubtitle')}</Text>
 
         <View className="space-y-4">
           <View>
-            <Text className="text-neutral-300 mb-1 text-sm">Email</Text>
+            <Text className="text-neutral-300 mb-1 text-sm">{t('auth.email')}</Text>
             <TextInput
               className="bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3 text-white"
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               placeholderTextColor="#525252"
               value={email}
               onChangeText={setEmail}
@@ -66,10 +68,10 @@ export default function RegisterScreen() {
           </View>
 
           <View>
-            <Text className="text-neutral-300 mb-1 text-sm">Password</Text>
+            <Text className="text-neutral-300 mb-1 text-sm">{t('auth.password')}</Text>
             <TextInput
               className="bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3 text-white"
-              placeholder="Choose a password"
+              placeholder={t('auth.choosePasswordPlaceholder')}
               placeholderTextColor="#525252"
               value={password}
               onChangeText={setPassword}
@@ -79,10 +81,10 @@ export default function RegisterScreen() {
           </View>
 
           <View>
-            <Text className="text-neutral-300 mb-1 text-sm">Confirm Password</Text>
+            <Text className="text-neutral-300 mb-1 text-sm">{t('auth.confirmPassword')}</Text>
             <TextInput
               className="bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3 text-white"
-              placeholder="Repeat your password"
+              placeholder={t('auth.repeatPasswordPlaceholder')}
               placeholderTextColor="#525252"
               value={confirmPassword}
               onChangeText={setConfirmPassword}
@@ -99,14 +101,14 @@ export default function RegisterScreen() {
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-white font-semibold text-base">Sign Up</Text>
+              <Text className="text-white font-semibold text-base">{t('auth.signUp')}</Text>
             )}
           </TouchableOpacity>
 
           <View className="flex-row justify-center mt-4">
-            <Text className="text-neutral-400">Already have an account? </Text>
+            <Text className="text-neutral-400">{t('auth.hasAccount')}</Text>
             <Link href="/(auth)/login" className="text-blue-500">
-              Sign In
+              {t('auth.signIn')}
             </Link>
           </View>
         </View>

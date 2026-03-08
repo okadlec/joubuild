@@ -32,7 +32,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     output: 'static',
     favicon: './assets/images/favicon.png',
   },
-  plugins: ['expo-router'],
+  plugins: [
+    'expo-router',
+    [
+      'expo-image-picker',
+      {
+        photosPermission: 'Allow $(PRODUCT_NAME) to access your photos for plan annotations.',
+        cameraPermission: 'Allow $(PRODUCT_NAME) to use the camera for plan photos.',
+      },
+    ],
+  ],
   experiments: {
     typedRoutes: true,
   },

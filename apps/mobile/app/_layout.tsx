@@ -2,7 +2,12 @@ import { useEffect } from 'react';
 import { Slot, useRouter, useSegments } from 'expo-router';
 import { useFonts } from 'expo-font';
 import * as SplashScreen from 'expo-splash-screen';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { AuthProvider, useAuth } from '../providers/auth-provider';
+import { OrgProvider } from '../providers/org-provider';
+import { LanguageProvider } from '../providers/language-provider';
+import { ThemeProvider } from '../providers/theme-provider';
+import '../i18n';
 import '../global.css';
 
 export { ErrorBoundary } from 'expo-router';
@@ -22,7 +27,7 @@ function AuthGate() {
     if (!session && !inAuthGroup) {
       router.replace('/(auth)/login');
     } else if (session && inAuthGroup) {
-      router.replace('/(tabs)');
+      router.replace('/(app)/(tabs)');
     }
   }, [session, loading, segments]);
 
@@ -49,8 +54,16 @@ export default function RootLayout() {
   }
 
   return (
-    <AuthProvider>
-      <AuthGate />
-    </AuthProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ThemeProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <OrgProvider>
+              <AuthGate />
+            </OrgProvider>
+          </AuthProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

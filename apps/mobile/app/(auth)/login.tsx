@@ -10,17 +10,19 @@ import {
   Platform,
 } from 'react-native';
 import { Link } from 'expo-router';
-import { useAuth } from '../../providers/auth-provider';
+import { useTranslation } from 'react-i18next';
+import { useAuth } from '@/providers/auth-provider';
 
 export default function LoginScreen() {
   const { signIn } = useAuth();
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   async function handleLogin() {
     if (!email || !password) {
-      Alert.alert('Error', 'Please fill in all fields.');
+      Alert.alert(t('common.error'), t('auth.fillAllFields'));
       return;
     }
 
@@ -29,7 +31,7 @@ export default function LoginScreen() {
     setLoading(false);
 
     if (error) {
-      Alert.alert('Login failed', error.message);
+      Alert.alert(t('auth.loginFailed'), error.message);
     }
   }
 
@@ -40,14 +42,14 @@ export default function LoginScreen() {
     >
       <View className="flex-1 justify-center px-6">
         <Text className="text-3xl font-bold text-white mb-2">JouBuild</Text>
-        <Text className="text-neutral-400 mb-8">Sign in to your account</Text>
+        <Text className="text-neutral-400 mb-8">{t('auth.signInSubtitle')}</Text>
 
         <View className="space-y-4">
           <View>
-            <Text className="text-neutral-300 mb-1 text-sm">Email</Text>
+            <Text className="text-neutral-300 mb-1 text-sm">{t('auth.email')}</Text>
             <TextInput
               className="bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3 text-white"
-              placeholder="you@example.com"
+              placeholder={t('auth.emailPlaceholder')}
               placeholderTextColor="#525252"
               value={email}
               onChangeText={setEmail}
@@ -58,10 +60,10 @@ export default function LoginScreen() {
           </View>
 
           <View>
-            <Text className="text-neutral-300 mb-1 text-sm">Password</Text>
+            <Text className="text-neutral-300 mb-1 text-sm">{t('auth.password')}</Text>
             <TextInput
               className="bg-neutral-900 border border-neutral-800 rounded-lg px-4 py-3 text-white"
-              placeholder="Your password"
+              placeholder={t('auth.passwordPlaceholder')}
               placeholderTextColor="#525252"
               value={password}
               onChangeText={setPassword}
@@ -78,14 +80,14 @@ export default function LoginScreen() {
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text className="text-white font-semibold text-base">Sign In</Text>
+              <Text className="text-white font-semibold text-base">{t('auth.signIn')}</Text>
             )}
           </TouchableOpacity>
 
           <View className="flex-row justify-center mt-4">
-            <Text className="text-neutral-400">Don't have an account? </Text>
+            <Text className="text-neutral-400">{t('auth.noAccount')}</Text>
             <Link href="/(auth)/register" className="text-blue-500">
-              Sign Up
+              {t('auth.signUp')}
             </Link>
           </View>
         </View>

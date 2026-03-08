@@ -274,7 +274,7 @@ export function AnnotationToolbar({
       <div className="mx-1 h-6 w-px bg-border" />
 
       {/* Colors */}
-      <div className="flex gap-0.5">
+      <div className={cn("flex gap-0.5", hasSelection && "ring-1 ring-primary/30 rounded-md p-0.5")}>
         {COLORS.map((color) => (
           <button
             key={color}
@@ -291,7 +291,7 @@ export function AnnotationToolbar({
       <div className="mx-1 h-6 w-px bg-border" />
 
       {/* Stroke width */}
-      <div className="flex gap-0.5">
+      <div className={cn("flex gap-0.5", hasSelection && "ring-1 ring-primary/30 rounded-md p-0.5")}>
         {STROKE_WIDTHS.map((w) => (
           <button
             key={w}
