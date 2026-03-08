@@ -9,8 +9,8 @@ RETURNS TRIGGER AS $$
 DECLARE
   inv RECORD;
   pid UUID;
-  mod TEXT;
-  perm_modules TEXT[] := ARRAY['files','specifications','plans','tasks','photos','forms','timesheets','reports'];
+  mod permission_module;
+  perm_modules permission_module[] := ARRAY['files','specifications','plans','tasks','photos','forms','timesheets','reports']::permission_module[];
 BEGIN
   FOR inv IN
     SELECT id, organization_id, role, project_ids
@@ -24,7 +24,7 @@ BEGIN
     ON CONFLICT (organization_id, user_id) DO NOTHING;
 
     -- Process project assignments
-    IF inv.project_ids IS NOT NULL THEN
+    IF inv.project_ids IS NOT NULL AND array_length(inv.project_ids, 1) > 0 THEN
       FOREACH pid IN ARRAY inv.project_ids
       LOOP
         -- Only add if the project still exists
