@@ -15,18 +15,15 @@ import {
   PERMISSION_MODULES,
   PERMISSION_MODULE_LABELS,
   PERMISSION_ACTION_LABELS,
-  PROJECT_ROLE_LABELS,
 } from '@joubuild/shared';
 import type {
   OrgRole,
-  ProjectRole,
   PermissionModule,
 } from '@joubuild/shared';
 import { getMemberProjectAccess } from './actions';
 import {
   addUserToProject,
   removeUserFromProject,
-  updateProjectMemberRole,
   updateUserProjectPermissions,
 } from '@/app/(dashboard)/admin/users/[userId]/actions';
 
@@ -86,7 +83,6 @@ export function MemberProjectsDialog({ open, onClose, member, orgId }: MemberPro
   // Add-to-project sub-dialog state
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [addProjectId, setAddProjectId] = useState('');
-  const [addProjectRole, setAddProjectRole] = useState<ProjectRole>('member');
 
   // Load data when dialog opens
   useEffect(() => {
@@ -149,15 +145,6 @@ export function MemberProjectsDialog({ open, onClose, member, orgId }: MemberPro
     });
   }
 
-  async function handleRoleChange(projectId: string, newRole: ProjectRole) {
-    const result = await updateProjectMemberRole(member.user_id, projectId, newRole);
-    if (result.error) { toast.error(result.error); return; }
-    setProjects((prev) =>
-      prev.map((p) => (p.project_id === projectId ? { ...p, role: newRole } : p))
-    );
-    toast.success(t('userDetail.roleUpdated'));
-  }
-
   async function handleRemoveFromProject(projectId: string) {
     if (!confirm(tCommon('confirm') + '?')) return;
     const result = await removeUserFromProject(member.user_id, projectId);
@@ -174,19 +161,18 @@ export function MemberProjectsDialog({ open, onClose, member, orgId }: MemberPro
 
   async function handleAddToProject() {
     if (!addProjectId) return;
-    const result = await addUserToProject(member.user_id, addProjectId, addProjectRole);
+    const result = await addUserToProject(member.user_id, addProjectId, 'member');
     if (result.error) { toast.error(result.error); return; }
     const added = availableProjects.find((p) => p.id === addProjectId);
     if (added) {
       setProjects((prev) => [
         ...prev,
-        { project_id: added.id, name: added.name, role: addProjectRole, status: 'active' },
+        { project_id: added.id, name: added.name, role: 'member', status: 'active' },
       ]);
       setAvailableProjects((prev) => prev.filter((p) => p.id !== addProjectId));
     }
     setShowAddDialog(false);
     setAddProjectId('');
-    setAddProjectRole('member');
     toast.success('Přidáno do projektu');
   }
 
@@ -271,31 +257,17 @@ export function MemberProjectsDialog({ open, onClose, member, orgId }: MemberPro
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="min-w-0 truncate text-sm font-medium">{project.name}</p>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Select
-                        value={project.role}
-                        onChange={(e) =>
-                          handleRoleChange(project.project_id, e.target.value as ProjectRole)
-                        }
-                        className="h-8 w-auto text-xs"
-                        onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                      >
-                        <option value="admin">{PROJECT_ROLE_LABELS['admin']}</option>
-                        <option value="member">{PROJECT_ROLE_LABELS['member']}</option>
-                        <option value="follower">{PROJECT_ROLE_LABELS['follower']}</option>
-                      </Select>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveFromProject(project.project_id);
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveFromProject(project.project_id);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -385,17 +357,6 @@ export function MemberProjectsDialog({ open, onClose, member, orgId }: MemberPro
                   {p.name}
                 </option>
               ))}
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>{t('userDetail.projectRole')}</Label>
-            <Select
-              value={addProjectRole}
-              onChange={(e) => setAddProjectRole(e.target.value as ProjectRole)}
-            >
-              <option value="admin">{PROJECT_ROLE_LABELS['admin']}</option>
-              <option value="member">{PROJECT_ROLE_LABELS['member']}</option>
-              <option value="follower">{PROJECT_ROLE_LABELS['follower']}</option>
             </Select>
           </div>
           <div className="flex justify-end gap-2">
