@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
+import { SetPasswordForm } from './set-password-form';
 
 export default async function InviteAcceptPage() {
   const supabase = await createClient();
@@ -28,10 +29,7 @@ export default async function InviteAcceptPage() {
     .eq('status', 'pending');
 
   if (invitations && invitations.length > 0) {
-    // The DB trigger should have handled this on profile creation,
-    // but handle edge case where it didn't fire
     for (const inv of invitations) {
-      // Check if already a member (trigger already ran)
       const { data: existing } = await serviceClient
         .from('organization_members')
         .select('id')
@@ -54,6 +52,15 @@ export default async function InviteAcceptPage() {
         .update({ status: 'accepted', accepted_at: new Date().toISOString() })
         .eq('id', inv.id);
     }
+  }
+
+  // If user was invited (created via invite), show password setup form
+  // Invited users have no identities with a password yet
+  const hasPassword = user.app_metadata?.providers?.includes('email') &&
+    user.user_metadata?.has_set_password;
+
+  if (!hasPassword && user.app_metadata?.invited_at) {
+    return <SetPasswordForm />;
   }
 
   redirect('/projects');

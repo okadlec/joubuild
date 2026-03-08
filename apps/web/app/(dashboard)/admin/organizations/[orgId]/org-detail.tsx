@@ -6,22 +6,18 @@ import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import {
   ArrowLeft, Users, FolderOpen, HardDrive, Image,
-  FileText, Sheet, MoreVertical, UserMinus, UserPlus, Mail, X, RefreshCw,
+  FileText, Sheet, MoreVertical, UserMinus, Mail, X, RefreshCw,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Avatar } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
-import { Dialog, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { toast } from 'sonner';
 import { formatBytes } from '@/lib/utils';
 import type { OrgRole, OrganizationInvitation } from '@joubuild/shared';
-import { updateMemberRole, removeMember, addMemberByEmail, inviteOrgMemberFromAdmin, cancelInvitationFromAdmin, resendInvitationFromAdmin } from './actions';
+import { updateMemberRole, removeMember, inviteOrgMemberFromAdmin, cancelInvitationFromAdmin, resendInvitationFromAdmin } from './actions';
 import { InviteMemberDialog } from '@/components/invite-member-dialog';
 
 const ORG_ROLE_VARIANTS: Record<OrgRole, 'default' | 'secondary' | 'outline'> = {
@@ -81,10 +77,6 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
   const tProjects = useTranslations('projects');
   const [members, setMembers] = useState(initialMembers);
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
-  const [showAddMember, setShowAddMember] = useState(false);
-  const [newMemberEmail, setNewMemberEmail] = useState('');
-  const [newMemberRole, setNewMemberRole] = useState<OrgRole>('member');
-  const [inviting, setInviting] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
   const [invitations, setInvitations] = useState(initialInvitations);
 
@@ -111,21 +103,6 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
     if (result.error) { toast.error(result.error); return; }
     setMembers((prev) => prev.filter((m) => m.user_id !== userId));
     setOpenMenuId(null);
-  }
-
-  async function handleAddMember() {
-    if (!newMemberEmail.trim()) return;
-    setInviting(true);
-    const result = await addMemberByEmail(org.id, newMemberEmail.trim(), newMemberRole);
-    if (result.error) {
-      toast.error(result.error);
-    } else if (result.member) {
-      setMembers((prev) => [...prev, result.member!]);
-      setShowAddMember(false);
-      setNewMemberEmail('');
-      setNewMemberRole('member');
-    }
-    setInviting(false);
   }
 
   async function handleCancelInvitation(invId: string) {
@@ -233,16 +210,10 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
             <CardContent className="pt-6">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-semibold">{t('members')}</h3>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setShowInviteDialog(true)}>
-                    <Mail className="mr-2 h-4 w-4" />
-                    Pozvat
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => setShowAddMember(true)}>
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    {t('orgDetail.addMember')}
-                  </Button>
-                </div>
+                <Button size="sm" variant="outline" onClick={() => setShowInviteDialog(true)}>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Pozvat
+                </Button>
               </div>
               <div className="space-y-2">
                 {members.length === 0 && (
@@ -389,37 +360,6 @@ export function OrgDetail({ org, members: initialMembers, projects, storage, pen
         }}
       />
 
-      {/* Add member dialog */}
-      <Dialog open={showAddMember} onClose={() => setShowAddMember(false)}>
-        <DialogHeader>
-          <DialogTitle>{t('orgDetail.addMember')}</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Email</Label>
-            <Input
-              type="email"
-              value={newMemberEmail}
-              onChange={(e) => setNewMemberEmail(e.target.value)}
-              placeholder="email@example.com"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>{t('usersList.role')}</Label>
-            <Select value={newMemberRole} onChange={(e) => setNewMemberRole(e.target.value as OrgRole)}>
-              <option value="admin">{tRoles('admin')}</option>
-              <option value="member">{tRoles('member')}</option>
-              <option value="viewer">{tRoles('viewer')}</option>
-            </Select>
-          </div>
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setShowAddMember(false)}>{tCommon('cancel')}</Button>
-            <Button onClick={handleAddMember} disabled={inviting}>
-              {inviting ? tCommon('loading') : tCommon('add')}
-            </Button>
-          </div>
-        </div>
-      </Dialog>
     </div>
   );
 }

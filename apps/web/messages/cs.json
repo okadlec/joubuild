@@ -61,7 +61,14 @@
     "fullNamePlaceholder": "Jan Novák",
     "emailPlaceholder": "vas@email.cz",
     "passwordPlaceholder": "Minimálně 6 znaků",
-    "tagline": "Správa staveb pod kontrolou"
+    "tagline": "Správa staveb pod kontrolou",
+    "setPassword": "Nastavit heslo",
+    "setPasswordDescription": "Nastavte si heslo pro přihlášení do JouBuild",
+    "confirmPassword": "Potvrdit heslo",
+    "confirmPasswordPlaceholder": "Zopakujte heslo",
+    "passwordMismatch": "Hesla se neshodují",
+    "passwordMinLength": "Heslo musí mít alespoň 6 znaků",
+    "passwordSet": "Heslo bylo nastaveno"
   },
   "sidebar": {
     "projects": "Projekty",

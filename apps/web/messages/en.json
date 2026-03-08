@@ -61,7 +61,14 @@
     "fullNamePlaceholder": "John Smith",
     "emailPlaceholder": "you@email.com",
     "passwordPlaceholder": "Minimum 6 characters",
-    "tagline": "Construction management under control"
+    "tagline": "Construction management under control",
+    "setPassword": "Set Password",
+    "setPasswordDescription": "Set a password for your JouBuild account",
+    "confirmPassword": "Confirm Password",
+    "confirmPasswordPlaceholder": "Repeat password",
+    "passwordMismatch": "Passwords do not match",
+    "passwordMinLength": "Password must be at least 6 characters",
+    "passwordSet": "Password has been set"
   },
   "sidebar": {
     "projects": "Projects",
