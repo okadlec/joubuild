@@ -79,21 +79,30 @@ export async function inviteOrgMemberFromAdmin(orgId: string, email: string, rol
     .maybeSingle();
 
   if (existingProfile) {
-    const { data: existingMember } = await serviceClient
-      .from('organization_members')
-      .select('id')
-      .eq('organization_id', orgId)
-      .eq('user_id', existingProfile.id)
-      .maybeSingle();
+    // Ověřit, že auth user skutečně existuje (profil mohl zůstat jako osiřelý)
+    const { data: authUser } = await serviceClient.auth.admin.getUserById(existingProfile.id);
 
-    if (existingMember) return { error: 'Uživatel je již členem organizace' };
+    if (authUser?.user) {
+      // Skutečně existující uživatel — přidat přímo
+      const { data: existingMember } = await serviceClient
+        .from('organization_members')
+        .select('id')
+        .eq('organization_id', orgId)
+        .eq('user_id', existingProfile.id)
+        .maybeSingle();
 
-    const { error: insertError } = await serviceClient
-      .from('organization_members')
-      .insert({ organization_id: orgId, user_id: existingProfile.id, role });
+      if (existingMember) return { error: 'Uživatel je již členem organizace' };
 
-    if (insertError) return { error: insertError.message };
-    return { success: true, directlyAdded: true };
+      const { error: insertError } = await serviceClient
+        .from('organization_members')
+        .insert({ organization_id: orgId, user_id: existingProfile.id, role });
+
+      if (insertError) return { error: insertError.message };
+      return { success: true, directlyAdded: true };
+    }
+
+    // Osiřelý profil — smazat a pokračovat s invite flow
+    await serviceClient.from('profiles').delete().eq('id', existingProfile.id);
   }
 
   const { error: invError } = await serviceClient

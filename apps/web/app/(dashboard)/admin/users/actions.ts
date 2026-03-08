@@ -209,6 +209,9 @@ export async function deleteUser(userId: string) {
 
   const serviceClient = getServiceClient();
 
+  // Explicitně smazat profil (nespoléhat na CASCADE z auth.users)
+  await serviceClient.from('profiles').delete().eq('id', userId);
+
   const { error } = await serviceClient.auth.admin.deleteUser(userId);
   if (error) return { error: 'Chyba při mazání: ' + error.message };
 
